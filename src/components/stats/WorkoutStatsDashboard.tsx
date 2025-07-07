@@ -1,4 +1,4 @@
-// src/components/stats/WorkoutStatsDashboard.tsx - 📊 Advanced Statistics Dashboard
+// src/components/stats/WorkoutStatsDashboard.tsx - 📊 Fixed Statistics Dashboard
 
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
@@ -10,16 +10,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
 import { WorkoutStats } from "../../hooks/useWorkoutHistory";
-import { getCurrentColors } from "../../theme/colors";
+import { colors } from "../../theme/colors";
+import { Workout } from "../../types/workout";
 
 const { width } = Dimensions.get("window");
-const chartWidth = width - 40;
 
 interface WorkoutStatsDashboardProps {
   stats: WorkoutStats;
-  workouts?: any[]; // Full workout data for advanced charts
+  workouts?: Workout[];
   period?: "week" | "month" | "year";
   onPeriodChange?: (period: "week" | "month" | "year") => void;
 }
@@ -34,8 +33,6 @@ const ProgressTrendCard = ({
   value: string;
   label: string;
 }) => {
-  const colors = getCurrentColors();
-
   const getTrendIcon = () => {
     switch (trend) {
       case "up":
@@ -50,25 +47,30 @@ const ProgressTrendCard = ({
   const getTrendColor = () => {
     switch (trend) {
       case "up":
-        return colors.success;
+        return "#34C759"; // Green
       case "down":
-        return colors.error;
+        return "#FF3B30"; // Red
       case "stable":
-        return colors.text.secondary;
+        return "#8E8E93"; // Gray
     }
   };
 
   return (
     <View
-      style={[styles.trendCard, { backgroundColor: colors.background.card }]}
+      style={[
+        styles.trendCard,
+        { backgroundColor: colors.surface || "#FFFFFF" },
+      ]}
     >
       <View style={styles.trendHeader}>
         <Ionicons name={getTrendIcon()} size={20} color={getTrendColor()} />
-        <Text style={[styles.trendValue, { color: colors.text.primary }]}>
+        <Text style={[styles.trendValue, { color: colors.text || "#000" }]}>
           {value}
         </Text>
       </View>
-      <Text style={[styles.trendLabel, { color: colors.text.secondary }]}>
+      <Text
+        style={[styles.trendLabel, { color: colors.textSecondary || "#666" }]}
+      >
         {label}
       </Text>
     </View>
@@ -89,12 +91,14 @@ const StatCard = ({
   color?: string;
   subtitle?: string;
 }) => {
-  const colors = getCurrentColors();
-  const cardColor = color || colors.primary;
+  const cardColor = color || colors.primary || "#007AFF";
 
   return (
     <View
-      style={[styles.statCard, { backgroundColor: colors.background.card }]}
+      style={[
+        styles.statCard,
+        { backgroundColor: colors.surface || "#FFFFFF" },
+      ]}
     >
       <View
         style={[
@@ -105,14 +109,21 @@ const StatCard = ({
         <Ionicons name={icon as any} size={24} color={cardColor} />
       </View>
       <View style={styles.statContent}>
-        <Text style={[styles.statValue, { color: colors.text.primary }]}>
+        <Text style={[styles.statValue, { color: colors.text || "#000" }]}>
           {value}
         </Text>
-        <Text style={[styles.statLabel, { color: colors.text.secondary }]}>
+        <Text
+          style={[styles.statLabel, { color: colors.textSecondary || "#666" }]}
+        >
           {label}
         </Text>
         {subtitle && (
-          <Text style={[styles.statSubtitle, { color: colors.text.tertiary }]}>
+          <Text
+            style={[
+              styles.statSubtitle,
+              { color: colors.textSecondary || "#999" },
+            ]}
+          >
             {subtitle}
           </Text>
         )}
@@ -121,67 +132,23 @@ const StatCard = ({
   );
 };
 
-// 🎯 Circular Progress Component
-const CircularProgress = ({
-  percentage,
-  size = 80,
-  strokeWidth = 8,
-  color,
-  label,
-  value,
-}: {
-  percentage: number;
-  size?: number;
-  strokeWidth?: number;
-  color: string;
-  label: string;
-  value: string;
-}) => {
-  const colors = getCurrentColors();
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <View style={[styles.circularProgress, { width: size, height: size }]}>
-      <View style={styles.circularProgressContent}>
-        <Text
-          style={[styles.circularProgressValue, { color: colors.text.primary }]}
-        >
-          {value}
-        </Text>
-        <Text
-          style={[
-            styles.circularProgressLabel,
-            { color: colors.text.secondary },
-          ]}
-        >
-          {label}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
 // 📊 Favorite Exercises Component
 const FavoriteExercises = ({ exercises }: { exercises: string[] }) => {
-  const colors = getCurrentColors();
-
   return (
     <View
       style={[
         styles.favoritesCard,
-        { backgroundColor: colors.background.card },
+        { backgroundColor: colors.surface || "#FFFFFF" },
       ]}
     >
-      <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
-        <Ionicons name="heart" size={16} color={colors.error} /> התרגילים
-        הפופולריים
+      <Text style={[styles.cardTitle, { color: colors.text || "#000" }]}>
+        <Ionicons name="heart" size={16} color="#FF3B30" /> התרגילים הפופולריים
       </Text>
 
       {exercises.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.text.tertiary }]}>
+        <Text
+          style={[styles.emptyText, { color: colors.textSecondary || "#999" }]}
+        >
           עדיין אין מספיק נתונים
         </Text>
       ) : (
@@ -189,31 +156,26 @@ const FavoriteExercises = ({ exercises }: { exercises: string[] }) => {
           {exercises.slice(0, 5).map((exercise, index) => (
             <View key={exercise} style={styles.exerciseItem}>
               <View style={styles.exerciseRank}>
-                <Text
-                  style={[
-                    styles.exerciseRankText,
-                    { color: colors.text.inverse },
-                  ]}
-                >
+                <Text style={[styles.exerciseRankText, { color: "#FFFFFF" }]}>
                   {index + 1}
                 </Text>
               </View>
               <Text
-                style={[styles.exerciseName, { color: colors.text.primary }]}
+                style={[styles.exerciseName, { color: colors.text || "#000" }]}
               >
                 {exercise}
               </Text>
               <View
                 style={[
                   styles.exerciseBar,
-                  { backgroundColor: colors.border.light },
+                  { backgroundColor: colors.border || "#E5E5E7" },
                 ]}
               >
                 <View
                   style={[
                     styles.exerciseBarFill,
                     {
-                      backgroundColor: colors.primary,
+                      backgroundColor: colors.primary || "#007AFF",
                       width: `${100 - index * 15}%`,
                     },
                   ]}
@@ -227,10 +189,8 @@ const FavoriteExercises = ({ exercises }: { exercises: string[] }) => {
   );
 };
 
-// 📈 Week Progress Chart Component
-const WeekProgressChart = ({ workouts }: { workouts: any[] }) => {
-  const colors = getCurrentColors();
-
+// 📈 Simple Week Progress Component (without chart library)
+const WeekProgressChart = ({ workouts }: { workouts: Workout[] }) => {
   const weekData = useMemo(() => {
     const days = ["ב", "ג", "ד", "ה", "ו", "ש", "א"];
     const today = new Date();
@@ -242,7 +202,7 @@ const WeekProgressChart = ({ workouts }: { workouts: any[] }) => {
       date.setDate(weekStart.getDate() + index);
 
       const dayWorkouts = workouts.filter((workout) => {
-        const workoutDate = new Date(workout.completedAt || workout.date);
+        const workoutDate = new Date(workout.completedAt || workout.date || 0);
         return workoutDate.toDateString() === date.toDateString();
       });
 
@@ -252,10 +212,10 @@ const WeekProgressChart = ({ workouts }: { workouts: any[] }) => {
         volume: dayWorkouts.reduce((sum, w) => {
           return (
             sum +
-            w.exercises.reduce((exSum: number, ex: any) => {
+            w.exercises.reduce((exSum, ex) => {
               return (
                 exSum +
-                ex.sets.reduce((setSum: number, set: any) => {
+                ex.sets.reduce((setSum, set) => {
                   return setSum + (set.weight || 0) * (set.reps || 0);
                 }, 0)
               );
@@ -265,51 +225,54 @@ const WeekProgressChart = ({ workouts }: { workouts: any[] }) => {
       };
     });
 
-    return {
-      labels: days,
-      datasets: [
-        {
-          data: weekWorkouts.map((d) => d.count),
-          color: (opacity = 1) => colors.primary,
-          strokeWidth: 3,
-        },
-      ],
-    };
-  }, [workouts, colors.primary]);
+    return weekWorkouts;
+  }, [workouts]);
+
+  const maxCount = Math.max(...weekData.map((d) => d.count), 1);
 
   return (
     <View
-      style={[styles.chartCard, { backgroundColor: colors.background.card }]}
+      style={[
+        styles.chartCard,
+        { backgroundColor: colors.surface || "#FFFFFF" },
+      ]}
     >
-      <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
-        <Ionicons name="bar-chart" size={16} color={colors.primary} /> השבוע שלי
+      <Text style={[styles.cardTitle, { color: colors.text || "#000" }]}>
+        <Ionicons
+          name="bar-chart"
+          size={16}
+          color={colors.primary || "#007AFF"}
+        />{" "}
+        השבוע שלי
       </Text>
 
-      <LineChart
-        data={weekData}
-        width={chartWidth - 40}
-        height={180}
-        chartConfig={{
-          backgroundColor: colors.background.card,
-          backgroundGradientFrom: colors.background.card,
-          backgroundGradientTo: colors.background.card,
-          decimalPlaces: 0,
-          color: (opacity = 1) => colors.primary,
-          labelColor: (opacity = 1) => colors.text.secondary,
-          style: {
-            borderRadius: 16,
-          },
-          propsForLabels: {
-            fontSize: 12,
-          },
-        }}
-        style={styles.chart}
-        bezier
-        withDots
-        withShadow={false}
-        withInnerLines={false}
-        withOuterLines={false}
-      />
+      <View style={styles.simpleChart}>
+        {weekData.map((data, index) => (
+          <View key={index} style={styles.chartColumn}>
+            <View
+              style={[
+                styles.chartBar,
+                {
+                  height: `${(data.count / maxCount) * 100}%`,
+                  backgroundColor:
+                    data.count > 0 ? colors.primary || "#007AFF" : "#E5E5E7",
+                },
+              ]}
+            />
+            <Text
+              style={[
+                styles.chartLabel,
+                { color: colors.textSecondary || "#666" },
+              ]}
+            >
+              {data.day}
+            </Text>
+            <Text style={[styles.chartValue, { color: colors.text || "#000" }]}>
+              {data.count}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 };
@@ -321,8 +284,6 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
   period = "week",
   onPeriodChange,
 }) => {
-  const colors = getCurrentColors();
-
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${Math.round(minutes)} דק'`;
     const hours = Math.floor(minutes / 60);
@@ -339,7 +300,7 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
     <ScrollView
       style={[
         styles.container,
-        { backgroundColor: colors.background.secondary },
+        { backgroundColor: colors.background || "#F5F5F5" },
       ]}
       showsVerticalScrollIndicator={false}
     >
@@ -353,9 +314,13 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
                 styles.periodButton,
                 {
                   backgroundColor:
-                    period === p ? colors.primary : colors.background.tertiary,
+                    period === p
+                      ? colors.primary || "#007AFF"
+                      : colors.surface || "#F2F2F7",
                   borderColor:
-                    period === p ? colors.primary : colors.border.light,
+                    period === p
+                      ? colors.primary || "#007AFF"
+                      : colors.border || "#E5E5E7",
                 },
               ]}
               onPress={() => onPeriodChange(p)}
@@ -364,8 +329,7 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
                 style={[
                   styles.periodButtonText,
                   {
-                    color:
-                      period === p ? colors.text.inverse : colors.text.primary,
+                    color: period === p ? "#FFFFFF" : colors.text || "#000",
                   },
                 ]}
               >
@@ -407,28 +371,28 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
           icon="barbell"
           value={stats.totalWorkouts}
           label="סך אימונים"
-          color={colors.primary}
+          color={colors.primary || "#007AFF"}
           subtitle="מתחילת השימוש"
         />
         <StatCard
           icon="trending-up"
           value={formatVolume(stats.totalVolume)}
           label="נפח כולל"
-          color={colors.success}
+          color="#34C759"
           subtitle={`${formatVolume(stats.weeklyVolume)} השבוע`}
         />
         <StatCard
           icon="time"
           value={formatDuration(stats.averageDuration)}
           label="זמן ממוצע"
-          color={colors.warning}
+          color="#FF9500"
           subtitle={`${formatDuration(stats.totalDuration)} סה"כ`}
         />
         <StatCard
           icon="calendar"
           value={stats.monthlyWorkouts}
           label="החודש"
-          color={colors.secondary}
+          color="#5856D6"
           subtitle="אימונים"
         />
       </View>
@@ -443,12 +407,11 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
       <View
         style={[
           styles.achievementsCard,
-          { backgroundColor: colors.background.card },
+          { backgroundColor: colors.surface || "#FFFFFF" },
         ]}
       >
-        <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
-          <Ionicons name="trophy" size={16} color={colors.warning} /> הישגים
-          השבוע
+        <Text style={[styles.cardTitle, { color: colors.text || "#000" }]}>
+          <Ionicons name="trophy" size={16} color="#FF9500" /> הישגים השבוע
         </Text>
 
         <View style={styles.achievementsList}>
@@ -456,11 +419,11 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
             <View
               style={[
                 styles.achievementBadge,
-                { backgroundColor: colors.success + "15" },
+                { backgroundColor: "#34C759" + "15" },
               ]}
             >
-              <Ionicons name="flame" size={20} color={colors.success} />
-              <Text style={[styles.achievementText, { color: colors.success }]}>
+              <Ionicons name="flame" size={20} color="#34C759" />
+              <Text style={[styles.achievementText, { color: "#34C759" }]}>
                 רצף שבועי!
               </Text>
             </View>
@@ -470,11 +433,20 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
             <View
               style={[
                 styles.achievementBadge,
-                { backgroundColor: colors.primary + "15" },
+                { backgroundColor: (colors.primary || "#007AFF") + "15" },
               ]}
             >
-              <Ionicons name="fitness" size={20} color={colors.primary} />
-              <Text style={[styles.achievementText, { color: colors.primary }]}>
+              <Ionicons
+                name="fitness"
+                size={20}
+                color={colors.primary || "#007AFF"}
+              />
+              <Text
+                style={[
+                  styles.achievementText,
+                  { color: colors.primary || "#007AFF" },
+                ]}
+              >
                 נפח גבוה!
               </Text>
             </View>
@@ -484,11 +456,11 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
             <View
               style={[
                 styles.achievementBadge,
-                { backgroundColor: colors.warning + "15" },
+                { backgroundColor: "#FF9500" + "15" },
               ]}
             >
-              <Ionicons name="medal" size={20} color={colors.warning} />
-              <Text style={[styles.achievementText, { color: colors.warning }]}>
+              <Ionicons name="medal" size={20} color="#FF9500" />
+              <Text style={[styles.achievementText, { color: "#FF9500" }]}>
                 מחויב לספורט!
               </Text>
             </View>
@@ -498,11 +470,11 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
             <View
               style={[
                 styles.achievementBadge,
-                { backgroundColor: colors.error + "15" },
+                { backgroundColor: "#FF3B30" + "15" },
               ]}
             >
-              <Ionicons name="star" size={20} color={colors.error} />
-              <Text style={[styles.achievementText, { color: colors.error }]}>
+              <Ionicons name="star" size={20} color="#FF3B30" />
+              <Text style={[styles.achievementText, { color: "#FF3B30" }]}>
                 איכות גבוהה!
               </Text>
             </View>
@@ -516,7 +488,7 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
             <Text
               style={[
                 styles.emptyAchievements,
-                { color: colors.text.tertiary },
+                { color: colors.textSecondary || "#999" },
               ]}
             >
               המשך להתאמן כדי לזכות בהישגים! 💪
@@ -635,9 +607,32 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "right",
   },
-  chart: {
-    borderRadius: 16,
-    alignSelf: "center",
+  simpleChart: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    height: 120,
+    paddingHorizontal: 10,
+  },
+  chartColumn: {
+    flex: 1,
+    alignItems: "center",
+    height: "100%",
+    justifyContent: "flex-end",
+  },
+  chartBar: {
+    width: 20,
+    minHeight: 4,
+    borderRadius: 2,
+    marginBottom: 8,
+  },
+  chartLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  chartValue: {
+    fontSize: 10,
+    fontWeight: "600",
   },
   favoritesCard: {
     padding: 16,
@@ -690,24 +685,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "italic",
     paddingVertical: 20,
-  },
-  circularProgress: {
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  circularProgressContent: {
-    position: "absolute",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  circularProgressValue: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  circularProgressLabel: {
-    fontSize: 10,
-    textAlign: "center",
   },
   achievementsCard: {
     padding: 16,

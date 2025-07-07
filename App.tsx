@@ -9,6 +9,8 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
+// 🔧 תיקון השגיאה - העברת ה-import לחלק העליון
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // 🛡️ רכיבי אבטחה ויציבות
 import { ErrorBoundary } from "./src/components/common/ErrorBoundary";
@@ -196,8 +198,7 @@ export default App;
 // 📊 מידע לפיתוח (רק במצב debug)
 if (__DEV__) {
   // יצירת כמה פונקציות עזר גלובליות לפיתוח
-  // 🔧 תיקון השגיאה השנייה - החלפת require ב-import
-  import AsyncStorage from "@react-native-async-storage/async-storage";
+  // 🔧 תיקון השגיאה השנייה - AsyncStorage כבר מיובא למעלה
 
   (global as any).__DEV_HELPERS__ = {
     clearAsyncStorage: async () => {

@@ -1,16 +1,18 @@
-// src/hooks/useWorkoutHistory.ts
+// src/hooks/useWorkoutHistory.ts - Fixed for React Query v5
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { UserState, useUserStore } from "../stores/userStore";
+import { Workout } from "../types/workout";
+
+// �️ Real Storage Functions
 import {
   deleteWorkoutFromHistory,
   getWorkoutHistory,
   saveWorkoutToHistory,
 } from "../data/storage";
-import { UserState, useUserStore } from "../stores/userStore";
-import { Workout } from "../types/workout";
 
-// 📊 Statistics Types
+// �📊 Statistics Types
 export interface WorkoutStats {
   totalWorkouts: number;
   weeklyWorkouts: number;
@@ -60,15 +62,6 @@ export interface UseWorkoutHistoryOptions {
 
 /**
  * 🚀 Enhanced Hook לניהול היסטוריית אימונים מתקדם
- *
- * Features:
- * - ✅ Statistics calculations
- * - ✅ Advanced filtering & sorting
- * - ✅ Optimistic updates
- * - ✅ Real-time synchronization
- * - ✅ Performance optimizations
- * - ✅ Error handling & retry
- * - ✅ Memory management
  */
 export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
   const {
@@ -85,13 +78,13 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
 
   // 📊 Query Key Generator
   const generateQueryKey = useCallback(() => {
-    return ["workouts", userId, { limit, filters, sortBy }];
+    return ["workouts", userId, { limit, filters, sortBy }] as const;
   }, [userId, limit, filters, sortBy]);
 
   // 🔍 Main Query
   const query = useQuery({
     queryKey: generateQueryKey(),
-    queryFn: async () => {
+    queryFn: async (): Promise<Workout[]> => {
       if (!userId) throw new Error("User not authenticated");
 
       console.log("🔄 Fetching workout history...");
@@ -115,14 +108,12 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
     refetchInterval: enableRealTime ? 30000 : false, // 30 seconds
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    onError: (error) => {
-      console.error("❌ Failed to fetch workout history:", error);
-    },
+    // onError removed in React Query v5 - use onError in mutation or handle in component
   });
 
   // 💾 Save Workout Mutation
   const saveWorkoutMutation = useMutation({
-    mutationFn: async (workout: Workout) => {
+    mutationFn: async (workout: Workout): Promise<Workout> => {
       if (!userId) throw new Error("User not authenticated");
 
       const workoutToSave = {
@@ -161,7 +152,11 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
 
       return { previousWorkouts };
     },
-    onError: (error, variables, context) => {
+    onError: (
+      error: Error,
+      variables: Workout,
+      context?: { previousWorkouts?: Workout[] }
+    ) => {
       console.error("❌ Failed to save workout:", error);
 
       // Rollback on error
@@ -169,7 +164,7 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
         queryClient.setQueryData(generateQueryKey(), context.previousWorkouts);
       }
     },
-    onSuccess: (savedWorkout) => {
+    onSuccess: (savedWorkout: Workout) => {
       console.log("✅ Workout saved successfully:", savedWorkout.name);
 
       // Invalidate and refetch
@@ -179,12 +174,12 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
 
   // 🗑️ Delete Workout Mutation
   const deleteWorkoutMutation = useMutation({
-    mutationFn: async (workoutId: string) => {
+    mutationFn: async (workoutId: string): Promise<string> => {
       if (!userId) throw new Error("User not authenticated");
       await deleteWorkoutFromHistory(userId, workoutId);
       return workoutId;
     },
-    onMutate: async (workoutId) => {
+    onMutate: async (workoutId: string) => {
       if (!enableOptimisticUpdates) return;
 
       await queryClient.cancelQueries({ queryKey: generateQueryKey() });
@@ -201,7 +196,11 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
 
       return { previousWorkouts };
     },
-    onError: (error, variables, context) => {
+    onError: (
+      error: Error,
+      workoutId: string,
+      context?: { previousWorkouts?: Workout[] }
+    ) => {
       console.error("❌ Failed to delete workout:", error);
       if (context?.previousWorkouts) {
         queryClient.setQueryData(generateQueryKey(), context.previousWorkouts);
@@ -214,7 +213,9 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
 
   // 📊 Statistics Calculation (Memoized for performance)
   const stats = useMemo((): WorkoutStats => {
-    if (!query.data) {
+    const workouts = query.data || [];
+
+    if (workouts.length === 0) {
       return {
         totalWorkouts: 0,
         weeklyWorkouts: 0,
@@ -230,7 +231,7 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
       };
     }
 
-    return calculateWorkoutStats(query.data);
+    return calculateWorkoutStats(workouts);
   }, [query.data]);
 
   // 🔄 Refresh Function
@@ -281,7 +282,7 @@ export const useWorkoutHistory = (options: UseWorkoutHistoryOptions = {}) => {
 
     // 📈 Advanced
     hasNextPage: query.data && limit ? query.data.length >= limit : false,
-    isEmpty: query.data?.length === 0,
+    isEmpty: (query.data || []).length === 0,
     queryKey: generateQueryKey(),
   };
 };

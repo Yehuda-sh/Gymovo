@@ -1,8 +1,6 @@
-// src/components/modals/WorkoutFilterModal.tsx - 🔍 Advanced Filter Modal
+// src/components/modals/WorkoutFilterModal.tsx - 🔍 Fixed Filter Modal
 
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import Slider from "@react-native-community/slider";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Animated,
@@ -16,9 +14,9 @@ import {
   View,
 } from "react-native";
 import { WorkoutHistoryFilters } from "../../hooks/useWorkoutHistory";
-import { getCurrentColors } from "../../theme/colors";
+import { colors } from "../../theme/colors";
 
-const { width, height } = Dimensions.get("window");
+const { height } = Dimensions.get("window");
 
 interface WorkoutFilterModalProps {
   visible: boolean;
@@ -37,15 +35,17 @@ const FilterTag = ({
   active: boolean;
   onPress: () => void;
 }) => {
-  const colors = getCurrentColors();
-
   return (
     <TouchableOpacity
       style={[
         styles.filterTag,
         {
-          backgroundColor: active ? colors.primary : colors.background.tertiary,
-          borderColor: active ? colors.primary : colors.border.light,
+          backgroundColor: active
+            ? colors.primary || "#007AFF"
+            : colors.surface || "#F2F2F7",
+          borderColor: active
+            ? colors.primary || "#007AFF"
+            : colors.border || "#E5E5E7",
         },
       ]}
       onPress={onPress}
@@ -53,7 +53,7 @@ const FilterTag = ({
       <Text
         style={[
           styles.filterTagText,
-          { color: active ? colors.text.inverse : colors.text.primary },
+          { color: active ? "#FFFFFF" : colors.text || "#000" },
         ]}
       >
         {label}
@@ -70,8 +70,6 @@ const RatingSelector = ({
   selectedRating?: number;
   onRatingChange: (rating?: number) => void;
 }) => {
-  const colors = getCurrentColors();
-
   return (
     <View style={styles.ratingContainer}>
       <TouchableOpacity
@@ -79,9 +77,11 @@ const RatingSelector = ({
           styles.ratingOption,
           {
             backgroundColor: !selectedRating
-              ? colors.primary
-              : colors.background.tertiary,
-            borderColor: !selectedRating ? colors.primary : colors.border.light,
+              ? colors.primary || "#007AFF"
+              : colors.surface || "#F2F2F7",
+            borderColor: !selectedRating
+              ? colors.primary || "#007AFF"
+              : colors.border || "#E5E5E7",
           },
         ]}
         onPress={() => onRatingChange(undefined)}
@@ -90,9 +90,7 @@ const RatingSelector = ({
           style={[
             styles.ratingText,
             {
-              color: !selectedRating
-                ? colors.text.inverse
-                : colors.text.primary,
+              color: !selectedRating ? "#FFFFFF" : colors.text || "#000",
             },
           ]}
         >
@@ -108,12 +106,12 @@ const RatingSelector = ({
             {
               backgroundColor:
                 selectedRating === rating
-                  ? colors.primary
-                  : colors.background.tertiary,
+                  ? colors.primary || "#007AFF"
+                  : colors.surface || "#F2F2F7",
               borderColor:
                 selectedRating === rating
-                  ? colors.primary
-                  : colors.border.light,
+                  ? colors.primary || "#007AFF"
+                  : colors.border || "#E5E5E7",
             },
           ]}
           onPress={() => onRatingChange(rating)}
@@ -126,10 +124,10 @@ const RatingSelector = ({
                 size={12}
                 color={
                   selectedRating === rating
-                    ? colors.text.inverse
+                    ? "#FFFFFF"
                     : star <= rating
-                    ? colors.workout.rating.star
-                    : colors.workout.rating.starEmpty
+                    ? "#FFD700"
+                    : "#C7C7CC"
                 }
               />
             ))}
@@ -140,7 +138,7 @@ const RatingSelector = ({
   );
 };
 
-// 📅 Date Range Picker Component
+// 📅 Simplified Date Range Picker Component (without external dependencies)
 const DateRangePicker = ({
   dateFrom,
   dateTo,
@@ -152,104 +150,103 @@ const DateRangePicker = ({
   onDateFromChange: (date?: string) => void;
   onDateToChange: (date?: string) => void;
 }) => {
-  const colors = getCurrentColors();
-  const [showFromPicker, setShowFromPicker] = useState(false);
-  const [showToPicker, setShowToPicker] = useState(false);
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return "בחר תאריך";
     return new Date(dateString).toLocaleDateString("he-IL");
   };
 
+  // Simple date options - last week, last month, last 3 months
+  const dateOptions = [
+    {
+      label: "השבוע האחרון",
+      getValue: () => {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return weekAgo.toISOString();
+      },
+    },
+    {
+      label: "החודש האחרון",
+      getValue: () => {
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        return monthAgo.toISOString();
+      },
+    },
+    {
+      label: "3 חודשים אחרונים",
+      getValue: () => {
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        return threeMonthsAgo.toISOString();
+      },
+    },
+  ];
+
   return (
     <View style={styles.dateRangeContainer}>
-      <View style={styles.datePickerRow}>
-        <Text style={[styles.dateLabel, { color: colors.text.secondary }]}>
-          מתאריך:
-        </Text>
-        <TouchableOpacity
-          style={[styles.dateButton, { borderColor: colors.border.medium }]}
-          onPress={() => setShowFromPicker(true)}
-        >
-          <Text style={[styles.dateButtonText, { color: colors.text.primary }]}>
-            {formatDate(dateFrom)}
-          </Text>
-          <Ionicons
-            name="calendar-outline"
-            size={16}
-            color={colors.text.secondary}
-          />
-        </TouchableOpacity>
-        {dateFrom && (
+      <Text
+        style={[styles.dateLabel, { color: colors.textSecondary || "#666" }]}
+      >
+        בחר טווח זמן:
+      </Text>
+
+      <View style={styles.dateOptionsContainer}>
+        {dateOptions.map((option, index) => (
           <TouchableOpacity
-            style={styles.clearDateButton}
-            onPress={() => onDateFromChange(undefined)}
+            key={index}
+            style={[
+              styles.dateOptionButton,
+              {
+                backgroundColor: colors.surface || "#F2F2F7",
+                borderColor: colors.border || "#E5E5E7",
+              },
+            ]}
+            onPress={() => {
+              onDateFromChange(option.getValue());
+              onDateToChange(undefined); // Clear end date for simplicity
+            }}
           >
-            <Ionicons name="close-circle" size={20} color={colors.error} />
+            <Text
+              style={[styles.dateOptionText, { color: colors.text || "#000" }]}
+            >
+              {option.label}
+            </Text>
           </TouchableOpacity>
-        )}
+        ))}
       </View>
 
-      <View style={styles.datePickerRow}>
-        <Text style={[styles.dateLabel, { color: colors.text.secondary }]}>
-          עד תאריך:
-        </Text>
-        <TouchableOpacity
-          style={[styles.dateButton, { borderColor: colors.border.medium }]}
-          onPress={() => setShowToPicker(true)}
-        >
-          <Text style={[styles.dateButtonText, { color: colors.text.primary }]}>
-            {formatDate(dateTo)}
+      {(dateFrom || dateTo) && (
+        <View style={styles.selectedDateContainer}>
+          <Text
+            style={[
+              styles.selectedDateText,
+              { color: colors.textSecondary || "#666" },
+            ]}
+          >
+            נבחר: {formatDate(dateFrom)} - {formatDate(dateTo) || "עכשיו"}
           </Text>
-          <Ionicons
-            name="calendar-outline"
-            size={16}
-            color={colors.text.secondary}
-          />
-        </TouchableOpacity>
-        {dateTo && (
           <TouchableOpacity
             style={styles.clearDateButton}
-            onPress={() => onDateToChange(undefined)}
+            onPress={() => {
+              onDateFromChange(undefined);
+              onDateToChange(undefined);
+            }}
           >
-            <Ionicons name="close-circle" size={20} color={colors.error} />
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={colors.error || "#FF3B30"}
+            />
           </TouchableOpacity>
-        )}
-      </View>
-
-      {showFromPicker && (
-        <DateTimePicker
-          value={dateFrom ? new Date(dateFrom) : new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowFromPicker(false);
-            if (selectedDate) {
-              onDateFromChange(selectedDate.toISOString());
-            }
-          }}
-        />
-      )}
-
-      {showToPicker && (
-        <DateTimePicker
-          value={dateTo ? new Date(dateTo) : new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowToPicker(false);
-            if (selectedDate) {
-              onDateToChange(selectedDate.toISOString());
-            }
-          }}
-        />
+        </View>
       )}
     </View>
   );
 };
 
-// 🏃‍♂️ Duration Slider Component
-const DurationSlider = ({
+// 🏃‍♂️ Simplified Duration Selector Component
+const DurationSelector = ({
   minDuration,
   maxDuration,
   onMinDurationChange,
@@ -260,67 +257,42 @@ const DurationSlider = ({
   onMinDurationChange: (duration?: number) => void;
   onMaxDurationChange: (duration?: number) => void;
 }) => {
-  const colors = getCurrentColors();
-  const [tempMinDuration, setTempMinDuration] = useState(minDuration || 0);
-  const [tempMaxDuration, setTempMaxDuration] = useState(maxDuration || 180);
+  const durationRanges = [
+    { label: "קצר (עד 30 דק')", min: 0, max: 30 },
+    { label: "בינוני (30-60 דק')", min: 30, max: 60 },
+    { label: "ארוך (60-90 דק')", min: 60, max: 90 },
+    { label: "ארוך מאוד (90+ דק')", min: 90, max: undefined },
+  ];
+
+  const currentRange = durationRanges.find(
+    (range) => range.min === minDuration && range.max === maxDuration
+  );
 
   return (
     <View style={styles.durationContainer}>
-      <View style={styles.durationHeader}>
-        <Text style={[styles.durationLabel, { color: colors.text.primary }]}>
-          משך אימון (דקות)
-        </Text>
-        <Text style={[styles.durationValue, { color: colors.text.secondary }]}>
-          {tempMinDuration} - {tempMaxDuration} דקות
-        </Text>
-      </View>
+      <Text style={[styles.durationLabel, { color: colors.text || "#000" }]}>
+        משך אימון:
+      </Text>
 
-      <View style={styles.slidersContainer}>
-        <View style={styles.sliderRow}>
-          <Text style={[styles.sliderLabel, { color: colors.text.secondary }]}>
-            מינימום:
-          </Text>
-          <Slider
-            style={styles.slider}
-            minimumValue={0}
-            maximumValue={180}
-            value={tempMinDuration}
-            onValueChange={setTempMinDuration}
-            onSlidingComplete={(value) =>
-              onMinDurationChange(value > 0 ? Math.round(value) : undefined)
-            }
-            minimumTrackTintColor={colors.primary}
-            maximumTrackTintColor={colors.border.light}
-            thumbStyle={{ backgroundColor: colors.primary }}
-            step={5}
+      <View style={styles.durationOptionsContainer}>
+        {durationRanges.map((range, index) => (
+          <FilterTag
+            key={index}
+            label={range.label}
+            active={currentRange === range}
+            onPress={() => {
+              if (currentRange === range) {
+                // Clear selection
+                onMinDurationChange(undefined);
+                onMaxDurationChange(undefined);
+              } else {
+                // Set new range
+                onMinDurationChange(range.min);
+                onMaxDurationChange(range.max);
+              }
+            }}
           />
-          <Text style={[styles.sliderValue, { color: colors.text.primary }]}>
-            {Math.round(tempMinDuration)}
-          </Text>
-        </View>
-
-        <View style={styles.sliderRow}>
-          <Text style={[styles.sliderLabel, { color: colors.text.secondary }]}>
-            מקסימום:
-          </Text>
-          <Slider
-            style={styles.slider}
-            minimumValue={0}
-            maximumValue={180}
-            value={tempMaxDuration}
-            onValueChange={setTempMaxDuration}
-            onSlidingComplete={(value) =>
-              onMaxDurationChange(value < 180 ? Math.round(value) : undefined)
-            }
-            minimumTrackTintColor={colors.primary}
-            maximumTrackTintColor={colors.border.light}
-            thumbStyle={{ backgroundColor: colors.primary }}
-            step={5}
-          />
-          <Text style={[styles.sliderValue, { color: colors.text.primary }]}>
-            {Math.round(tempMaxDuration)}
-          </Text>
-        </View>
+        ))}
       </View>
     </View>
   );
@@ -333,7 +305,6 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
   onApplyFilters,
   currentFilters,
 }) => {
-  const colors = getCurrentColors();
   const [localFilters, setLocalFilters] =
     useState<WorkoutHistoryFilters>(currentFilters);
 
@@ -368,7 +339,7 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
         }),
       ]).start();
     }
-  }, [visible]);
+  }, [visible, slideAnim, backgroundOpacity]);
 
   const updateFilter = useCallback(
     (key: keyof WorkoutHistoryFilters, value: any) => {
@@ -438,27 +409,32 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
           styles.modalContainer,
           {
             transform: [{ translateY: slideAnim }],
-            backgroundColor: colors.background.modal,
+            backgroundColor: colors.background || "#FFFFFF",
           },
         ]}
       >
         {/* Header */}
         <View
-          style={[styles.header, { borderBottomColor: colors.border.light }]}
+          style={[
+            styles.header,
+            { borderBottomColor: colors.border || "#E5E5E7" },
+          ]}
         >
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={colors.text.primary} />
+            <Ionicons name="close" size={24} color={colors.text || "#000"} />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+            <Text
+              style={[styles.headerTitle, { color: colors.text || "#000" }]}
+            >
               סינון אימונים
             </Text>
             {activeFiltersCount > 0 && (
               <Text
                 style={[
                   styles.headerSubtitle,
-                  { color: colors.text.secondary },
+                  { color: colors.textSecondary || "#666" },
                 ]}
               >
                 {activeFiltersCount} מסננים פעילים
@@ -470,7 +446,12 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
             onPress={clearAllFilters}
             style={styles.clearButton}
           >
-            <Text style={[styles.clearButtonText, { color: colors.error }]}>
+            <Text
+              style={[
+                styles.clearButtonText,
+                { color: colors.error || "#FF3B30" },
+              ]}
+            >
               נקה הכל
             </Text>
           </TouchableOpacity>
@@ -480,11 +461,13 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Date Range Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            <Text
+              style={[styles.sectionTitle, { color: colors.text || "#000" }]}
+            >
               <Ionicons
                 name="calendar-outline"
                 size={16}
-                color={colors.text.primary}
+                color={colors.text || "#000"}
               />{" "}
               טווח תאריכים
             </Text>
@@ -498,11 +481,13 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
 
           {/* Rating Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            <Text
+              style={[styles.sectionTitle, { color: colors.text || "#000" }]}
+            >
               <Ionicons
                 name="star-outline"
                 size={16}
-                color={colors.text.primary}
+                color={colors.text || "#000"}
               />{" "}
               דירוג
             </Text>
@@ -514,11 +499,13 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
 
           {/* Difficulty Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            <Text
+              style={[styles.sectionTitle, { color: colors.text || "#000" }]}
+            >
               <Ionicons
                 name="trending-up-outline"
                 size={16}
-                color={colors.text.primary}
+                color={colors.text || "#000"}
               />{" "}
               רמת קושי
             </Text>
@@ -543,15 +530,17 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
 
           {/* Duration Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            <Text
+              style={[styles.sectionTitle, { color: colors.text || "#000" }]}
+            >
               <Ionicons
                 name="time-outline"
                 size={16}
-                color={colors.text.primary}
+                color={colors.text || "#000"}
               />{" "}
               משך זמן
             </Text>
-            <DurationSlider
+            <DurationSelector
               minDuration={localFilters.minDuration}
               maxDuration={localFilters.maxDuration}
               onMinDurationChange={(duration) =>
@@ -565,11 +554,13 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
 
           {/* Muscle Groups Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            <Text
+              style={[styles.sectionTitle, { color: colors.text || "#000" }]}
+            >
               <Ionicons
                 name="body-outline"
                 size={16}
-                color={colors.text.primary}
+                color={colors.text || "#000"}
               />{" "}
               קבוצות שרירים
             </Text>
@@ -596,14 +587,20 @@ const WorkoutFilterModal: React.FC<WorkoutFilterModalProps> = ({
         </ScrollView>
 
         {/* Footer */}
-        <View style={[styles.footer, { borderTopColor: colors.border.light }]}>
+        <View
+          style={[
+            styles.footer,
+            { borderTopColor: colors.border || "#E5E5E7" },
+          ]}
+        >
           <TouchableOpacity
-            style={[styles.applyButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.applyButton,
+              { backgroundColor: colors.primary || "#007AFF" },
+            ]}
             onPress={applyFilters}
           >
-            <Text
-              style={[styles.applyButtonText, { color: colors.text.inverse }]}
-            >
+            <Text style={[styles.applyButtonText, { color: "#FFFFFF" }]}>
               החל מסננים ({activeFiltersCount})
             </Text>
           </TouchableOpacity>
@@ -731,29 +728,36 @@ const styles = StyleSheet.create({
   dateRangeContainer: {
     gap: 16,
   },
-  datePickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   dateLabel: {
     fontSize: 16,
     fontWeight: "500",
-    width: 80,
     textAlign: "right",
+    marginBottom: 8,
   },
-  dateButton: {
-    flex: 1,
+  dateOptionsContainer: {
+    gap: 8,
+  },
+  dateOptionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  dateOptionText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  selectedDateContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
+    paddingVertical: 8,
+    backgroundColor: "#F0F0F0",
     borderRadius: 8,
-    marginHorizontal: 12,
   },
-  dateButtonText: {
+  selectedDateText: {
     fontSize: 14,
   },
   clearDateButton: {
@@ -762,40 +766,13 @@ const styles = StyleSheet.create({
   durationContainer: {
     gap: 16,
   },
-  durationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
   durationLabel: {
     fontSize: 16,
     fontWeight: "500",
-  },
-  durationValue: {
-    fontSize: 14,
-  },
-  slidersContainer: {
-    gap: 16,
-  },
-  sliderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  sliderLabel: {
-    fontSize: 14,
-    width: 80,
     textAlign: "right",
   },
-  slider: {
-    flex: 1,
-    height: 40,
-  },
-  sliderValue: {
-    fontSize: 14,
-    fontWeight: "500",
-    width: 40,
-    textAlign: "center",
+  durationOptionsContainer: {
+    gap: 8,
   },
   footer: {
     paddingHorizontal: 20,
