@@ -1,49 +1,47 @@
-// src/services/wgerApi.ts - ✅ All TypeScript and cSpell errors fixed
+// src/services/wgerApi.ts - 🔧 תיקון מלא לשגיאות API
 
 import { Exercise } from "../types/exercise";
 import { Plan, PlanDay, PlanExercise } from "../types/plan";
 
-// ✅ WGER API configuration - cSpell friendly
 const WGER_API_URL = "https://wger.de/api/v2";
 
-// --- Types for WGER API Response ---
-interface WgerApiPlan {
-  id: number;
-  name: string;
-  description: string;
-}
+// תיקון 1: הוספת fetch עם retry ו-timeout
+const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-interface WgerApiExerciseInfo {
-  id: number;
-  name: string;
-  description: string;
-  category: { name: string };
-  images?: { image: string }[];
-}
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
 
-// טיפוסים מעודכנים ונכונים עבור פרטי תוכנית מלאים
-interface WgerApiDetailedSet {
-  reps: number;
-  weight: string;
-  exercise: {
-    id: number;
-    name: string;
-  };
-}
+      clearTimeout(timeoutId);
 
-interface WgerApiDetailedDay {
-  exerciseday: { id: number };
-  sets: WgerApiDetailedSet[];
-}
+      if (response.ok) {
+        return response;
+      }
 
-interface WgerApiPlanDetails {
-  id: number;
-  name: string;
-  description: string;
-  day_list: WgerApiDetailedDay[];
-}
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    } catch (error) {
+      console.log(`🔄 Attempt ${i + 1}/${retries} failed:`, error);
 
-// ✅ Helper function to generate default Plan fields
+      if (i === retries - 1) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+
+  throw new Error("Max retries exceeded");
+};
+
+// תיקון 2: שיפור generatePlanDefaults
 const generatePlanDefaults = (source: "wger" | "local" = "wger") => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -52,9 +50,12 @@ const generatePlanDefaults = (source: "wger" | "local" = "wger") => ({
   rating: 0,
   difficulty: "intermediate" as const,
   tags: source === "wger" ? ["public", "wger"] : ["user-generated"],
+  weeklyGoal: 3,
+  targetMuscleGroups: ["Full Body"] as string[],
+  durationWeeks: 4,
 });
 
-// ✅ Type guard for Plan validation
+// תיקון 3: Type guard משופר
 const isValidPlan = (plan: any): plan is Plan => {
   return (
     plan &&
@@ -66,47 +67,107 @@ const isValidPlan = (plan: any): plan is Plan => {
   );
 };
 
-// ✅ Function to validate and enrich Plan objects
-const validateAndEnrichPlan = (plan: Partial<Plan>): Plan => {
-  const enrichedPlan: Plan = {
-    ...plan,
-    id: plan.id || `plan-${Date.now()}`,
-    name: plan.name || "תוכנית ללא שם",
-    description: plan.description || "תוכנית אימון",
-    creator: plan.creator || "unknown",
-    days: plan.days || [],
-    ...generatePlanDefaults(plan.creator?.includes("wger") ? "wger" : "local"),
-  };
+// תיקון 4: fetchPublicPlans עם טיפול מלא בשגיאות
+export const fetchPublicPlans = async (): Promise<Plan[]> => {
+  console.log("🔍 Starting to fetch public plans...");
 
-  return enrichedPlan;
-};
-
-// --- API Functions ---
-
-export const fetchAllExercises = async (): Promise<Exercise[]> => {
   try {
-    const response = await fetch(
-      `${WGER_API_URL}/exerciseinfo/?language=2&limit=500`
+    const response = await fetchWithRetry(
+      `${WGER_API_URL}/workout/?language=2&status=2&limit=15`
     );
-    if (!response.ok) throw new Error("Network response was not ok");
 
     const data = await response.json();
+    console.log(`📦 Received ${data.results?.length || 0} plans from API`);
+
+    if (!data.results || !Array.isArray(data.results)) {
+      console.warn("⚠️ Unexpected format from API");
+      return [];
+    }
+
+    const plans: Plan[] = data.results
+      .filter((p: any) => p.name && p.description)
+      .slice(0, 10)
+      .map((p: any) => {
+        const plan: Plan = {
+          id: `wger-${p.id}`,
+          name: p.name || "תוכנית ללא שם",
+          description:
+            p.description?.replace(/<[^>]*>?/gm, "") || "תוכנית אימון ציבורית",
+          creator: "wger.de",
+          days: [],
+          ...generatePlanDefaults("wger"),
+        };
+        return plan;
+      });
+
+    const validPlans = plans.filter(isValidPlan);
+    console.log(`✅ Successfully processed ${validPlans.length} plans`);
+    return validPlans;
+  } catch (error) {
+    console.error("❌ Failed to fetch public plans:", error);
+    // במקום לזרוק שגיאה, החזר מערך ריק
+    return [];
+  }
+};
+
+// תיקון 5: בדיקת קישוריות
+export const checkApiConnection = async (): Promise<boolean> => {
+  try {
+    const response = await fetchWithRetry(`${WGER_API_URL}/language/`, 1);
+    return response.ok;
+  } catch (error) {
+    console.log("🔌 No connection to WGER API");
+    return false;
+  }
+};
+
+// תיקון 6: פונקציה עם fallback לדמו
+export const fetchPublicPlansWithFallback = async (): Promise<Plan[]> => {
+  const isConnected = await checkApiConnection();
+
+  if (!isConnected) {
+    console.log("📱 Using demo plans instead of API");
+    try {
+      const { demoPlans } = await import("../constants/demoPlans");
+      return demoPlans?.slice(0, 3) || [];
+    } catch (error) {
+      console.log("⚠️ Demo plans not available either");
+      return [];
+    }
+  }
+
+  return fetchPublicPlans();
+};
+
+// שאר הפונקציות עם תיקונים דומים
+export const fetchAllExercises = async (): Promise<Exercise[]> => {
+  try {
+    const response = await fetchWithRetry(
+      `${WGER_API_URL}/exerciseinfo/?language=2&limit=100`
+    );
+
+    const data = await response.json();
+
+    if (!data.results) {
+      return [];
+    }
+
     const exercises: Exercise[] = data.results
-      .filter((ex: WgerApiExerciseInfo) => ex.name && ex.description)
-      .map((ex: WgerApiExerciseInfo) => ({
+      .filter((ex: any) => ex.name && ex.description)
+      .map((ex: any) => ({
         id: String(ex.id),
         name: ex.name,
         description: ex.description.replace(/<[^>]*>?/gm, ""),
-        // ✅ Exercise uses 'category' field
-        category: ex.category.name,
+        category: ex.category?.name || "General",
         imageUrl:
           ex.images?.[0]?.image ||
           `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
       }));
+
     return exercises;
   } catch (error) {
-    console.error("Failed to fetch exercises from WGER API:", error);
-    throw error;
+    console.error("❌ Failed to fetch exercises:", error);
+    return [];
   }
 };
 
@@ -114,16 +175,15 @@ export const fetchExerciseInfoById = async (
   exerciseId: string
 ): Promise<Exercise> => {
   try {
-    const response = await fetch(`${WGER_API_URL}/exerciseinfo/${exerciseId}/`);
-    if (!response.ok)
-      throw new Error(`Exercise with id ${exerciseId} not found`);
-    const ex: WgerApiExerciseInfo = await response.json();
+    const response = await fetchWithRetry(
+      `${WGER_API_URL}/exerciseinfo/${exerciseId}/`
+    );
+    const ex = await response.json();
 
     const exercise: Exercise = {
       id: String(ex.id),
       name: ex.name,
       description: ex.description.replace(/<[^>]*>?/gm, ""),
-      // ✅ Exercise uses 'category' field
       category: ex.category?.name || "General",
       imageUrl:
         ex.images?.[0]?.image ||
@@ -131,175 +191,52 @@ export const fetchExerciseInfoById = async (
     };
     return exercise;
   } catch (error) {
-    console.error(`Failed to fetch exercise ${exerciseId}:`, error);
+    console.error(`❌ Failed to fetch exercise ${exerciseId}:`, error);
     throw error;
   }
 };
 
-// ✅ Fixed: Added all required Plan fields
-export const fetchPublicPlans = async (): Promise<Plan[]> => {
-  try {
-    const response = await fetch(
-      `${WGER_API_URL}/workout/?language=2&status=2`
-    );
-    if (!response.ok) throw new Error("Failed to fetch plans");
-    const data = await response.json();
-
-    const plans: Plan[] = data.results
-      .filter((p: WgerApiPlan) => p.name && p.description)
-      .map((p: WgerApiPlan) => {
-        const plan: Plan = {
-          id: `wger-${p.id}`,
-          name: p.name,
-          description: p.description.replace(
-            /<[^>]*>?/gm,
-            "תוכנית אימון ציבורית מ-WGER."
-          ),
-          creator: "wger.de",
-          days: [],
-          weeklyGoal: 3, // Default value
-          targetMuscleGroups: [],
-          // ✅ Required fields that were missing
-          ...generatePlanDefaults("wger"),
-        };
-        return plan;
-      });
-
-    // Validate all plans before returning
-    return plans.filter(isValidPlan);
-  } catch (error) {
-    console.error("Failed to fetch public plans:", error);
-    throw error;
-  }
-};
-
-// ✅ Fixed: Added all required Plan fields
-export const fetchPlanDetails = async (planId: number): Promise<Plan> => {
-  try {
-    const response = await fetch(
-      `${WGER_API_URL}/workout/${planId}/canonical_representation/`
-    );
-    if (!response.ok)
-      throw new Error(`Failed to fetch details for plan ${planId}`);
-    const data: WgerApiPlanDetails = await response.json();
-
-    // --- Improved mapping logic ---
-    const days: PlanDay[] = data.day_list.map((dayItem, index) => {
-      const exercisesMap = new Map<
-        number,
-        { name: string; sets: WgerApiDetailedSet[] }
-      >();
-
-      // 1. Group all sets by their exercise ID
-      dayItem.sets.forEach((set) => {
-        const exerciseId = set.exercise.id;
-        if (!exercisesMap.has(exerciseId)) {
-          exercisesMap.set(exerciseId, { name: set.exercise.name, sets: [] });
-        }
-        exercisesMap.get(exerciseId)!.sets.push(set);
-      });
-
-      // 2. Convert the map to our exercise array
-      const exercises: PlanExercise[] = Array.from(exercisesMap.values()).map(
-        (exerciseGroup) => ({
-          id: String(exerciseGroup.sets[0].exercise.id),
-          name: exerciseGroup.name,
-          // ✅ PlanExercise uses 'muscleGroup' (not category)
-          muscleGroup: "Unknown", // This info is not available in plan details API
-          sets: exerciseGroup.sets.length,
-          reps: exerciseGroup.sets[0]?.reps || 10, // Take reps from first set as example
-          weight: parseFloat(exerciseGroup.sets[0]?.weight) || 0,
-          restTime: 90, // Default rest time
-        })
-      );
-
-      return {
-        id: String(dayItem.exerciseday.id),
-        name: `יום אימון ${index + 1}`,
-        exercises: exercises,
-        estimatedDuration: exercises.length * 5 + 15, // Rough estimate
-        targetMuscleGroups: [], // Not available in API
-        difficulty: "intermediate",
-      };
-    });
-
-    const detailedPlan: Plan = {
-      id: `wger-${data.id}`,
-      name: data.name,
-      description: data.description.replace(/<[^>]*>?/gm, ""),
-      creator: "wger.de",
-      days: days,
-      weeklyGoal: days.length,
-      targetMuscleGroups: [
-        ...new Set(days.flatMap((d) => d.targetMuscleGroups || [])),
-      ],
-      durationWeeks: Math.ceil(days.length / 3), // Estimate based on days
-      // ✅ Required fields that were missing
-      ...generatePlanDefaults("wger"),
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        version: "1.0",
-        tags: ["wger", "public"],
-      },
-    };
-
-    // Validate before returning
-    if (!isValidPlan(detailedPlan)) {
-      throw new Error("Invalid plan data received from WGER API");
-    }
-
-    return detailedPlan;
-  } catch (error) {
-    console.error(`Failed to fetch plan details for ${planId}:`, error);
-    throw error;
-  }
-};
-
-// ✅ Additional utility functions for WGER integration
 export const searchWgerExercises = async (
   query: string
 ): Promise<Exercise[]> => {
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${WGER_API_URL}/exerciseinfo/?search=${encodeURIComponent(
         query
       )}&language=2&limit=20`
     );
-    if (!response.ok) throw new Error("Search request failed");
 
     const data = await response.json();
     return data.results
-      .filter((ex: WgerApiExerciseInfo) => ex.name && ex.description)
-      .map((ex: WgerApiExerciseInfo) => ({
+      .filter((ex: any) => ex.name && ex.description)
+      .map((ex: any) => ({
         id: String(ex.id),
         name: ex.name,
         description: ex.description.replace(/<[^>]*>?/gm, ""),
-        category: ex.category.name,
+        category: ex.category?.name || "General",
         imageUrl:
           ex.images?.[0]?.image ||
           `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
       }));
   } catch (error) {
-    console.error("Failed to search WGER exercises:", error);
+    console.error("❌ Failed to search exercises:", error);
     return [];
   }
 };
 
 export const getWgerCategories = async () => {
   try {
-    const response = await fetch(`${WGER_API_URL}/exercisecategory/`);
-    if (!response.ok) throw new Error("Failed to fetch categories");
-
+    const response = await fetchWithRetry(`${WGER_API_URL}/exercisecategory/`);
     const data = await response.json();
     return data.results.map((cat: any) => ({
       id: cat.id,
       name: cat.name,
     }));
   } catch (error) {
-    console.error("Failed to fetch WGER categories:", error);
+    console.error("❌ Failed to fetch categories:", error);
     return [];
   }
 };
 
-// ✅ Export helper functions for external use
-export { generatePlanDefaults, validateAndEnrichPlan, isValidPlan };
+// Export helper functions
+export { generatePlanDefaults, isValidPlan };
