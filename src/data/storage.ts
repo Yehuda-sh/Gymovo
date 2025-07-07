@@ -1,101 +1,45 @@
-// src/data/storage.ts
+// src/data/storage.ts - גרסה משודרגת
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Plan } from "../types/plan";
-import { Workout } from "../types/workout";
-
-// --- פונקציות לניהול תוכניות ---
-
-export const getPlansByUserId = async (userId: string): Promise<Plan[]> => {
-  try {
-    const key = `plans_${userId}`;
-    const plansJson = await AsyncStorage.getItem(key);
-    return plansJson ? JSON.parse(plansJson) : [];
-  } catch (error) {
-    console.error("Failed to get plans from storage", error);
-    return [];
+// 🆕 מחלקת שגיאות מותאמת
+export class StorageError extends Error {
+  constructor(
+    message: string,
+    public operation: string,
+    public originalError?: any
+  ) {
+    super(message);
+    this.name = "StorageError";
   }
-};
+}
 
-/**
- * שומר (יוצר או מעדכן) תוכנית אימון עבור משתמש.
- * @param userId - מזהה המשתמש
- * @param planToSave - אובייקט התוכנית המלא לשמירה
- * @returns Promise<Plan> - התוכנית כפי שנשמרה
- */
-export const savePlan = async (
-  userId: string,
-  planToSave: Plan
-): Promise<Plan> => {
-  try {
-    const key = `plans_${userId}`;
-    const currentPlans = await getPlansByUserId(userId);
+// 🆕 Retry mechanism עם exponential backoff
+const withRetry = async <T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T> => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
 
-    const existingPlanIndex = currentPlans.findIndex(
-      (p) => p.id === planToSave.id
-    );
-
-    let updatedPlans: Plan[];
-
-    if (existingPlanIndex > -1) {
-      // עדכון תוכנית קיימת
-      updatedPlans = currentPlans.map((plan, index) =>
-        index === existingPlanIndex ? planToSave : plan
+      const delay = baseDelay * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      console.warn(
+        `Storage retry ${attempt + 1}/${maxRetries} after ${delay}ms`
       );
-    } else {
-      // הוספת תוכנית חדשה
-      updatedPlans = [...currentPlans, planToSave];
     }
-
-    // TODO: בעתיד, כשנעבור לבסיס נתונים אמיתי, הלוגיקה הזו תוחלף בקריאת API.
-    await AsyncStorage.setItem(key, JSON.stringify(updatedPlans));
-    return planToSave;
-  } catch (error) {
-    console.error("Failed to save plan to storage", error);
-    throw error;
   }
+  throw new Error("Max retries exceeded");
 };
 
-// --- פונקציות לניהול היסטוריית אימונים ---
-
-export const getWorkoutHistory = async (userId: string): Promise<Workout[]> => {
-  try {
-    const key = `workout_history_${userId}`;
-    const historyJson = await AsyncStorage.getItem(key);
-    // מחזירים את המערך בסדר הפוך כדי שהאימון האחרון יהיה ראשון
-    return historyJson ? JSON.parse(historyJson).reverse() : [];
-  } catch (error) {
-    console.error("Failed to get workout history", error);
-    return [];
-  }
-};
-
-export const saveWorkoutToHistory = async (
-  userId: string,
-  completedWorkout: Workout
-): Promise<boolean> => {
-  try {
-    const key = `workout_history_${userId}`;
-    const historyJson = await AsyncStorage.getItem(key);
-    const history: Workout[] = historyJson ? JSON.parse(historyJson) : [];
-    history.push(completedWorkout);
-    await AsyncStorage.setItem(key, JSON.stringify(history));
-    return true;
-  } catch (error) {
-    console.error("Failed to save workout to history", error);
-    return false;
-  }
-};
-
-// --- כלי עזר למפתחים ---
-
-export const clearAllData = async () => {
-  try {
-    await AsyncStorage.clear();
-    console.log("AsyncStorage cleared successfully.");
-    return true;
-  } catch (e) {
-    console.error("Failed to clear AsyncStorage.", e);
-    return false;
-  }
+// 🆕 פונקציה מותאמת לניהול מפתחות
+const getStorageKey = (type: "plans" | "workouts" | "quiz", userId: string) => {
+  const keyMap = {
+    plans: `plans_${userId}`,
+    workouts: `workout_history_${userId}`,
+    quiz: `quiz_progress_${userId}`,
+  };
+  return keyMap[type];
 };

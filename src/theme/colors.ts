@@ -1,4 +1,4 @@
-// src/theme/colors.ts - עדכון לנושא כהה וספורטיבי
+// src/theme/colors.ts - עדכון מלא עם כל הצבעים הנדרשים לשלב 1
 
 export const colors = {
   // צבעים ראשיים - גישה ספורטיבית
@@ -35,11 +35,20 @@ export const colors = {
   warningDark: "#e68900",
   danger: "#ff3366", // אדום חזק
   dangerDark: "#cc0033",
+  error: "#ff3366", // 🆕 הוספת error (זהה ל-danger)
+  errorDark: "#cc0033",
+
+  // מצבי מידע
+  info: "#007aff",
+  infoDark: "#0051d5",
 
   // גבולות וקווים
   border: "#333333",
   borderLight: "#444444",
   borderAccent: "#00ff88",
+  borderError: "#ff3366", // 🆕 גבול שגיאה
+  borderSuccess: "#00ff88",
+  borderWarning: "#ffab00",
 
   // אפקטים וצללים
   shadow: "rgba(0, 0, 0, 0.5)", // צל כהה יותר
@@ -47,12 +56,61 @@ export const colors = {
   overlay: "rgba(0, 0, 0, 0.8)", // אוברליי כהה
   overlayLight: "rgba(0, 0, 0, 0.6)",
 
+  // 🆕 צבעים נוספים לרכיבים
+  skeleton: "#e1e9ee", // לוading skeletons
+  skeletonHighlight: "#f5f7fa",
+
+  // מצבי disabled
+  disabled: "#666666",
+  disabledBackground: "#2a2a2a",
+
+  // רקעי כרטיסים ורכיבים
+  cardBackground: "#1e1e1e",
+  cardBorder: "#333333",
+
+  // צבעי מצבי טפסים
+  inputBackground: "rgba(255, 255, 255, 0.05)",
+  inputBorder: "rgba(255, 255, 255, 0.1)",
+  inputFocus: "#00ff88",
+  inputError: "#ff3366",
+
   // גרדיאנטים ספורטיביים
   gradients: {
     primary: ["#00ff88", "#00cc6a"],
     dark: ["#0a0a0a", "#1a1a1a"],
     accent: ["#ff6b35", "#ff8c42"],
     energy: ["#00ff88", "#007aff"],
+    error: ["#ff3366", "#cc0033"],
+    warning: ["#ffab00", "#e68900"],
+    success: ["#00ff88", "#00cc6a"],
+  },
+
+  // 🆕 צבעי תרגילים וקטגוריות
+  exercise: {
+    chest: "#ff6b35",
+    back: "#007aff",
+    shoulders: "#8b5cf6",
+    arms: "#00ff88",
+    legs: "#fbbf24",
+    core: "#f59e0b",
+    cardio: "#ef4444",
+    flexibility: "#10b981",
+  },
+
+  // 🆕 צבעי רמות קושי
+  difficulty: {
+    beginner: "#10b981", // ירוק
+    intermediate: "#f59e0b", // כתום
+    advanced: "#ef4444", // אדום
+  },
+
+  // 🆕 צבעי מטרות
+  goals: {
+    muscle_gain: "#8b5cf6",
+    strength: "#ef4444",
+    weight_loss: "#f59e0b",
+    endurance: "#06b6d4",
+    general_fitness: "#10b981",
   },
 };
 
@@ -70,5 +128,41 @@ export const lightTheme = {
   surface: "#f8f9fa",
   text: "#000000",
   textSecondary: "#666666",
+  skeleton: "#f0f0f0",
+  cardBackground: "#ffffff",
+  inputBackground: "#f8f9fa",
   // וכו'...
 };
+
+// 🎨 פונקציות עזר לצבעים
+export const getExerciseColor = (category: string): string => {
+  return (
+    colors.exercise[category as keyof typeof colors.exercise] || colors.accent
+  );
+};
+
+export const getDifficultyColor = (difficulty: string): string => {
+  return (
+    colors.difficulty[difficulty as keyof typeof colors.difficulty] ||
+    colors.textMuted
+  );
+};
+
+export const getGoalColor = (goal: string): string => {
+  return colors.goals[goal as keyof typeof colors.goals] || colors.primary;
+};
+
+// 🌈 פונקציה ליצירת צבע עם אלפא
+export const withOpacity = (color: string, opacity: number): string => {
+  if (color.startsWith("#")) {
+    const hex = color.slice(1);
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  return color;
+};
+
+// 📏 יצוא ברירת מחדל
+export default colors;

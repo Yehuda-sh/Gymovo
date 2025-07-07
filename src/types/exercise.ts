@@ -1,11 +1,13 @@
-// File: src/types/exercise.ts
+// src/types/exercise.ts - מעודכן אם צריך
 export interface Exercise {
   id: string;
   name: string;
+  category: string;
   description?: string;
-  muscleGroup?: string;
-  // שינינו את שם השדה לבהירות, כדי שיהיה ברור שזו כתובת תמונה
+  instructions?: string;
   imageUrl?: string;
-  // הוספנו מערך של הוראות ביצוע
-  instructions?: string[];
+  videoUrl?: string;
+  targetMuscles?: string[];
+  equipment?: string[];
+  difficulty?: "beginner" | "intermediate" | "advanced";
 }
