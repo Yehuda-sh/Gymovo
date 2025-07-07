@@ -9,41 +9,70 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-// 🔧 תיקון השגיאה - העברת ה-import לחלק העליון
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// 🛡️ רכיבי אבטחה ויציבות
-import { ErrorBoundary } from "./src/components/common/ErrorBoundary";
 
 // 📱 הניווט הראשי
 import AppWithProviders from "./src/navigation/RootLayout";
-
-// 🎨 עיצוב ונושא
 
 // 🔧 הגדרות גלובליות
 
 // 1. מניעת סגירת Splash Screen עד שהאפליקציה מוכנה
 SplashScreen.preventAutoHideAsync();
 
-// 2. הפעלת תמיכה ב-RTL (עברית)
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// 2. הפעלת תמיכה ב-RTL (עברית) - רק אם עדיין לא הופעל
+if (!I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+}
 
 // 3. הגדרת קונסול לוגים לפי סביבה
 if (__DEV__) {
   console.log("🚀 Gymovo App starting in development mode");
   console.log(`📱 Platform: ${Platform.OS} ${Platform.Version}`);
   console.log(`🌐 RTL Enabled: ${I18nManager.isRTL}`);
+
+  // יצירת developer helpers גלובליים
+  (global as any).__DEV_HELPERS__ = {
+    clearAsyncStorage: async () => {
+      const AsyncStorage = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      await AsyncStorage.default.clear();
+      console.log("🧹 AsyncStorage cleared");
+    },
+    logState: () => {
+      console.log("📊 App state:", {
+        platform: Platform.OS,
+        rtl: I18nManager.isRTL,
+        timestamp: new Date().toISOString(),
+      });
+    },
+  };
+
+  console.log(`
+🚀 GYMOVO DEVELOPMENT MODE
+📱 Platform: ${Platform.OS} ${Platform.Version}
+🎨 RTL: ${I18nManager.isRTL}
+🛠️ Dev helpers available at global.__DEV_HELPERS__
+  `);
 } else {
   // בפרודקשן, הגבל את הלוגים
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+
   console.log = () => {};
   console.warn = () => {};
+
+  // אבל שמור errors
+  console.error = console.error;
 }
 
-// 📱 רכיב App הראשי עם כל השדרוגים
+// 📱 רכיב App הראשי
 const App = () => {
   // 🔄 State לניהול מצב האפליקציה
   const [isAppReady, setIsAppReady] = useState(false);
+  const [initializationError, setInitializationError] = useState<string | null>(
+    null
+  );
 
   // 📊 מעקב אחר מצב האפליקציה
   const appState = useRef(AppState.currentState);
@@ -51,7 +80,7 @@ const App = () => {
   // 🎬 אתחול האפליקציה
   useEffect(() => {
     initializeApp();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // 🔄 מעקב אחר מעברים בין foreground/background
   useEffect(() => {
@@ -81,7 +110,6 @@ const App = () => {
       await loadUserPreferences();
 
       // שלב 3: סיום טעינה והצגת האפליקציה
-      // קצת דיליי כדי שה-splash screen יהיה חלק
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       setIsAppReady(true);
@@ -97,16 +125,10 @@ const App = () => {
   // 🛠️ אתחול שירותים חיוניים
   const initializeServices = async () => {
     try {
-      // כאן אפשר להוסיף אתחול של:
-      // - Analytics service
-      // - Crash reporting
-      // - Push notifications
-      // - Background sync
+      // סימולציה של זמן טעינה לשירותים
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       console.log("🔧 Core services initialized");
-
-      // סימולציה של זמן טעינה
-      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.error("Failed to initialize services:", error);
       throw error;
@@ -116,13 +138,40 @@ const App = () => {
   // ⚙️ טעינת העדפות משתמש
   const loadUserPreferences = async () => {
     try {
-      // כאן אפשר לטעון:
-      // - נושא (כהה/בהיר)
-      // - שפה
-      // - הגדרות התראות
-      // - העדפות אימון
+      // טעינת העדפות בסיסיות
+      const defaultPreferences = {
+        theme: "dark",
+        accentColor: "#00ff88",
+        general: {
+          language: "he",
+          timeFormat: "24h",
+          dateFormat: "dd/mm/yyyy",
+          firstDayOfWeek: "sunday",
+        },
+        notifications: {
+          pushNotifications: true,
+          workoutReminders: true,
+          restReminders: true,
+          weeklyGoals: true,
+          achievements: true,
+        },
+        workout: {
+          units: "kg",
+          defaultRestTime: 90,
+          autoStartTimer: true,
+          hapticFeedback: true,
+          showVideoGuides: true,
+          playBeepSounds: false,
+        },
+        privacy: {
+          shareWorkouts: false,
+          shareProgress: false,
+          allowAnalytics: true,
+          backupData: true,
+        },
+      };
 
-      console.log("👤 User preferences loaded");
+      console.log("👤 User preferences loaded:", defaultPreferences);
 
       // סימולציה של זמן טעינה
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -136,7 +185,11 @@ const App = () => {
   const handleInitializationError = (error: any) => {
     console.error("💥 Critical initialization error:", error);
 
-    setIsAppReady(true); // מציגים את האפליקציה בכל מקרה
+    const errorMessage = error?.message || "Unknown initialization error";
+    setInitializationError(errorMessage);
+
+    // מציגים את האפליקציה בכל מקרה
+    setIsAppReady(true);
     SplashScreen.hideAsync();
 
     // הצגת התראה למשתמש (רק אם זו שגיאה רצינית)
@@ -144,86 +197,34 @@ const App = () => {
       Alert.alert(
         "הודעת מערכת",
         "חלק מהפיצ'רים עלולים לא לעבוד בצורה מיטבית. אנא ודא שיש לך חיבור אינטרנט תקין.",
-        [{ text: "הבנתי", style: "default" }],
-        { cancelable: true }
+        [{ text: "הבנתי", style: "default" }]
       );
-    }, 2000);
+    }, 1000);
   };
 
-  // 🌐 טיפול בשגיאות רשת גלובליות
-  const handleGlobalError = (error: Error, errorInfo: any) => {
-    console.error("🚨 Global error caught by ErrorBoundary:", error);
-
-    // בעתיד: שליחה לשירות מעקב שגיאות
-    // Sentry.captureException(error, { extra: errorInfo });
-
-    // בעתיד: Analytics event
-    // Analytics.trackError('app_crash', { error: error.message });
-
-    // לוג מפורט לפיתוח
-    if (__DEV__) {
-      console.error("Error Details:", {
-        message: error.message,
-        stack: error.stack,
-        errorInfo,
-      });
+  // 🧭 אתחול מערכת הניווט
+  useEffect(() => {
+    if (isAppReady) {
+      console.log("🧭 Navigation system initialized");
     }
-  };
+  }, [isAppReady]);
 
-  // ⏳ מסך טעינה בזמן אתחול
+  // עד שהאפליקציה לא מוכנה, נשאיר את ה-splash screen
   if (!isAppReady) {
-    return null; // SplashScreen עדיין מוצג
+    return null;
   }
 
-  // 📱 רינדור האפליקציה הראשית
+  // החזרת האפליקציה המלאה
   return (
     <>
-      {/* 🎨 סטטוס בר מותאם לעיצוב - תיקון הבעיה כאן */}
       <StatusBar
-        barStyle="light-content" // תואם לעיצוב הכהה
-        backgroundColor="#0a0a0a" // שחור עמוק - צבע ישיר במקום אובייקט
+        barStyle="dark-content"
+        backgroundColor="#ffffff"
         translucent={false}
       />
-
-      {/* 🛡️ הגנה מפני שגיאות */}
-      <ErrorBoundary onError={handleGlobalError} showDetails={__DEV__}>
-        <AppWithProviders />
-      </ErrorBoundary>
+      <AppWithProviders />
     </>
   );
 };
 
 export default App;
-
-// 📊 מידע לפיתוח (רק במצב debug)
-if (__DEV__) {
-  // יצירת כמה פונקציות עזר גלובליות לפיתוח
-  // 🔧 תיקון השגיאה השנייה - AsyncStorage כבר מיובא למעלה
-
-  (global as any).__DEV_HELPERS__ = {
-    clearAsyncStorage: async () => {
-      await AsyncStorage.clear();
-      console.log("🗑️ AsyncStorage cleared");
-    },
-
-    logAppState: () => {
-      console.log("📊 Current app state:", {
-        platform: Platform.OS,
-        version: Platform.Version,
-        rtl: I18nManager.isRTL,
-        timestamp: new Date().toISOString(),
-      });
-    },
-
-    simulateError: () => {
-      throw new Error("🧪 Simulated error for testing ErrorBoundary");
-    },
-  };
-
-  console.log(`
-🚀 GYMOVO DEVELOPMENT MODE
-📱 Platform: ${Platform.OS} ${Platform.Version}
-🎨 RTL: ${I18nManager.isRTL}  
-🛠️ Dev helpers available at global.__DEV_HELPERS__
-  `);
-}
