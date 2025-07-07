@@ -1,17 +1,5 @@
 {
   "cSpell.words": [
-    "prefs",
-    "gymovo",
-    "haptics",
-    "zustand",
-    "mmkv",
-    "פרופיל",
-    "אימון",
-    "אימונים",
-    "תוכנית",
-    "משתמש",
-    "התקדמות",
-    "סטטיסטיקה",
     "wger",
     "WGER",
     "Wger",
@@ -46,22 +34,17 @@
     "sets",
     "muscleGroup",
     "targetMuscles",
-    "muscleGroups"
+    "partialize",
+    "zustand",
+    "demoUsers",
+    "getDemoWorkoutHistory",
+    "getDemoPlanForUser"
   ],
   "cSpell.enabled": true,
-  "cSpell.enableFiletypes ": [
+  "cSpell.enableFiletypes": [
     "typescript",
     "typescriptreact",
     "javascript",
     "javascriptreact"
-  ],
-  "cSpell.language": "en,he",
-  "typescript.preferences.includePackageJsonAutoImports": "auto",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "emmet.includeLanguages": {
-    "typescript": "typescriptreact"
-  }
+  ]
 }
