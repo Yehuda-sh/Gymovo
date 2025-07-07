@@ -279,7 +279,7 @@ const ExerciseSelectionScreen = () => {
     try {
       await startCustomWorkout(selectedExercises);
       navigation.navigate("ActiveWorkout");
-    } catch (error) {
+    } catch {
       Alert.alert("שגיאה", "לא ניתן היה להתחיל את האימון");
     }
   };
@@ -382,10 +382,10 @@ const ExerciseSelectionScreen = () => {
           title={`התחל אימון (${selectedExercises.length})`}
           onPress={handleStartCustomWorkout}
           disabled={selectedExercises.length === 0}
-          style={[
+          style={StyleSheet.flatten([
             styles.startButton,
             selectedExercises.length === 0 && { opacity: 0.5 },
-          ]}
+          ])}
         />
       </View>
     </View>
