@@ -1,4 +1,4 @@
-// src/components/common/Input.tsx
+// src/components/common/Input.tsx - עדכון לטקסט נראה
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { colors } from "../../theme/colors";
 
-// Props המאפשרים לרכיב לקבל את כל התכונות של TextInput סטנדרטי, בתוספת יכולות משלנו
 type Props = TextInputProps & {
   label?: string;
   error?: string;
@@ -20,12 +19,9 @@ type Props = TextInputProps & {
 
 const Input = ({ label, error, iconName, style, ...restOfProps }: Props) => (
   <View style={styles.container}>
-    {/* תווית שמוצגת מעל השדה */}
     {label && <Text style={styles.label}>{label}</Text>}
 
-    {/* קונטיינר המכיל את האייקון ושדה הטקסט */}
     <View style={[styles.inputContainer, error && styles.inputError]}>
-      {/* הצגה מותנית של אייקון בצד ימין */}
       {iconName && (
         <Ionicons
           name={iconName}
@@ -35,18 +31,12 @@ const Input = ({ label, error, iconName, style, ...restOfProps }: Props) => (
         />
       )}
       <TextInput
-        style={[
-          styles.input,
-          // אם יש אייקון, נוסיף ריווח כדי שהטקסט לא יתנגש בו
-          iconName ? styles.inputWithIcon : null,
-          style,
-        ]}
-        placeholderTextColor="#888"
+        style={[styles.input, iconName ? styles.inputWithIcon : null, style]}
+        placeholderTextColor="rgba(255, 255, 255, 0.5)" // ברירת מחדל לטקסט placeholder
         {...restOfProps}
       />
     </View>
 
-    {/* הצגה מותנית של הודעת שגיאה מתחת לשדה */}
     {error ? <Text style={styles.errorText}>{error}</Text> : null}
   </View>
 );
@@ -54,38 +44,46 @@ const Input = ({ label, error, iconName, style, ...restOfProps }: Props) => (
 const styles = StyleSheet.create({
   container: { width: "100%", marginBottom: 12 },
   label: {
-    marginBottom: 6,
+    marginBottom: 8,
     fontSize: 14,
-    color: colors.primary,
+    color: "rgba(255, 255, 255, 0.8)", // שינוי לבן לרקע כהה
     textAlign: "right",
+    fontWeight: "500",
   },
   inputContainer: {
-    // RTL Support: היפוך כיוון כדי שהאייקון יהיה מימין
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "#f7f7fa",
+    backgroundColor: "rgba(0, 0, 0, 0.4)", // רקע כהה ברירת מחדל
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    minHeight: 50,
   },
   icon: {
-    // RTL Support: ריווח בצד ימין של האייקון
     paddingRight: 12,
   },
   input: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    color: "#222",
+    color: "#ffffff", // טקסט לבן תמיד
     textAlign: "right",
   },
   inputWithIcon: {
-    // RTL Support: מחיקת הריווח הימני כשיש אייקון
     paddingRight: 0,
   },
-  inputError: { borderColor: "#e00" },
-  errorText: { color: "#e00", fontSize: 12, marginTop: 4, textAlign: "right" },
+  inputError: {
+    borderColor: colors.danger,
+    borderWidth: 2,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "right",
+    fontWeight: "500",
+  },
 });
 
 export default Input;
