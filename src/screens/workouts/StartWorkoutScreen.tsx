@@ -1,14 +1,19 @@
-// src/screens/workouts/StartWorkoutScreen.tsx - מעודכן עם workoutStore החדש
+// src/screens/workouts/StartWorkoutScreen.tsx - ✅ All TypeScript errors fixed
 
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Animated,
-  Dimensions,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -35,11 +40,51 @@ import { RootStackParamList } from "../../types/navigation";
 import { Plan, PlanDay } from "../../types/plan";
 import { Workout } from "../../types/workout";
 
-const { width } = Dimensions.get("window");
-
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// 🎯 רכיב כרטיס תוכנית אימון מעודכן
+// ✅ Helper function to handle different exercise types
+const createWorkoutFromPlanExercise = (planEx: any, index: number) => {
+  if ("sets" in planEx && typeof planEx.sets === "number") {
+    // זה PlanExercise
+    return {
+      id: `${planEx.id}_${index}`,
+      name: planEx.name,
+      exercise: {
+        id: planEx.id,
+        name: planEx.name,
+        category: planEx.muscleGroup || "כללי",
+      },
+      sets: Array.from({ length: planEx.sets }, (_, i) => ({
+        id: `${planEx.id}_set_${i}`,
+        reps: planEx.reps || 10,
+        weight: planEx.weight || 0,
+        status: "pending" as const,
+      })),
+    };
+  } else if ("sets" in planEx && Array.isArray(planEx.sets)) {
+    // זה כבר WorkoutExercise
+    return planEx;
+  } else {
+    // fallback
+    return {
+      id: `${planEx.id}_${index}`,
+      name: planEx.name,
+      exercise: {
+        id: planEx.id,
+        name: planEx.name,
+        category: "כללי",
+      },
+      sets: Array.from({ length: 3 }, (_, i) => ({
+        id: `${planEx.id}_set_${i}`,
+        reps: 10,
+        weight: 0,
+        status: "pending" as const,
+      })),
+    };
+  }
+};
+
+// 🎯 רכיב כרטיס תוכנית אימון
 const PlanCard = ({
   plan,
   onPress,
@@ -49,275 +94,190 @@ const PlanCard = ({
   onPress: () => void;
   isSelected?: boolean;
 }) => {
-  const scaleAnim = new Animated.Value(1);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
+  const handlePress = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  };
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  }, [onPress, scaleAnim]);
 
-  // חישוב סטטיסטיקות התוכנית - תמיכה בשני פורמטים
-  const planStats = useMemo(() => {
-    if (plan.days && plan.days.length > 0) {
-      // פורמט חדש עם days
-      const totalExercises = plan.days.reduce(
+  const totalExercises = useMemo(() => {
+    if (plan.days) {
+      return plan.days.reduce(
         (total, day) => total + (day.exercises?.length || 0),
         0
       );
-      const avgDuration =
-        plan.days.reduce(
-          (total, day) => total + (day.estimatedDuration || 45),
-          0
-        ) / plan.days.length;
-
-      return {
-        workouts: plan.days.length,
-        exercises: totalExercises,
-        avgDuration: Math.round(avgDuration),
-        format: "days" as const,
-      };
-    } else if (plan.workouts && plan.workouts.length > 0) {
-      // פורמט ישן עם workouts
-      const totalExercises = plan.workouts.reduce(
+    }
+    if (plan.workouts) {
+      return plan.workouts.reduce(
         (total, workout) => total + (workout.exercises?.length || 0),
         0
       );
-      const avgDuration =
-        plan.workouts.reduce(
-          (total, workout) => total + (workout.duration || 45),
-          0
-        ) / plan.workouts.length;
-
-      return {
-        workouts: plan.workouts.length,
-        exercises: totalExercises,
-        avgDuration: Math.round(avgDuration),
-        format: "workouts" as const,
-      };
-    } else {
-      // ברירת מחדל
-      return {
-        workouts: 0,
-        exercises: 0,
-        avgDuration: 45,
-        format: "empty" as const,
-      };
     }
+    return 0;
   }, [plan]);
 
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
-        style={[
-          styles.planCard,
-          isSelected && styles.selectedPlanCard,
-          { borderColor: isSelected ? colors.primary : colors.border },
-        ]}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={0.9}
+        style={[styles.planCard, isSelected && styles.selectedPlanCard]}
+        onPress={handlePress}
+        activeOpacity={0.7}
       >
-        {/* Header */}
         <View style={styles.planHeader}>
-          <View style={styles.planMainInfo}>
-            <Text style={styles.planName}>{plan.name}</Text>
-            <Text style={styles.planDescription} numberOfLines={2}>
-              {plan.description || "תוכנית אימון מותאמת אישית"}
-            </Text>
-          </View>
-
-          {/* Difficulty Badge */}
-          <View
-            style={[
-              styles.difficultyBadge,
-              { backgroundColor: getDifficultyColor(plan.difficulty) },
-            ]}
-          >
-            <Text style={styles.difficultyText}>
-              {getDifficultyText(plan.difficulty)}
-            </Text>
-          </View>
+          <Text style={styles.planName}>{plan.name}</Text>
+          {plan.difficulty && (
+            <View
+              style={[
+                styles.difficultyBadge,
+                getDifficultyStyle(plan.difficulty),
+              ]}
+            >
+              <Text
+                style={[
+                  styles.difficultyText,
+                  getDifficultyTextStyle(plan.difficulty),
+                ]}
+              >
+                {translateDifficulty(plan.difficulty)}
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Stats */}
+        <Text style={styles.planDescription} numberOfLines={2}>
+          {plan.description || "תוכנית אימון מותאמת אישית"}
+        </Text>
+
         <View style={styles.planStats}>
-          <View style={styles.planStat}>
-            <Ionicons name="calendar" size={16} color={colors.primary} />
-            <Text style={styles.planStatText}>
-              {planStats.workouts}{" "}
-              {planStats.format === "days" ? "ימים" : "אימונים"}
+          <View style={styles.statItem}>
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.statText}>
+              {plan.days?.length || plan.workouts?.length || 0} ימים
             </Text>
           </View>
 
-          <View style={styles.planStat}>
-            <Ionicons name="barbell" size={16} color={colors.primary} />
-            <Text style={styles.planStatText}>
-              {planStats.exercises} תרגילים
-            </Text>
-          </View>
-
-          <View style={styles.planStat}>
-            <Ionicons name="time" size={16} color={colors.primary} />
-            <Text style={styles.planStatText}>{planStats.avgDuration} דק׳</Text>
+          <View style={styles.statItem}>
+            <Ionicons
+              name="fitness-outline"
+              size={16}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.statText}>{totalExercises} תרגילים</Text>
           </View>
         </View>
 
-        {/* Footer */}
-        <View style={styles.planFooter}>
-          <View style={styles.planTags}>
-            {plan.targetMuscleGroups?.slice(0, 2).map((muscle, index) => (
+        {plan.targetMuscleGroups && plan.targetMuscleGroups.length > 0 && (
+          <View style={styles.muscleGroups}>
+            {plan.targetMuscleGroups.slice(0, 3).map((muscle, index) => (
               <View key={index} style={styles.muscleTag}>
                 <Text style={styles.muscleTagText}>{muscle}</Text>
               </View>
             ))}
-            {(plan.targetMuscleGroups?.length || 0) > 2 && (
+            {plan.targetMuscleGroups.length > 3 && (
               <View style={styles.muscleTag}>
                 <Text style={styles.muscleTagText}>
-                  +{(plan.targetMuscleGroups?.length || 0) - 2}
+                  +{plan.targetMuscleGroups.length - 3}
                 </Text>
               </View>
             )}
           </View>
-
-          {isSelected && (
-            <Ionicons
-              name="checkmark-circle"
-              size={24}
-              color={colors.primary}
-            />
-          )}
-        </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-// 🚀 רכיב פעולה מהירה מעודכן
-const QuickActionCard = ({
-  title,
-  subtitle,
-  icon,
-  color,
-  onPress,
-  disabled = false,
-}: {
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) => (
-  <TouchableOpacity
-    style={[
-      styles.quickActionCard,
-      disabled && styles.disabledCard,
-      {
-        backgroundColor: withOpacity(color, 0.1),
-        borderColor: withOpacity(color, 0.2),
-      },
-    ]}
-    onPress={onPress}
-    disabled={disabled}
-    activeOpacity={0.8}
-  >
-    <View
-      style={[
-        styles.quickActionIcon,
-        { backgroundColor: withOpacity(color, 0.2) },
-      ]}
-    >
-      <Ionicons
-        name={icon}
-        size={24}
-        color={disabled ? colors.textSecondary : color}
-      />
-    </View>
-    <Text style={[styles.quickActionTitle, disabled && styles.disabledText]}>
-      {title}
-    </Text>
-    <Text style={[styles.quickActionSubtitle, disabled && styles.disabledText]}>
-      {subtitle}
-    </Text>
-  </TouchableOpacity>
-);
-
-// 📊 רכיב סטטיסטיקות מהירות
-const QuickStats = ({ plans }: { plans: Plan[] }) => {
-  const stats = useMemo(() => {
-    const totalPlans = plans.length;
-    const totalWorkouts = plans.reduce((total, plan) => {
-      if (plan.days) return total + plan.days.length;
-      if (plan.workouts) return total + plan.workouts.length;
-      return total;
-    }, 0);
-
-    const activePlans = plans.filter((plan) => plan.isActive).length;
-
-    return { totalPlans, totalWorkouts, activePlans };
-  }, [plans]);
-
-  return (
-    <View style={styles.quickStatsContainer}>
-      <View style={styles.quickStatItem}>
-        <Text style={styles.quickStatNumber}>{stats.totalPlans}</Text>
-        <Text style={styles.quickStatLabel}>תוכניות</Text>
-      </View>
-      <View style={styles.quickStatItem}>
-        <Text style={styles.quickStatNumber}>{stats.totalWorkouts}</Text>
-        <Text style={styles.quickStatLabel}>אימונים</Text>
-      </View>
-      <View style={styles.quickStatItem}>
-        <Text style={styles.quickStatNumber}>{stats.activePlans}</Text>
-        <Text style={styles.quickStatLabel}>פעילות</Text>
-      </View>
-    </View>
-  );
+// Helper functions
+const getDifficultyStyle = (difficulty: string) => {
+  switch (difficulty) {
+    case "beginner":
+      return { backgroundColor: withOpacity(colors.success, 0.2) };
+    case "intermediate":
+      return { backgroundColor: withOpacity(colors.warning, 0.2) };
+    case "advanced":
+      return { backgroundColor: withOpacity(colors.danger, 0.2) };
+    default:
+      return { backgroundColor: withOpacity(colors.primary, 0.2) };
+  }
 };
 
-// 🏋️ המסך הראשי - מעודכן
+const getDifficultyTextStyle = (difficulty: string) => {
+  switch (difficulty) {
+    case "beginner":
+      return { color: colors.success };
+    case "intermediate":
+      return { color: colors.warning };
+    case "advanced":
+      return { color: colors.danger };
+    default:
+      return { color: colors.primary };
+  }
+};
+
+const translateDifficulty = (difficulty: string) => {
+  switch (difficulty) {
+    case "beginner":
+      return "מתחיל";
+    case "intermediate":
+      return "בינוני";
+    case "advanced":
+      return "מתקדם";
+    default:
+      return difficulty;
+  }
+};
+
+// 📱 הקומפוננטה הראשית
 const StartWorkoutScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const user = useUserStore((state) => state.user);
-  const { startWorkout, activeWorkout } = useWorkoutStore();
+  const { user } = useUserStore();
+  const { startWorkout, startCustomWorkout } = useWorkoutStore();
 
   // State
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [userPlans, setUserPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [selectedDay, setSelectedDay] = useState<PlanDay | Workout | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Animations
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(50);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // 📊 טעינת תוכניות
+  // 📚 טעינת תוכניות המשתמש
   const loadPlans = useCallback(async () => {
     if (!user?.id) return;
 
     try {
       setLoading(true);
-      const userPlans = await getPlansByUserId(user.id);
-      setPlans(userPlans);
+      const plans = await getPlansByUserId(user.id);
+      setUserPlans(plans || []);
 
       // אם יש רק תוכנית אחת, בחר אותה אוטומטית
-      if (userPlans.length === 1) {
-        setSelectedPlan(userPlans[0]);
+      if (plans && plans.length === 1) {
+        setSelectedPlan(plans[0]);
         // אם יש רק יום/אימון אחד, בחר אותו גם
-        const plan = userPlans[0];
+        const plan = plans[0];
         if (plan.days && plan.days.length === 1) {
           setSelectedDay(plan.days[0]);
         } else if (plan.workouts && plan.workouts.length === 1) {
@@ -357,7 +317,7 @@ const StartWorkoutScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [loadPlans]);
+  }, [loadPlans, fadeAnim, slideAnim]);
 
   // 🎯 בחירת תוכנית
   const handleSelectPlan = useCallback((plan: Plan) => {
@@ -391,21 +351,9 @@ const StartWorkoutScreen = () => {
             id: `workout_${Date.now()}`,
             name: `${selectedPlan.name} - ${selectedDay.name}`,
             date: new Date().toISOString(),
-            exercises: selectedDay.exercises.map((planEx, index) => ({
-              id: `${planEx.id}_${index}`,
-              name: planEx.name,
-              exercise: {
-                id: planEx.id,
-                name: planEx.name,
-                category: planEx.muscleGroup || "כללי",
-              },
-              sets: Array.from({ length: planEx.sets }, (_, i) => ({
-                id: `${planEx.id}_set_${i}`,
-                reps: planEx.reps,
-                weight: planEx.weight || 0,
-                status: "pending" as const,
-              })),
-            })),
+            exercises: selectedDay.exercises.map((planEx, index) =>
+              createWorkoutFromPlanExercise(planEx, index)
+            ),
           };
           startWorkout(workout, selectedPlan);
         } else {
@@ -420,21 +368,9 @@ const StartWorkoutScreen = () => {
             id: `workout_${Date.now()}`,
             name: `${selectedPlan.name} - ${firstDay.name}`,
             date: new Date().toISOString(),
-            exercises: firstDay.exercises.map((planEx, index) => ({
-              id: `${planEx.id}_${index}`,
-              name: planEx.name,
-              exercise: {
-                id: planEx.id,
-                name: planEx.name,
-                category: planEx.muscleGroup || "כללי",
-              },
-              sets: Array.from({ length: planEx.sets }, (_, i) => ({
-                id: `${planEx.id}_set_${i}`,
-                reps: planEx.reps,
-                weight: planEx.weight || 0,
-                status: "pending" as const,
-              })),
-            })),
+            exercises: firstDay.exercises.map((planEx, index) =>
+              createWorkoutFromPlanExercise(planEx, index)
+            ),
           };
           startWorkout(workout, selectedPlan);
         } else if (selectedPlan.workouts && selectedPlan.workouts.length > 0) {
@@ -463,26 +399,22 @@ const StartWorkoutScreen = () => {
     navigation.navigate("ExerciseSelection");
   }, [navigation]);
 
-  // 🔄 המשך אימון קיים
-  const handleContinueWorkout = useCallback(() => {
-    navigation.navigate("ActiveWorkout");
-  }, [navigation]);
+  // 🏋️ רכיב בחירת יום
+  const DaySelector = ({ plan }: { plan: Plan }) => {
+    const days = plan.days || [];
 
-  // רכיב בחירת יום/אימון
-  const DaySelector = () => {
-    if (!selectedPlan) return null;
-
-    const items = selectedPlan.days || selectedPlan.workouts || [];
-    if (items.length <= 1) return null;
+    if (days.length <= 1) return null;
 
     return (
       <View style={styles.daySelector}>
-        <Text style={styles.daySelectorTitle}>בחר יום/אימון:</Text>
+        <Text style={styles.daySelectorTitle}>בחר יום אימון:</Text>
         <FlatList
+          data={days} // ✅ Fixed: רק days, לא workouts
           horizontal
-          data={items}
+          showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
+          contentContainerStyle={styles.dayListContent}
+          renderItem={({ item, index }) => (
             <TouchableOpacity
               style={[
                 styles.dayItem,
@@ -496,62 +428,30 @@ const StartWorkoutScreen = () => {
                   selectedDay?.id === item.id && styles.selectedDayItemText,
                 ]}
               >
-                {item.name}
+                יום {index + 1}: {item.name}
               </Text>
             </TouchableOpacity>
           )}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dayListContent}
         />
       </View>
     );
   };
 
-  // ⏳ מסך טעינה
+  // מצב טעינה
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>התחל אימון</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        <View style={styles.loadingContainer}>
-          <StatsGridSkeleton columns={3} />
-          <PlanCardSkeleton style={{ marginTop: 20 }} />
-          <PlanCardSkeleton style={{ marginTop: 12 }} />
-        </View>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          <StatsGridSkeleton />
+          <PlanCardSkeleton />
+          <PlanCardSkeleton />
+        </Animated.View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>התחל אימון</Text>
-        <TouchableOpacity
-          style={styles.helpButton}
-          onPress={() => {
-            /* הוסף עזרה */
-          }}
-        >
-          <Ionicons name="help-circle-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-
       <Animated.View
         style={[
           styles.content,
@@ -561,63 +461,28 @@ const StartWorkoutScreen = () => {
           },
         ]}
       >
-        {/* אימון פעיל */}
-        {activeWorkout && (
-          <View style={styles.activeWorkoutBanner}>
-            <View style={styles.activeWorkoutInfo}>
-              <Text style={styles.activeWorkoutTitle}>יש לך אימון פעיל</Text>
-              <Text style={styles.activeWorkoutSubtitle}>
-                {activeWorkout.name}
-              </Text>
-            </View>
-            <Button
-              title="המשך"
-              onPress={handleContinueWorkout}
-              style={styles.continueButton}
-              textStyle={styles.continueButtonText}
-            />
-          </View>
-        )}
-
-        {/* סטטיסטיקות מהירות */}
-        {plans.length > 0 && (
-          <View style={styles.section}>
-            <QuickStats plans={plans} />
-          </View>
-        )}
-
-        {/* פעולות מהירות */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>פעולות מהירות</Text>
-          <View style={styles.quickActionsGrid}>
-            <QuickActionCard
-              title="אימון מותאם"
-              subtitle="בחר תרגילים"
-              icon="fitness"
-              color={colors.primary}
-              onPress={handleCustomWorkout}
-            />
-            <QuickActionCard
-              title="תוכנית חדשה"
-              subtitle="צור תוכנית"
-              icon="add-circle"
-              color={colors.accent}
-              onPress={handleCreatePlan}
-            />
-          </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>התחל אימון</Text>
+          <Text style={styles.subtitle}>בחר תוכנית או צור אימון מותאם</Text>
         </View>
 
-        {/* תוכניות קיימות */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>התוכניות שלי</Text>
-            <Text style={styles.sectionSubtitle}>
-              {plans.length} תוכניות זמינות
-            </Text>
-          </View>
-
-          {plans.length === 0 ? (
-            // Empty state
+        {/* Plans List */}
+        <FlatList
+          data={userPlans}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <PlanCard
+              plan={item}
+              onPress={() => handleSelectPlan(item)}
+              isSelected={selectedPlan?.id === item.id}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons
                 name="barbell-outline"
@@ -629,311 +494,135 @@ const StartWorkoutScreen = () => {
                 צור תוכנית חדשה או התחל עם אימון מותאם
               </Text>
             </View>
+          }
+        />
+
+        {/* Day Selector */}
+        {selectedPlan && <DaySelector plan={selectedPlan} />}
+
+        {/* Bottom Section */}
+        <View style={styles.bottomSection}>
+          {selectedPlan ? (
+            <Button
+              title={`התחל אימון${selectedDay ? ` - ${selectedDay.name}` : ""}`}
+              onPress={handleStartWorkout}
+              style={styles.startButton}
+            />
           ) : (
             <>
-              <FlatList
-                data={plans}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <PlanCard
-                    plan={item}
-                    isSelected={selectedPlan?.id === item.id}
-                    onPress={() => handleSelectPlan(item)}
-                  />
-                )}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    tintColor={colors.primary}
-                  />
-                }
+              <Button
+                title="אימון מותאם"
+                onPress={handleCustomWorkout}
+                style={{
+                  backgroundColor: colors.accent,
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                }}
               />
 
-              {/* בחירת יום/אימון */}
-              <DaySelector />
+              <Button
+                title="צור תוכנית חדשה"
+                onPress={handleCreatePlan}
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingVertical: 16,
+                  marginTop: 12,
+                }}
+              />
             </>
           )}
         </View>
       </Animated.View>
-
-      {/* כפתור התחלה */}
-      {selectedPlan && (
-        <View style={styles.bottomSection}>
-          <Button
-            title={
-              selectedDay
-                ? `התחל: ${selectedDay.name}`
-                : `התחל: ${selectedPlan.name}`
-            }
-            onPress={handleStartWorkout}
-            style={styles.startButton}
-            textStyle={styles.startButtonText}
-          />
-        </View>
-      )}
     </View>
   );
 };
 
-// פונקציות עזר
-const getDifficultyColor = (difficulty?: string) => {
-  switch (difficulty?.toLowerCase()) {
-    case "easy":
-    case "קל":
-      return colors.success;
-    case "medium":
-    case "בינוני":
-      return colors.warning;
-    case "hard":
-    case "קשה":
-      return colors.error;
-    default:
-      return colors.primary;
-  }
-};
-
-const getDifficultyText = (difficulty?: string) => {
-  switch (difficulty?.toLowerCase()) {
-    case "easy":
-      return "קל";
-    case "medium":
-      return "בינוני";
-    case "hard":
-      return "קשה";
-    default:
-      return difficulty || "בינוני";
-  }
-};
-
-// 🎨 עיצוב מעודכן
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  helpButton: {
-    padding: 8,
-  },
-
-  // Content
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-  },
-  loadingContainer: {
-    flex: 1,
     padding: 20,
   },
-
-  // Active Workout Banner
-  activeWorkoutBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: withOpacity(colors.primary, 0.1),
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 16,
-    borderWidth: 1,
-    borderColor: colors.primary,
+  header: {
+    marginBottom: 24,
   },
-  activeWorkoutInfo: {
-    flex: 1,
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 8,
   },
-  activeWorkoutTitle: {
+  subtitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: colors.primary,
-  },
-  activeWorkoutSubtitle: {
-    fontSize: 14,
-    color: colors.text,
-    marginTop: 2,
-  },
-  continueButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  continueButtonText: {
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-
-  // Quick Stats
-  quickStatsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 16,
-  },
-  quickStatItem: {
-    alignItems: "center",
-  },
-  quickStatNumber: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.primary,
-  },
-  quickStatLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-
-  // Sections
-  section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
     color: colors.textSecondary,
   },
 
-  // Quick Actions
-  quickActionsGrid: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
-  },
-  quickActionCard: {
-    flex: 1,
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  disabledCard: {
-    opacity: 0.6,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  quickActionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  quickActionSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-  disabledText: {
-    color: colors.textSecondary,
-  },
-
-  // Plan Cards
+  // Plan Card
   planCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
     padding: 20,
+    borderRadius: 16,
     marginBottom: 16,
-    borderWidth: 2,
+    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
   selectedPlanCard: {
+    borderWidth: 2,
+    borderColor: colors.primary,
     backgroundColor: withOpacity(colors.primary, 0.05),
   },
   planHeader: {
     flexDirection: "row",
-    marginBottom: 16,
-  },
-  planMainInfo: {
-    flex: 1,
-    marginRight: 12,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
   planName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 4,
+    flex: 1,
   },
   planDescription: {
     fontSize: 14,
     color: colors.textSecondary,
+    marginBottom: 12,
     lineHeight: 20,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  difficultyText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "white",
   },
   planStats: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 16,
-    paddingVertical: 12,
-    backgroundColor: withOpacity(colors.primary, 0.05),
-    borderRadius: 8,
+    gap: 16,
+    marginBottom: 12,
   },
-  planStat: {
+  statItem: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
-  planStatText: {
+  statText: {
     fontSize: 12,
     color: colors.textSecondary,
-    fontWeight: "500",
   },
-  planFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  planTags: {
+  difficultyText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  muscleGroups: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
+    flexWrap: "wrap",
   },
   muscleTag: {
     paddingHorizontal: 8,
@@ -1010,10 +699,6 @@ const styles = StyleSheet.create({
   startButton: {
     backgroundColor: colors.primary,
     paddingVertical: 16,
-  },
-  startButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
   },
 });
 
