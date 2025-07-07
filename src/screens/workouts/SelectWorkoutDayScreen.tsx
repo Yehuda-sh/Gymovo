@@ -1,4 +1,4 @@
-// src/screens/workouts/SelectWorkoutDayScreen.tsx - ✅ Fixed to work with planId
+// src/screens/workouts/SelectWorkoutDayScreen.tsx - ✅ Fixed all TypeScript errors
 
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -17,6 +17,7 @@ import { useWorkoutStore } from "../../stores/workoutStore";
 import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
 import { PlanDay } from "../../types/plan";
+import { Workout } from "../../types/workout";
 
 type ScreenRouteProp = RouteProp<RootStackParamList, "SelectWorkoutDay">;
 
@@ -35,7 +36,36 @@ const SelectWorkoutDayScreen = () => {
   const handleSelectDay = (day: PlanDay) => {
     if (!plan) return;
 
-    startWorkout(plan, day.id);
+    // ✅ Fixed: Create workout object with proper typing
+    const workout: Workout = {
+      id: `workout_${Date.now()}`,
+      name: `${plan.name} - ${day.name}`,
+      date: new Date().toISOString(),
+      exercises: day.exercises.map((planEx, index) => ({
+        id: `${planEx.id}_${index}`,
+        name: planEx.name,
+        exercise: {
+          id: planEx.id,
+          name: planEx.name,
+          category: planEx.muscleGroup || "כללי",
+        },
+        sets: Array.from({ length: planEx.sets }, (_, i) => ({
+          id: `${planEx.id}_set_${i}`,
+          reps: planEx.reps,
+          weight: planEx.weight || 0,
+          status: "pending" as const,
+        })),
+        notes: planEx.notes,
+      })),
+      duration: day.estimatedDuration || 45,
+      // ✅ Fixed: Type casting for difficulty
+      difficulty:
+        (plan.difficulty as "beginner" | "intermediate" | "advanced") ||
+        "intermediate",
+      targetMuscles: day.targetMuscleGroups,
+    };
+
+    startWorkout(workout, plan);
     navigation.navigate("ActiveWorkout");
   };
 
