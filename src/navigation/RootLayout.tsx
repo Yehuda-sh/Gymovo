@@ -21,7 +21,8 @@ import LoginScreen from "../screens/auth/LoginScreen";
 import QuizScreen from "../screens/auth/QuizScreen";
 import SignupScreen from "../screens/auth/SignupScreen";
 import WelcomeScreen from "../screens/auth/WelcomeScreen";
-
+import HomeScreen from "../screens/home/HomeScreen";
+import ActiveWorkoutScreen from "../screens/workouts/ActiveWorkoutScreen";
 // Main App Screens - נשתמש במסכים קיימים או ניצור placeholders
 import PlansScreen from "../screens/plans/PlansScreen";
 import GuestProfileScreen from "../screens/profile/GuestProfileScreen";
@@ -62,8 +63,6 @@ const PlaceholderScreen = ({ title }: { title: string }) => (
 );
 
 // מסכים זמניים
-const HomeScreen = () => <PlaceholderScreen title="מסך בית" />;
-const StartWorkoutScreen = () => <PlaceholderScreen title="התחל אימון" />;
 
 // 🚀 יצירת navigators
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -197,7 +196,7 @@ const AppTabs = () => {
 
       <Tab.Screen
         name="StartWorkout"
-        component={StartWorkoutScreen}
+        component={ActiveWorkoutScreen}
         options={{
           title: "אימון",
           headerTitle: "התחל אימון",
