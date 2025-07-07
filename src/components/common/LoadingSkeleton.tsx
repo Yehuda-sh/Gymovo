@@ -7,14 +7,15 @@ import {
   StyleSheet,
   View,
   ViewStyle,
+  DimensionValue,
 } from "react-native";
 import { colors } from "../../theme/colors";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 interface SkeletonProps {
-  width?: number | string;
-  height?: number;
+  width?: DimensionValue;
+  height?: DimensionValue;
   borderRadius?: number;
   style?: ViewStyle;
   animated?: boolean;
@@ -64,18 +65,20 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       })
     : shimmerColors[0];
 
-  // ✅ תיקון השגיאה - הפרדה בין style אובייקט לפרופס Animated
-  const baseStyle: ViewStyle = {
-    width,
-    height,
-    borderRadius,
-  };
-
-  const animatedStyle = {
-    backgroundColor,
-  };
-
-  return <Animated.View style={[baseStyle, animatedStyle, style]} />;
+  // ✅ תיקון - שימוש ב-ViewStyle type עם DimensionValue
+  return (
+    <Animated.View
+      style={[
+        {
+          width: width as DimensionValue,
+          height: height as DimensionValue,
+          borderRadius,
+          backgroundColor,
+        },
+        style,
+      ]}
+    />
+  );
 };
 
 // שאר הרכיבים נשארים אותו הדבר...

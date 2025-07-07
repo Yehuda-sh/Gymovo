@@ -18,9 +18,9 @@ import {
 
 // Components
 import {
-  ExerciseListSkeleton, // ✅ זה קיים
-  PlanCardSkeleton,
+  ExerciseListSkeleton,
   StatsGridSkeleton,
+  PlanCardSkeleton,
 } from "../../components/common/LoadingSkeleton";
 
 // Services & Stores
