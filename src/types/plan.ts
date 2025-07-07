@@ -1,4 +1,4 @@
-// src/types/plan.ts - גרסה סופית ונקייה
+// src/types/plan.ts - גרסה מתוקנת עם שדה creator
 
 import { Workout, WorkoutExercise } from "./workout";
 
@@ -30,6 +30,10 @@ export interface PlanMetadata {
   difficulty?: string;
   tags?: string[];
   version?: string;
+  goal?: string;
+  experience?: string;
+  equipment?: string[];
+  injuries?: string[];
 }
 
 // 🏆 תוכנית אימון ראשית
@@ -40,6 +44,9 @@ export interface Plan {
   difficulty?: "beginner" | "intermediate" | "advanced" | string;
   targetMuscleGroups?: string[];
   durationWeeks?: number;
+
+  // 👤 מי יצר את התוכנית
+  creator?: string; // "Gymovo AI", "wger.de", שם המשתמש, וכו'
 
   // 🔄 תמיכה בשני פורמטים:
   days?: PlanDay[]; // פורמט legacy (הקיים)
@@ -120,143 +127,23 @@ export const convertModernToLegacy = (modernPlan: Plan): Plan => {
   const days: PlanDay[] = modernPlan.workouts.map((workout) => ({
     id: workout.id,
     name: workout.name,
-    estimatedDuration: workout.duration || 45,
     exercises: workout.exercises.map((ex) => ({
       id: ex.id,
       name: ex.name,
       muscleGroup: ex.exercise?.category || "כללי",
-      sets: ex.sets.length,
-      reps: ex.sets[0]?.reps || 12,
-      weight: ex.sets[0]?.weight || 0,
+      sets: ex.sets?.length || 3,
+      reps: ex.sets?.[0]?.reps || 10,
+      weight: ex.sets?.[0]?.weight || 0,
       notes: ex.notes,
     })),
+    estimatedDuration: workout.duration || 45,
     targetMuscleGroups: workout.exercises
       .map((ex) => ex.exercise?.category)
-      .filter(Boolean),
+      .filter(Boolean) as string[],
   }));
 
   return {
     ...modernPlan,
     days,
-    rating: modernPlan.rating || 0,
-    metadata: {
-      ...modernPlan.metadata,
-      tags: modernPlan.tags,
-      generatedAt: modernPlan.createdAt,
-    },
   };
-};
-
-// 🎯 פונקציות עזר לעבודה עם תוכניות
-
-// קבלת אימונים מתוכנית (בכל פורמט)
-export const getPlanWorkouts = (plan: Plan): Workout[] => {
-  if (isModernPlan(plan)) {
-    return plan.workouts;
-  }
-  if (isLegacyPlan(plan)) {
-    const converted = convertLegacyToModern(plan);
-    return converted.workouts || [];
-  }
-  return [];
-};
-
-// קבלת ימים מתוכנית (בכל פורמט)
-export const getPlanDays = (plan: Plan): PlanDay[] => {
-  if (isLegacyPlan(plan)) {
-    return plan.days;
-  }
-  if (isModernPlan(plan)) {
-    const converted = convertModernToLegacy(plan);
-    return converted.days || [];
-  }
-  return [];
-};
-
-// בדיקת תקינות תוכנית
-export const validatePlan = (plan: Plan): boolean => {
-  if (!plan.id || !plan.name) return false;
-
-  if (plan.days) {
-    return plan.days.every(
-      (day) => day.id && day.name && Array.isArray(day.exercises)
-    );
-  }
-
-  if (plan.workouts) {
-    return plan.workouts.every(
-      (workout) =>
-        workout.id && workout.name && Array.isArray(workout.exercises)
-    );
-  }
-
-  return false;
-};
-
-// חישוב משך כללי של התוכנית
-export const getPlanDuration = (plan: Plan): number => {
-  if (isModernPlan(plan)) {
-    return plan.workouts.reduce(
-      (total, workout) => total + (workout.duration || 45),
-      0
-    );
-  }
-  if (isLegacyPlan(plan)) {
-    return plan.days.reduce(
-      (total, day) => total + (day.estimatedDuration || 45),
-      0
-    );
-  }
-  return 0;
-};
-
-// ספירת תרגילים בתוכנית
-export const getPlanExerciseCount = (plan: Plan): number => {
-  if (isLegacyPlan(plan)) {
-    return plan.days.reduce((total, day) => total + day.exercises.length, 0);
-  }
-  if (isModernPlan(plan)) {
-    return plan.workouts.reduce(
-      (total, workout) => total + workout.exercises.length,
-      0
-    );
-  }
-  return 0;
-};
-
-// קבלת קבוצות שרירים בתוכנית
-export const getPlanMuscleGroups = (plan: Plan): string[] => {
-  const muscleGroups = new Set<string>();
-
-  if (isLegacyPlan(plan)) {
-    plan.days.forEach((day) => {
-      day.exercises.forEach((exercise) => {
-        if (exercise.muscleGroup) {
-          muscleGroups.add(exercise.muscleGroup);
-        }
-      });
-    });
-  }
-
-  if (isModernPlan(plan)) {
-    plan.workouts.forEach((workout) => {
-      workout.exercises.forEach((exercise) => {
-        if (exercise.exercise?.category) {
-          muscleGroups.add(exercise.exercise.category);
-        }
-      });
-    });
-  }
-
-  return Array.from(muscleGroups);
-};
-
-// חישוב ממוצע דירוג התוכנית
-export const getPlanAverageRating = (plan: Plan): number => {
-  return plan.rating || 0;
-};
-
-// בדיקה אם התוכנית פעילה
-export const isPlanActive = (plan: Plan): boolean => {
-  return plan.isActive === true;
 };
