@@ -1,4 +1,4 @@
-// src/screens/exercises/ExerciseSelectionScreen.tsx - מסך בחירת תרגילים
+// src/screens/exercises/ExerciseSelectionScreen.tsx - מסך בחירת תרגילים מתוקן
 
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -20,26 +20,35 @@ import {
 // Components
 import Button from "../../components/common/Button";
 
-// Data
-import { exercises } from "../../constants/exercises";
-
 // Types & Utils
-import { colors, withOpacity } from "../../theme/colors";
+import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
 import { Exercise } from "../../types/exercise";
 import { useWorkoutStore } from "../../stores/workoutStore";
+import { useExercises } from "../../hooks/useExercises";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+// ✅ פונקציית עזר לשקיפות צבעים
+const withOpacity = (color: string, opacity: number): string => {
+  // פשוט מחזיר צבע עם שקיפות בסיסית
+  return (
+    color +
+    Math.round(opacity * 255)
+      .toString(16)
+      .padStart(2, "0")
+  );
+};
+
 // קטגוריות שרירים
 const muscleGroups = [
-  { id: "all", name: "הכל", icon: "fitness" },
-  { id: "chest", name: "חזה", icon: "body" },
-  { id: "back", name: "גב", icon: "body" },
-  { id: "shoulders", name: "כתפיים", icon: "body" },
-  { id: "arms", name: "זרועות", icon: "body" },
-  { id: "legs", name: "רגליים", icon: "body" },
-  { id: "core", name: "ליבה", icon: "body" },
+  { id: "all", name: "הכל", icon: "fitness-outline" },
+  { id: "חזה", name: "חזה", icon: "body-outline" },
+  { id: "גב", name: "גב", icon: "body-outline" },
+  { id: "כתפיים", name: "כתפיים", icon: "body-outline" },
+  { id: "זרועות", name: "זרועות", icon: "body-outline" },
+  { id: "רגליים", name: "רגליים", icon: "body-outline" },
+  { id: "ליבה", name: "ליבה", icon: "body-outline" },
 ] as const;
 
 // רכיב פילטר קטגוריות
@@ -87,82 +96,102 @@ const CategoryFilter = ({
   </ScrollView>
 );
 
-// רכיב כרטיס תרגיל
-const ExerciseCard = ({
+// רכיב תרגיל בודד
+const ExerciseItem = ({
   exercise,
   isSelected,
   onToggle,
 }: {
   exercise: Exercise;
   isSelected: boolean;
-  onToggle: () => void;
+  onToggle: (exercise: Exercise) => void;
 }) => {
-  const scaleAnim = new Animated.Value(1);
+  const scaleAnim = useState(new Animated.Value(1))[0];
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
+  const handlePress = () => {
+    // אנימציה קצרה של לחיצה
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
+    onToggle(exercise);
   };
 
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
         style={[styles.exerciseCard, isSelected && styles.selectedExerciseCard]}
-        onPress={onToggle}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={0.9}
+        onPress={handlePress}
+        activeOpacity={0.7}
       >
-        {/* Exercise Info */}
         <View style={styles.exerciseInfo}>
           <Text style={styles.exerciseName}>{exercise.name}</Text>
-          <Text style={styles.exerciseDescription} numberOfLines={2}>
-            {exercise.description || "תרגיל איכותי לחיזוק השרירים"}
-          </Text>
 
-          {/* Muscle Groups */}
-          <View style={styles.exerciseMuscles}>
-            {exercise.targetMuscleGroups?.slice(0, 2).map((muscle, index) => (
-              <View key={index} style={styles.muscleTag}>
-                <Text style={styles.muscleTagText}>{muscle}</Text>
+          {exercise.description && (
+            <Text style={styles.exerciseDescription} numberOfLines={2}>
+              {exercise.description}
+            </Text>
+          )}
+
+          {/* שרירים מעורבים */}
+          {exercise.targetMuscleGroups &&
+            exercise.targetMuscleGroups.length > 0 && (
+              <View style={styles.exerciseMuscles}>
+                {exercise.targetMuscleGroups
+                  .slice(0, 3)
+                  .map((muscle, index) => (
+                    <View key={index} style={styles.muscleTag}>
+                      <Text style={styles.muscleTagText}>{muscle}</Text>
+                    </View>
+                  ))}
+                {exercise.targetMuscleGroups.length > 3 && (
+                  <Text style={styles.muscleTagText}>
+                    +{exercise.targetMuscleGroups.length - 3}
+                  </Text>
+                )}
               </View>
-            ))}
-          </View>
+            )}
 
-          {/* Exercise Meta */}
+          {/* מידע נוסף */}
           <View style={styles.exerciseMeta}>
             <View style={styles.exerciseMetaItem}>
-              <Ionicons name="fitness" size={14} color={colors.textSecondary} />
-              <Text style={styles.exerciseMetaText}>
-                {exercise.difficulty || "בינוני"}
-              </Text>
+              <Ionicons
+                name="barbell-outline"
+                size={14}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.exerciseMetaText}>{exercise.category}</Text>
             </View>
 
-            {exercise.equipment && (
+            {exercise.difficulty && (
               <View style={styles.exerciseMetaItem}>
                 <Ionicons
-                  name="barbell"
+                  name="star-outline"
                   size={14}
                   color={colors.textSecondary}
                 />
                 <Text style={styles.exerciseMetaText}>
-                  {exercise.equipment}
+                  {exercise.difficulty === "beginner"
+                    ? "מתחיל"
+                    : exercise.difficulty === "intermediate"
+                    ? "בינוני"
+                    : "מתקדם"}
                 </Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* Selection Indicator */}
+        {/* אינדיקטור בחירה */}
         <View style={styles.selectionIndicator}>
           {isSelected ? (
             <Ionicons
@@ -184,6 +213,9 @@ const ExerciseSelectionScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { startCustomWorkout } = useWorkoutStore();
 
+  // שימוש ב-hook לשליפת תרגילים מה-API
+  const { data: exercises, isLoading, isError } = useExercises();
+
   // State
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -191,12 +223,16 @@ const ExerciseSelectionScreen = () => {
 
   // סינון תרגילים
   const filteredExercises = useMemo(() => {
+    if (!exercises) return [];
+
     let filtered = exercises;
 
     // סינון לפי קטגוריה
     if (selectedCategory !== "all") {
-      filtered = filtered.filter((exercise) =>
-        exercise.targetMuscleGroups?.includes(selectedCategory)
+      filtered = filtered.filter(
+        (exercise) =>
+          exercise.category?.includes(selectedCategory) ||
+          exercise.targetMuscleGroups?.includes(selectedCategory)
       );
     }
 
@@ -207,6 +243,7 @@ const ExerciseSelectionScreen = () => {
         (exercise) =>
           exercise.name.toLowerCase().includes(query) ||
           exercise.description?.toLowerCase().includes(query) ||
+          exercise.category?.toLowerCase().includes(query) ||
           exercise.targetMuscleGroups?.some((muscle) =>
             muscle.toLowerCase().includes(query)
           )
@@ -214,7 +251,7 @@ const ExerciseSelectionScreen = () => {
     }
 
     return filtered;
-  }, [selectedCategory, searchQuery]);
+  }, [exercises, selectedCategory, searchQuery]);
 
   // בחירת/ביטול תרגיל
   const toggleExercise = useCallback((exercise: Exercise) => {
@@ -233,31 +270,38 @@ const ExerciseSelectionScreen = () => {
   }, []);
 
   // התחלת אימון מותאם
-  const handleStartCustomWorkout = useCallback(async () => {
+  const handleStartCustomWorkout = async () => {
     if (selectedExercises.length === 0) {
-      Alert.alert("בחר תרגילים", "עליך לבחור לפחות תרגיל אחד");
+      Alert.alert("שגיאה", "נא לבחור לפחות תרגיל אחד");
       return;
     }
 
     try {
-      // Haptic feedback
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      // יצירת אימון מותאם
       await startCustomWorkout(selectedExercises);
-
-      // נווט לאימון פעיל
       navigation.navigate("ActiveWorkout");
     } catch (error) {
-      console.error("Failed to start custom workout:", error);
-      Alert.alert("שגיאה", "לא ניתן להתחיל את האימון");
+      Alert.alert("שגיאה", "לא ניתן היה להתחיל את האימון");
     }
-  }, [selectedExercises, startCustomWorkout, navigation]);
+  };
 
-  // ניקוי בחירה
-  const handleClearSelection = useCallback(() => {
-    setSelectedExercises([]);
-  }, []);
+  // מצב טעינה
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>טוען תרגילים...</Text>
+      </View>
+    );
+  }
+
+  // מצב שגיאה
+  if (isError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>שגיאה בטעינת התרגילים</Text>
+        <Button title="חזור" onPress={() => navigation.goBack()} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -269,31 +313,30 @@ const ExerciseSelectionScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>בחר תרגילים</Text>
-        {selectedExercises.length > 0 && (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={handleClearSelection}
-          >
-            <Text style={styles.clearButtonText}>נקה</Text>
-          </TouchableOpacity>
-        )}
+
+        <Text style={styles.headerTitle}>בחירת תרגילים</Text>
+
+        <TouchableOpacity
+          style={styles.clearButton}
+          onPress={() => setSelectedExercises([])}
+        >
+          <Text style={styles.clearButtonText}>נקה</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
+      {/* Search */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color={colors.textSecondary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="חפש תרגילים..."
+          placeholder="חיפוש תרגילים..."
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          clearButtonMode="while-editing"
         />
       </View>
 
-      {/* Category Filter */}
+      {/* Categories */}
       <CategoryFilter
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
@@ -310,59 +353,82 @@ const ExerciseSelectionScreen = () => {
 
       {/* Exercises List */}
       <FlatList
+        style={styles.exercisesList}
+        contentContainerStyle={styles.exercisesContent}
         data={filteredExercises}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <ExerciseCard
+          <ExerciseItem
             exercise={item}
             isSelected={selectedExercises.some((e) => e.id === item.id)}
-            onToggle={() => toggleExercise(item)}
+            onToggle={toggleExercise}
           />
         )}
-        style={styles.exercisesList}
-        contentContainerStyle={styles.exercisesContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search" size={64} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>לא נמצאו תרגילים</Text>
             <Text style={styles.emptyText}>
-              נסה לשנות את הקטגוריה או החיפוש
+              נסה לשנות את הפילטרים או החיפוש
             </Text>
           </View>
         }
       />
 
-      {/* Bottom Action */}
-      {selectedExercises.length > 0 && (
-        <View style={styles.bottomSection}>
-          <Button
-            title={`התחל אימון עם ${selectedExercises.length} תרגילים`}
-            onPress={handleStartCustomWorkout}
-            style={styles.startButton}
-            textStyle={styles.startButtonText}
-          />
-        </View>
-      )}
+      {/* Bottom Section */}
+      <View style={styles.bottomSection}>
+        <Button
+          title={`התחל אימון (${selectedExercises.length})`}
+          onPress={handleStartCustomWorkout}
+          disabled={selectedExercises.length === 0}
+          style={[
+            styles.startButton,
+            selectedExercises.length === 0 && { opacity: 0.5 },
+          ]}
+        />
+      </View>
     </View>
   );
 };
 
-// 🎨 עיצוב
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.danger,
+    textAlign: "center",
+    marginBottom: 20,
+  },
 
   // Header
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingVertical: 16,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -481,17 +547,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 4,
+    textAlign: "right",
   },
   exerciseDescription: {
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 18,
     marginBottom: 8,
+    textAlign: "right",
   },
   exerciseMuscles: {
     flexDirection: "row",
     gap: 6,
     marginBottom: 8,
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
   },
   muscleTag: {
     paddingHorizontal: 8,
@@ -507,6 +577,7 @@ const styles = StyleSheet.create({
   exerciseMeta: {
     flexDirection: "row",
     gap: 12,
+    justifyContent: "flex-end",
   },
   exerciseMetaItem: {
     flexDirection: "row",
@@ -559,10 +630,6 @@ const styles = StyleSheet.create({
   startButton: {
     backgroundColor: colors.primary,
     paddingVertical: 16,
-  },
-  startButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
   },
 });
 
