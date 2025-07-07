@@ -1,4 +1,4 @@
-// App.tsx - גרסה מתוקנת ללא שגיאות
+// App.tsx - גרסה מתוקנת עם אתחול מלא
 
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef, useState } from "react";
@@ -14,23 +14,21 @@ import {
 import AppWithProviders from "./src/navigation/RootLayout";
 
 // 🔧 הגדרות גלובליות
-
-// 1. מניעת סגירת Splash Screen עד שהאפליקציה מוכנה
 SplashScreen.preventAutoHideAsync();
 
-// 2. הפעלת תמיכה ב-RTL (עברית) - רק אם עדיין לא הופעל
+// הפעלת תמיכה ב-RTL (עברית)
 if (!I18nManager.isRTL) {
   I18nManager.allowRTL(true);
   I18nManager.forceRTL(true);
 }
 
-// 3. הגדרת קונסול לוגים לפי סביבה
+// הגדרת לוגים
 if (__DEV__) {
   console.log("🚀 Gymovo App starting in development mode");
   console.log(`📱 Platform: ${Platform.OS} ${Platform.Version}`);
   console.log(`🌐 RTL Enabled: ${I18nManager.isRTL}`);
 
-  // יצירת developer helpers גלובליים
+  // Developer helpers
   (global as any).__DEV_HELPERS__ = {
     clearAsyncStorage: async () => {
       const AsyncStorage = await import(
@@ -47,34 +45,14 @@ if (__DEV__) {
       });
     },
   };
-
-  console.log(`
-🚀 GYMOVO DEVELOPMENT MODE
-📱 Platform: ${Platform.OS} ${Platform.Version}
-🎨 RTL: ${I18nManager.isRTL}
-🛠️ Dev helpers available at global.__DEV_HELPERS__
-  `);
-} else {
-  // בפרודקשן, הגבל את הלוגים
-  const originalLog = console.log;
-  const originalWarn = console.warn;
-
-  console.log = () => {};
-  console.warn = () => {};
-
-  // אבל שמור errors
-  console.error = console.error;
 }
 
 // 📱 רכיב App הראשי
 const App = () => {
-  // 🔄 State לניהול מצב האפליקציה
   const [isAppReady, setIsAppReady] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(
     null
   );
-
-  // 📊 מעקב אחר מצב האפליקציה
   const appState = useRef(AppState.currentState);
 
   // 🎬 אתחול האפליקציה
@@ -82,7 +60,7 @@ const App = () => {
     initializeApp();
   }, []);
 
-  // 🔄 מעקב אחר מעברים בין foreground/background
+  // מעקב אחר מצב האפליקציה
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (
@@ -90,7 +68,6 @@ const App = () => {
         nextAppState === "active"
       ) {
         console.log("📱 App has come to the foreground");
-        // כאן אפשר להוסיף לוגיקה לרענון נתונים
       }
       appState.current = nextAppState;
     });
@@ -127,7 +104,6 @@ const App = () => {
     try {
       // סימולציה של זמן טעינה לשירותים
       await new Promise((resolve) => setTimeout(resolve, 500));
-
       console.log("🔧 Core services initialized");
     } catch (error) {
       console.error("Failed to initialize services:", error);
@@ -192,7 +168,7 @@ const App = () => {
     setIsAppReady(true);
     SplashScreen.hideAsync();
 
-    // הצגת התראה למשתמש (רק אם זו שגיאה רצינית)
+    // הצגת התראה למשתמש
     setTimeout(() => {
       Alert.alert(
         "הודעת מערכת",
@@ -201,13 +177,6 @@ const App = () => {
       );
     }, 1000);
   };
-
-  // 🧭 אתחול מערכת הניווט
-  useEffect(() => {
-    if (isAppReady) {
-      console.log("🧭 Navigation system initialized");
-    }
-  }, [isAppReady]);
 
   // עד שהאפליקציה לא מוכנה, נשאיר את ה-splash screen
   if (!isAppReady) {

@@ -1,4 +1,4 @@
-// src/stores/userStore.ts - תיקון לטעינת נתוני דמו
+// src/stores/userStore.ts - תיקון אתחול המצב
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create, StateCreator } from "zustand";
@@ -18,6 +18,7 @@ export interface UserState {
   user: User | null;
   token: string | null;
   status: AuthStatus;
+  isInitialized: boolean; // ✅ הוספה: דגל לביצור שההתחלה סיימה
   login: (
     email: string,
     password: string
@@ -29,30 +30,65 @@ export interface UserState {
   becomeGuest: () => void;
   setStatus: (status: AuthStatus) => void;
   loginAsDemoUser: (demoUser: User) => Promise<void>;
+  initialize: () => Promise<void>; // ✅ הוספה: פונקציית אתחול
 }
 
 const storeCreator: StateCreator<UserState> = (set, get) => ({
   user: null,
   token: null,
   status: "loading",
+  isInitialized: false, // ✅ התחלה: לא מאותחל
 
   setStatus: (status: AuthStatus) => set({ status }),
 
-  // ✅ Fixed: פונקציה מתוקנת לטעינת נתוני דמו
+  // ✅ חדש: פונקציית אתחול
+  initialize: async () => {
+    try {
+      console.log("🔧 Initializing user store...");
+
+      // בדוק אם יש משתמש שמור
+      const state = get();
+
+      if (state.user && state.token) {
+        // יש משתמש שמור - אמת אותו
+        console.log("👤 Found existing user:", state.user.name);
+        set({
+          status: state.user.isGuest ? "guest" : "authenticated",
+          isInitialized: true,
+        });
+      } else {
+        // אין משתמש שמור
+        console.log("👤 No existing user found");
+        set({
+          status: "unauthenticated",
+          isInitialized: true,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to initialize user store:", error);
+      // גם במקרה של שגיאה, סמן כמאותחל
+      set({
+        status: "unauthenticated",
+        isInitialized: true,
+      });
+    }
+  },
+
   loginAsDemoUser: async (demoUser: User) => {
     const demoToken = `demo_token_${demoUser.id}_${Date.now()}`;
 
     try {
       console.log(`🎭 Login as demo user: ${demoUser.name} (${demoUser.id})`);
 
-      // ✅ First: Set user immediately so other components can detect demo user
+      // ראשית: הגדר את המשתמש מיידית
       set({
         user: demoUser,
         token: demoToken,
         status: "authenticated",
+        isInitialized: true, // ✅ וודא שמאותחל
       });
 
-      // ✅ Then: Load demo data in background
+      // שנית: טען נתוני דמו ברקע
       const { getDemoWorkoutHistory, getDemoPlanForUser } = await import(
         "../constants/demoUsers"
       );
@@ -62,10 +98,10 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
         `📊 Found ${workoutHistory.length} demo workouts for ${demoUser.name}`
       );
 
-      // ✅ Save demo workouts to AsyncStorage (only recent ones to avoid performance issues)
+      // שמור אימונים לזיכרון (רק האחרונים כדי לא להאט)
       if (workoutHistory.length > 0) {
         const { saveWorkoutToHistory } = await import("../data/storage");
-        const recentWorkouts = workoutHistory.slice(0, 10); // Only last 10 workouts
+        const recentWorkouts = workoutHistory.slice(0, 10);
 
         for (const workout of recentWorkouts) {
           try {
@@ -80,7 +116,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
         );
       }
 
-      // ✅ Save demo plan if exists
+      // שמור תוכנית דמו אם קיימת
       const userPlan = getDemoPlanForUser(demoUser.id);
       if (userPlan) {
         try {
@@ -93,13 +129,13 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
       }
     } catch (error) {
       console.error("Failed to setup demo user:", error);
-      // Even if demo data loading fails, keep user logged in
+      // גם אם טעינת נתוני הדמו נכשלה, שמור את המשתמש מחובר
     }
   },
 
   login: async (email: string, password: string) => {
     try {
-      // ✅ Check if it's a demo user first
+      // בדוק אם זה משתמש דמו
       const { demoUsers } = await import("../constants/demoUsers");
       const demoUser = demoUsers.find((user) => user.email === email);
 
@@ -108,7 +144,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
         return { success: true };
       }
 
-      // Simulate real login
+      // סימולציה של התחברות אמיתית
       if (email && password.length >= 6) {
         const mockUser: User = {
           id: `user_${Date.now()}`,
@@ -122,6 +158,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
           user: mockUser,
           token: `token_${Date.now()}`,
           status: "authenticated",
+          isInitialized: true,
         });
 
         return { success: true };
@@ -135,7 +172,6 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
 
   register: async (data: RegisterData) => {
     try {
-      // Simulate registration
       if (data.email && data.password.length >= 6) {
         const newUser: User = {
           id: `user_${Date.now()}`,
@@ -149,6 +185,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
           user: newUser,
           token: `token_${Date.now()}`,
           status: "authenticated",
+          isInitialized: true,
         });
 
         return { success: true };
@@ -173,6 +210,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
       user: guestUser,
       token: null,
       status: "guest",
+      isInitialized: true,
     });
   },
 
@@ -181,11 +219,12 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
       user: null,
       token: null,
       status: "unauthenticated",
+      isInitialized: true,
     });
   },
 });
 
-// ✅ Create store with persistence
+// יצירת Store עם persistence
 export const useUserStore = create<UserState>()(
   persist(storeCreator, {
     name: "gymovo-user-storage",
@@ -194,6 +233,14 @@ export const useUserStore = create<UserState>()(
       user: state.user,
       token: state.token,
       status: state.status,
+      // לא שומרים isInitialized - זה תמיד מתחיל false
     }),
+    // ✅ הוסף onRehydrateStorage לאתחול אחרי טעינה
+    onRehydrateStorage: () => (state) => {
+      if (state) {
+        // אחרי שטען מהזיכרון, קרא לאתחול
+        state.initialize();
+      }
+    },
   })
 );
