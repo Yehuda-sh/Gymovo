@@ -1,14 +1,12 @@
-// src/stores/userStore.ts - גרסה מלאה עם תמיכה בנתוני דמו
+// src/stores/userStore.ts - תיקון לטעינת נתוני דמו
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create, StateCreator } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { User } from "../types/user";
 
-// סוגי הסטטוס האפשריים של המשתמש
 type AuthStatus = "loading" | "unauthenticated" | "authenticated" | "guest";
 
-// טיפוס הנתונים הנדרשים להרשמה
 export interface RegisterData {
   email: string;
   password: string;
@@ -16,7 +14,6 @@ export interface RegisterData {
   name?: string;
 }
 
-// הממשק שמגדיר את כל המידע והפעולות ב-store
 export interface UserState {
   user: User | null;
   token: string | null;
@@ -34,7 +31,6 @@ export interface UserState {
   loginAsDemoUser: (demoUser: User) => Promise<void>;
 }
 
-// פונקציית הבסיס ליצירת ה-store
 const storeCreator: StateCreator<UserState> = (set, get) => ({
   user: null,
   token: null,
@@ -42,27 +38,35 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
 
   setStatus: (status: AuthStatus) => set({ status }),
 
-  // 🏋️ פונקציה מעודכנת לטעינת נתוני דמו
+  // ✅ Fixed: פונקציה מתוקנת לטעינת נתוני דמו
   loginAsDemoUser: async (demoUser: User) => {
-    const demoToken = `${demoUser.email}_token_${Date.now()}`;
+    const demoToken = `demo_token_${demoUser.id}_${Date.now()}`;
 
-    // טען את ההיסטוריה של המשתמש
     try {
-      console.log(`🎭 Loading demo data for ${demoUser.name}...`);
+      console.log(`🎭 Login as demo user: ${demoUser.name} (${demoUser.id})`);
 
-      // טען את פונקציות הדמו באופן דינמי
+      // ✅ First: Set user immediately so other components can detect demo user
+      set({
+        user: demoUser,
+        token: demoToken,
+        status: "authenticated",
+      });
+
+      // ✅ Then: Load demo data in background
       const { getDemoWorkoutHistory, getDemoPlanForUser } = await import(
         "../constants/demoUsers"
       );
-      const workoutHistory = getDemoWorkoutHistory(demoUser.id);
-      const userPlan = getDemoPlanForUser(demoUser.id);
 
-      // שמור את נתוני הדמו ב-AsyncStorage כאילו הם נתונים אמיתיים
+      const workoutHistory = getDemoWorkoutHistory(demoUser.id);
+      console.log(
+        `📊 Found ${workoutHistory.length} demo workouts for ${demoUser.name}`
+      );
+
+      // ✅ Save demo workouts to AsyncStorage (only recent ones to avoid performance issues)
       if (workoutHistory.length > 0) {
         const { saveWorkoutToHistory } = await import("../data/storage");
+        const recentWorkouts = workoutHistory.slice(0, 10); // Only last 10 workouts
 
-        // שמור כל אימון בנפרד (רק 15 אימונים אחרונים כדי לא להעמיס)
-        const recentWorkouts = workoutHistory.slice(0, 15);
         for (const workout of recentWorkouts) {
           try {
             await saveWorkoutToHistory(demoUser.id, workout);
@@ -71,162 +75,125 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
           }
         }
 
-        console.log(`✅ Saved ${recentWorkouts.length} demo workouts`);
+        console.log(
+          `✅ Saved ${recentWorkouts.length} demo workouts to storage`
+        );
       }
 
-      // שמור תוכנית אם יש
+      // ✅ Save demo plan if exists
+      const userPlan = getDemoPlanForUser(demoUser.id);
       if (userPlan) {
-        const { savePlan } = await import("../data/storage");
         try {
+          const { savePlan } = await import("../data/storage");
           await savePlan(demoUser.id, userPlan);
           console.log(`✅ Saved demo plan: ${userPlan.name}`);
         } catch (error) {
           console.warn("Failed to save demo plan:", error);
         }
       }
-
-      console.log(`🎉 Demo data loaded successfully for ${demoUser.name}`);
     } catch (error) {
-      console.error("Failed to load demo data:", error);
+      console.error("Failed to setup demo user:", error);
+      // Even if demo data loading fails, keep user logged in
     }
-
-    // הגדר את המשתמש
-    set({ user: demoUser, token: demoToken, status: "authenticated" });
   },
 
   login: async (email: string, password: string) => {
     try {
-      set({ status: "loading" });
+      // ✅ Check if it's a demo user first
+      const { demoUsers } = await import("../constants/demoUsers");
+      const demoUser = demoUsers.find((user) => user.email === email);
 
-      // לוגיקת התחברות (כרגע מדומה)
-      if (email && password.length >= 6) {
-        const token = `${email}_token_${Date.now()}`;
-        const demoUser: User = {
-          id: "demo-user-123",
-          email,
-          age: 25,
-          name: email.split("@")[0],
-          experience: "intermediate",
-          goals: ["general_fitness"],
-          joinedAt: new Date().toISOString(),
-        };
-
-        set({ user: demoUser, token, status: "authenticated" });
+      if (demoUser && password === "demo123") {
+        await get().loginAsDemoUser(demoUser);
         return { success: true };
       }
 
-      set({ status: "unauthenticated" });
-      return { success: false, error: "שגיאה בפרטי ההתחברות" };
+      // Simulate real login
+      if (email && password.length >= 6) {
+        const mockUser: User = {
+          id: `user_${Date.now()}`,
+          email,
+          name: email.split("@")[0],
+          age: 25,
+          isGuest: false,
+        };
+
+        set({
+          user: mockUser,
+          token: `token_${Date.now()}`,
+          status: "authenticated",
+        });
+
+        return { success: true };
+      }
+
+      return { success: false, error: "אימייל או סיסמה שגויים" };
     } catch (error) {
-      set({ status: "unauthenticated" });
-      return { success: false, error: "אירעה שגיאה בהתחברות" };
+      return { success: false, error: "שגיאה בהתחברות" };
     }
   },
 
   register: async (data: RegisterData) => {
     try {
-      set({ status: "loading" });
+      // Simulate registration
+      if (data.email && data.password.length >= 6) {
+        const newUser: User = {
+          id: `user_${Date.now()}`,
+          email: data.email,
+          name: data.name || data.email.split("@")[0],
+          age: data.age,
+          isGuest: false,
+        };
 
-      const { email, password, age, name } = data;
+        set({
+          user: newUser,
+          token: `token_${Date.now()}`,
+          status: "authenticated",
+        });
 
-      // ולידציה
-      if (!email.includes("@") || password.length < 6) {
-        set({ status: "unauthenticated" });
-        return { success: false, error: "מייל לא תקין או סיסמה קצרה מדי" };
+        return { success: true };
       }
 
-      if (age < 16) {
-        set({ status: "unauthenticated" });
-        return { success: false, error: "ההרשמה מותרת מגיל 16 ומעלה" };
-      }
-
-      // יצירת משתמש חדש
-      const token = `${email}_token_${Date.now()}`;
-      const newUser: User = {
-        id: `user_${Date.now()}`,
-        email,
-        age,
-        name: name || email.split("@")[0],
-        experience: "beginner", // ברירת מחדל למשתמש חדש
-        goals: ["general_fitness"],
-        joinedAt: new Date().toISOString(),
-      };
-
-      set({ user: newUser, token, status: "authenticated" });
-      return { success: true };
+      return { success: false, error: "נתונים לא תקינים" };
     } catch (error) {
-      set({ status: "unauthenticated" });
-      return { success: false, error: "אירעה שגיאה בהרשמה" };
-    }
-  },
-
-  logout: async () => {
-    try {
-      // ניקוי נתונים מקומיים אם נדרש
-      const currentUser = get().user;
-      if (currentUser && currentUser.id.startsWith("demo-user-")) {
-        // זה משתמש דמו - אפשר לנקות את הנתונים שלו
-        console.log(`🧹 Cleaning demo data for ${currentUser.name}`);
-      }
-
-      set({ user: null, token: null, status: "unauthenticated" });
-    } catch (error) {
-      console.error("Error during logout:", error);
-      // גם במקרה של שגיאה, נבצע logout
-      set({ user: null, token: null, status: "unauthenticated" });
+      return { success: false, error: "שגיאה ברישום" };
     }
   },
 
   becomeGuest: () => {
-    const guestToken = `guest_token_${Date.now()}`;
-    set({ user: null, token: guestToken, status: "guest" });
+    const guestUser: User = {
+      id: `guest_${Date.now()}`,
+      email: "guest@gymovo.app",
+      name: "משתמש אורח",
+      age: 25,
+      isGuest: true,
+    };
+
+    set({
+      user: guestUser,
+      token: null,
+      status: "guest",
+    });
+  },
+
+  logout: () => {
+    set({
+      user: null,
+      token: null,
+      status: "unauthenticated",
+    });
   },
 });
 
-// יצירת ה-store עם יכולת שמירה (persist)
+// ✅ Create store with persistence
 export const useUserStore = create<UserState>()(
   persist(storeCreator, {
-    name: "gymovo-user-store",
+    name: "gymovo-user-storage",
     storage: createJSONStorage(() => AsyncStorage),
     partialize: (state) => ({
       user: state.user,
       token: state.token,
-      status: state.status === "loading" ? "unauthenticated" : state.status,
+      status: state.status,
     }),
-    // ❌ השבתת rehydration עד שהאפליקציה מוכנה
-    skipHydration: false,
-    onRehydrateStorage: () => (state) => {
-      // אם המצב הוא loading, שנה ל-unauthenticated
-      if (state?.status === "loading") {
-        state.setStatus("unauthenticated");
-      }
-      console.log("🔄 User store rehydrated:", state?.user?.name || "No user");
-    },
   })
 );
-
-// 🔧 פונקציות עזר לעבודה עם המשתמש
-export const isAuthenticatedUser = (user: User | null): boolean => {
-  return user !== null;
-};
-
-export const isDemoUser = (user: User | null): boolean => {
-  return user?.id.startsWith("demo-user-") || false;
-};
-
-export const getUserDisplayName = (user: User | null): string => {
-  if (!user) return "אורח";
-  return user.name || user.email.split("@")[0] || "משתמש";
-};
-
-export const getUserExperienceLevel = (user: User | null): string => {
-  if (!user?.experience) return "מתחיל";
-
-  const levels = {
-    beginner: "מתחיל",
-    intermediate: "בינוני",
-    advanced: "מתקדם",
-  };
-
-  return levels[user.experience] || "מתחיל";
-};
