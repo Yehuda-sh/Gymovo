@@ -50,7 +50,7 @@ const App = () => {
   // 🎬 אתחול האפליקציה
   useEffect(() => {
     initializeApp();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🔄 מעקב אחר מעברים בין foreground/background
   useEffect(() => {
