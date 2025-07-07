@@ -1,3 +1,4 @@
+// src/services/wgerApi.ts - תיקון מלא שגיאות TypeScript
 import { Exercise } from "../types/exercise";
 import { Plan, PlanDay, PlanExercise } from "../types/plan";
 
@@ -56,7 +57,8 @@ export const fetchAllExercises = async (): Promise<Exercise[]> => {
         id: String(ex.id),
         name: ex.name,
         description: ex.description.replace(/<[^>]*>?/gm, ""),
-        muscleGroup: ex.category.name,
+        // ✅ Exercise משתמש ב-category
+        category: ex.category.name,
         imageUrl:
           ex.images?.[0]?.image ||
           `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
@@ -81,7 +83,8 @@ export const fetchExerciseInfoById = async (
       id: String(ex.id),
       name: ex.name,
       description: ex.description.replace(/<[^>]*>?/gm, ""),
-      muscleGroup: ex.category?.name || "General",
+      // ✅ Exercise משתמש ב-category
+      category: ex.category?.name || "General",
       imageUrl:
         ex.images?.[0]?.image ||
         `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
@@ -150,6 +153,7 @@ export const fetchPlanDetails = async (planId: number): Promise<Plan> => {
         (e_group) => ({
           id: String(e_group.sets[0].exercise.id),
           name: e_group.name,
+          // ✅ PlanExercise משתמש ב-muscleGroup (לא category)
           muscleGroup: "Unknown", // המידע הזה לא קיים ב-API של פרטי תוכנית
           sets: e_group.sets.length,
           reps: e_group.sets[0]?.reps || 10, // ניקח חזרות מהסט הראשון כדוגמה

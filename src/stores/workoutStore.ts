@@ -1,4 +1,4 @@
-// src/stores/workoutStore.ts
+// src/stores/workoutStore.ts - תיקון שגיאות TypeScript
 
 import { produce } from "immer";
 import { create } from "zustand";
@@ -38,26 +38,40 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
 
   // פעולה להתחלת אימון חדש על בסיס יום ספציפי מתוכנית
   startWorkout: (plan, dayId) => {
+    // ✅ תיקון: בדיקה שplan.days קיים
+    if (!plan.days) {
+      console.error("Plan has no days!");
+      return;
+    }
+
     const selectedDay = plan.days.find((day) => day.id === dayId);
     if (!selectedDay) {
       console.error("Day not found in plan!");
       return;
     }
+
     const newWorkout: Workout = {
       id: `workout_${Date.now()}`,
       name: `${plan.name} - ${selectedDay.name}`,
       date: new Date().toISOString(),
+      // ✅ תיקון: הוספת השדה name ו-exercise מלא עם category
       exercises: selectedDay.exercises.map((planEx) => ({
         id: planEx.id,
-        exercise: { id: planEx.id, name: planEx.name },
+        name: planEx.name, // ✅ הוספת השדה החסר
+        exercise: {
+          id: planEx.id,
+          name: planEx.name,
+          category: planEx.muscleGroup || "כללי", // ✅ הוספת category נדרש
+        },
         sets: Array.from({ length: planEx.sets }, (_, i) => ({
           id: `${planEx.id}_set_${i}`,
           reps: planEx.reps,
           weight: 0,
-          status: "pending",
+          status: "pending" as const,
         })),
       })),
     };
+
     set({
       activeWorkout: newWorkout,
       currentExerciseIndex: 0,
@@ -145,18 +159,20 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
       produce((state: WorkoutState) => {
         if (state.activeWorkout) {
           const exerciseExists = state.activeWorkout.exercises.some(
-            (e) => e.exercise.id === exercise.id
+            // ✅ תיקון: בדיקה שe.exercise קיים לפני הגישה אליו
+            (e) => e.exercise?.id === exercise.id
           );
           if (!exerciseExists) {
             state.activeWorkout.exercises.push({
               id: exercise.id,
-              exercise: exercise,
+              name: exercise.name, // ✅ הוספת השדה החסר
+              exercise: exercise, // ✅ exercise כבר מכיל את כל השדות הנדרשים כולל category
               sets: [
                 {
                   id: `${exercise.id}_set_0`,
                   reps: 8,
                   weight: 10,
-                  status: "pending",
+                  status: "pending" as const,
                 },
               ],
             });
