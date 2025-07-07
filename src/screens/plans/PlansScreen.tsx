@@ -35,7 +35,15 @@ import { RootStackParamList } from "../../types/navigation";
 import { Plan } from "../../types/plan";
 
 const { width } = Dimensions.get("window");
-
+const getPlanDaysCountGlobal = (plan: Plan): number => {
+  if (plan.days && Array.isArray(plan.days)) {
+    return plan.days.length;
+  }
+  if (plan.workouts && Array.isArray(plan.workouts)) {
+    return plan.workouts.length;
+  }
+  return 0;
+};
 // 🎨 ערכת צבעים ספורטיבית כהה
 const plansColors = {
   background: "#0a0a0a",
@@ -149,15 +157,52 @@ const AdvancedPlanCard = ({
     ]).start();
   }, [slideAnim, scaleAnim]);
 
-  const totalExercises = useMemo(
-    () => item.days.reduce((sum, day) => sum + day.exercises.length, 0),
-    [item.days]
-  );
+  const totalExercises = useMemo(() => {
+    // בדיקה אם days קיים ולא undefined
+    if (!item.days || !Array.isArray(item.days)) {
+      return 0;
+    }
+
+    return item.days.reduce((sum, day) => {
+      if (!day.exercises || !Array.isArray(day.exercises)) {
+        return sum;
+      }
+      return sum + day.exercises.length;
+    }, 0);
+  }, [item.days]);
+
+  const getDifficultyText = (difficulty?: string): string => {
+    switch (difficulty) {
+      case "beginner":
+      case "קל":
+        return "קל";
+      case "intermediate":
+      case "בינוני":
+        return "בינוני";
+      case "advanced":
+      case "מתקדם":
+        return "מתקדם";
+      default:
+        return "בינוני";
+    }
+  };
 
   const getDifficultyColor = () => {
-    if (item.metadata?.difficulty === "קל") return "#34d399";
-    if (item.metadata?.difficulty === "בינוני") return plansColors.secondary;
-    return plansColors.danger;
+    const difficulty = item.metadata?.difficulty;
+
+    // השוואה רק לערכי האנגלית - הערכים הקיימים במטאדטה
+    if (difficulty === "beginner") {
+      return "#34d399";
+    }
+    if (difficulty === "intermediate") {
+      return plansColors.secondary;
+    }
+    if (difficulty === "advanced") {
+      return plansColors.danger;
+    }
+
+    // ברירת מחדל
+    return plansColors.secondary;
   };
 
   const getGoalColor = () => {
@@ -188,7 +233,9 @@ const AdvancedPlanCard = ({
           <Text style={styles.planName} numberOfLines={1}>
             {item.name}
           </Text>
-          <Text style={styles.planCreator}>נוצר על ידי {item.creator}</Text>
+          <Text style={styles.planCreator}>
+            נוצר על ידי {item.creator || "משתמש אלמוני"}
+          </Text>
         </View>
         <View style={styles.planStats}>
           <View
@@ -198,7 +245,7 @@ const AdvancedPlanCard = ({
             ]}
           >
             <Text style={[styles.statText, { color: plansColors.accent }]}>
-              {item.days.length} ימים
+              {getPlanDaysCountGlobal(item)} ימים
             </Text>
           </View>
         </View>
@@ -228,10 +275,11 @@ const AdvancedPlanCard = ({
           )}
           {item.metadata?.difficulty && (
             <CategoryTag
-              category={item.metadata.difficulty}
+              category={getDifficultyText(item.metadata.difficulty)} // ✅ שימוש בפונקציה
               color={getDifficultyColor()}
             />
           )}
+
           {item.metadata?.experience && (
             <CategoryTag
               category={
@@ -486,12 +534,19 @@ const PlansScreen = () => {
   const filteredPlans = useMemo(() => {
     if (!searchQuery.trim()) return plans || [];
 
-    return (plans || []).filter(
-      (plan) =>
-        plan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plan.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plan.creator.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return (plans || []).filter((plan) => {
+      const nameMatch = plan.name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      const descMatch = plan.description
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      const creatorMatch =
+        plan.creator?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        false;
+
+      return nameMatch || descMatch || creatorMatch;
+    });
   }, [plans, searchQuery]);
 
   // פונקציות טיפול
@@ -542,18 +597,14 @@ const PlansScreen = () => {
 
   const handleStartWorkout = useCallback(
     (plan: Plan) => {
-      if (plan.days.length === 0) {
+      const daysCount = getPlanDaysCountGlobal(plan);
+
+      if (daysCount === 0) {
         Alert.alert("שגיאה", "התוכנית לא מכילה ימי אימון");
         return;
       }
 
-      if (plan.days.length === 1) {
-        // יום אחד - התחל ישירות
-        navigation.navigate("SelectWorkoutDay", { planId: plan.id });
-      } else {
-        // מספר ימים - בחר יום
-        navigation.navigate("SelectWorkoutDay", { planId: plan.id });
-      }
+      navigation.navigate("SelectWorkoutDay", { planId: plan.id });
     },
     [navigation]
   );
@@ -569,7 +620,7 @@ const PlansScreen = () => {
               ...plan,
               id: `${plan.id}_copy_${Date.now()}`,
               name: `${plan.name} (עותק)`,
-              creator: user?.name || "אתה",
+              creator: user?.name || plan.creator || "משתמש אלמוני", // ✅ fallback נוסף
             };
             // כאן נשמור את התוכנית המשוכפלת
             Alert.alert("הצלחה!", "התוכנית שוכפלה בהצלחה");
