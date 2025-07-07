@@ -48,6 +48,13 @@
     "targetMuscles",
     "muscleGroups"
   ],
+  "cSpell.enabled": true,
+  "cSpell.enableFiletypes ": [
+    "typescript",
+    "typescriptreact",
+    "javascript",
+    "javascriptreact"
+  ],
   "cSpell.language": "en,he",
   "typescript.preferences.includePackageJsonAutoImports": "auto",
   "editor.formatOnSave": true,
