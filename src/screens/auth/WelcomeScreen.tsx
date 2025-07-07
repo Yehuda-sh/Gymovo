@@ -1,12 +1,11 @@
-// src/screens/auth/WelcomeScreen.tsx - גרסה מלאה עם כפתורי דמו
+// src/screens/auth/WelcomeScreen.tsx - גרסה מתוקנת ללא שגיאות
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   Animated,
   DevSettings,
   Dimensions,
-  Image,
   ImageBackground,
   Platform,
   StatusBar,
@@ -16,14 +15,45 @@ import {
   View,
 } from "react-native";
 import Button from "../../components/common/Button";
-import { demoUsers } from "../../constants/demoUsers";
 import { clearAllData } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { RootStackParamList } from "../../types/navigation";
+import { User } from "../../types/user";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window"); // ✅ הסרת height שלא בשימוש
 
 type Props = NativeStackScreenProps<RootStackParamList, "Welcome">;
+
+// ✅ נתוני דמו מקומיים (פתרון זמני)
+const mockDemoUsers: User[] = [
+  {
+    id: "demo-user-avi",
+    email: "avi@gymovo.app",
+    name: "אבי כהן",
+    age: 28,
+    experience: "intermediate",
+    goals: ["muscle_gain", "strength"],
+    joinedAt: "2024-10-01T00:00:00Z",
+  },
+  {
+    id: "demo-user-maya",
+    email: "maya@gymovo.app",
+    name: "מאיה לוי",
+    age: 32,
+    experience: "advanced",
+    goals: ["weight_loss", "endurance"],
+    joinedAt: "2024-09-15T00:00:00Z",
+  },
+  {
+    id: "demo-user-yoni",
+    email: "yoni@gymovo.app",
+    name: "יוני רוזן",
+    age: 24,
+    experience: "beginner",
+    goals: ["general_fitness"],
+    joinedAt: "2024-11-01T00:00:00Z",
+  },
+];
 
 const WelcomeScreen = ({ navigation }: Props) => {
   const becomeGuest = useUserStore((state: UserState) => state.becomeGuest);
@@ -41,7 +71,8 @@ const WelcomeScreen = ({ navigation }: Props) => {
   const buttonsSlide = useRef(new Animated.Value(100)).current;
   const particleFloat = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
+  // ✅ פונקציית אנימציה מובקת עם useCallback
+  const startAnimations = useCallback(() => {
     // אנימציית כניסה קינמטית מקצועית
     Animated.sequence([
       // Phase 1: Logo Entrance
@@ -53,42 +84,46 @@ const WelcomeScreen = ({ navigation }: Props) => {
         }),
         Animated.spring(logoScale, {
           toValue: 1,
-          tension: 50,
-          friction: 4,
+          tension: 100,
+          friction: 8,
           useNativeDriver: true,
         }),
         Animated.timing(logoRotate, {
           toValue: 1,
-          duration: 1500,
+          duration: 2000,
           useNativeDriver: true,
         }),
       ]),
 
-      // Phase 2: Title Animation
-      Animated.timing(titleSlide, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
+      // Phase 2: Text Slides
+      Animated.parallel([
+        Animated.spring(titleSlide, {
+          toValue: 0,
+          tension: 80,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(subtitleSlide, {
+          toValue: 0,
+          tension: 80,
+          friction: 8,
+          delay: 200,
+          useNativeDriver: true,
+        }),
+      ]),
 
-      // Phase 3: Subtitle
-      Animated.timing(subtitleSlide, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-
-      // Phase 4: Buttons
+      // Phase 3: Buttons Entrance
       Animated.spring(buttonsSlide, {
         toValue: 0,
-        tension: 40,
+        tension: 80,
         friction: 8,
+        delay: 400,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // אנימציה מתמשכת לגלוו
-    const glowAnimation = Animated.loop(
+    // תחילת אנימציות רקע רציפות
+    Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, {
           toValue: 1,
@@ -101,39 +136,44 @@ const WelcomeScreen = ({ navigation }: Props) => {
           useNativeDriver: true,
         }),
       ])
-    );
+    ).start();
 
-    // אנימציה מתמשכת לחלקיקים צפים
-    const floatAnimation = Animated.loop(
+    Animated.loop(
       Animated.sequence([
         Animated.timing(particleFloat, {
           toValue: 1,
-          duration: 3000,
+          duration: 4000,
           useNativeDriver: true,
         }),
         Animated.timing(particleFloat, {
           toValue: 0,
-          duration: 3000,
+          duration: 4000,
           useNativeDriver: true,
         }),
       ])
-    );
+    ).start();
+  }, [
+    fadeAnim,
+    logoScale,
+    logoRotate,
+    glowPulse,
+    titleSlide,
+    subtitleSlide,
+    buttonsSlide,
+    particleFloat,
+  ]); // ✅ הוספת כל ה-dependencies
 
-    setTimeout(() => {
-      glowAnimation.start();
-      floatAnimation.start();
-    }, 2000);
+  useEffect(() => {
+    startAnimations();
+  }, [startAnimations]); // ✅ תיקון dependency array
 
-    return () => {
-      glowAnimation.stop();
-      floatAnimation.stop();
-    };
-  }, []);
-
-  // פונקציה לריסט נתוני דמו (רק בפיתוח)
-  const handleResetData = async () => {
+  // פונקציה לאיפוס הנתונים (למפתחים בלבד)
+  const resetAllData = async () => {
     try {
       await clearAllData();
+      console.log("🗑️ All data cleared");
+
+      // רענון האפליקציה במצב פיתוח
       if (__DEV__ && DevSettings) {
         DevSettings.reload();
       }
@@ -143,7 +183,8 @@ const WelcomeScreen = ({ navigation }: Props) => {
   };
 
   // פונקציה לכניסה כמשתמש דמו
-  const handleDemoLogin = async (demoUser: any) => {
+  const handleDemoLogin = async (demoUser: User) => {
+    // ✅ תיקון טיפוס
     try {
       console.log(`🎭 Logging in as demo user: ${demoUser.name}`);
       await loginAsDemoUser(demoUser);
@@ -201,9 +242,8 @@ const WelcomeScreen = ({ navigation }: Props) => {
 
         {/* Content */}
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Header Section */}
-          <View style={styles.headerSection}>
-            {/* Logo with glow effect */}
+          {/* Logo Section */}
+          <View style={styles.logoSection}>
             <Animated.View
               style={[
                 styles.logoContainer,
@@ -228,14 +268,11 @@ const WelcomeScreen = ({ navigation }: Props) => {
                   },
                 ]}
               />
-              <Image
-                source={require("../../../assets/images/branding/logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <View style={styles.logo}>
+                <Text style={styles.logoText}>💪</Text>
+              </View>
             </Animated.View>
 
-            {/* Title */}
             <Animated.View
               style={[
                 styles.titleContainer,
@@ -244,11 +281,10 @@ const WelcomeScreen = ({ navigation }: Props) => {
                 },
               ]}
             >
-              <Text style={styles.title}>GYMOVO</Text>
+              <Text style={styles.title}>Gymovo</Text>
               <View style={styles.accentLine} />
             </Animated.View>
 
-            {/* Subtitle */}
             <Animated.View
               style={[
                 styles.subtitleContainer,
@@ -257,10 +293,7 @@ const WelcomeScreen = ({ navigation }: Props) => {
                 },
               ]}
             >
-              <Text style={styles.subtitle}>המסע שלך לכושר מושלם</Text>
-              <Text style={styles.description}>
-                אפליקציה מתקדמת לניהול אימונים אישיים
-              </Text>
+              <Text style={styles.subtitle}>האפליקציה המחכה שתעשה גיינז</Text>
             </Animated.View>
           </View>
 
@@ -307,7 +340,7 @@ const WelcomeScreen = ({ navigation }: Props) => {
 
                 <Text style={styles.demoSectionTitle}>🎭 משתמשי דמו</Text>
                 <View style={styles.devActions}>
-                  {demoUsers.map((demoUser) => (
+                  {mockDemoUsers.map((demoUser) => (
                     <TouchableOpacity
                       key={demoUser.id}
                       style={[
@@ -349,13 +382,13 @@ const WelcomeScreen = ({ navigation }: Props) => {
                       backgroundColor: "rgba(239, 68, 68, 0.2)",
                       borderColor: "#ef4444",
                       borderWidth: 1,
+                      marginTop: 8,
                     },
                   ]}
-                  onPress={handleResetData}
+                  onPress={resetAllData}
                 >
-                  <Text style={[styles.demoButtonText, { color: "#ef4444" }]}>
-                    🗑️ איפוס נתונים
-                  </Text>
+                  <Text style={styles.demoButtonText}>🗑️ איפוס נתונים</Text>
+                  <Text style={styles.demoButtonSubtext}>מחק הכל ורענן</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -373,16 +406,14 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     flex: 1,
-    width: "100%",
-    height: "100%",
+    justifyContent: "center",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   particleContainer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
   },
   particle: {
     position: "absolute",
@@ -390,163 +421,137 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: "#00ff88",
     borderRadius: 2,
-    shadowColor: "#00ff88",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 4,
+    top: "20%",
   },
   content: {
     flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 48,
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 32,
-    paddingVertical: 60,
-    zIndex: 2,
   },
-  headerSection: {
+  logoSection: {
     alignItems: "center",
-    width: "100%",
+    marginTop: 60,
   },
   logoContainer: {
-    position: "relative",
-    marginBottom: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 32,
   },
   logoGlow: {
     position: "absolute",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "#00ff88",
-    opacity: 0.3,
-    shadowColor: "#00ff88",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 30,
-    elevation: 10,
-  },
-  logo: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    shadowColor: "#00ff88",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  titleContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: "900",
-    color: "#ffffff",
-    textAlign: "center",
-    letterSpacing: 4,
-    fontFamily: Platform.OS === "ios" ? "Futura" : "sans-serif-condensed",
-    textShadowColor: "#00ff88",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
-    marginBottom: 12,
-  },
-  accentLine: {
-    width: 80,
-    height: 4,
     backgroundColor: "#00ff88",
     shadowColor: "#00ff88",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(0, 255, 136, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#00ff88",
+  },
+  logoText: {
+    fontSize: 36,
+  },
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 42,
+    fontWeight: "bold",
+    color: "#ffffff",
+    textAlign: "center",
+    marginBottom: 8,
+    fontFamily: Platform.OS === "ios" ? "Futura" : "sans-serif-condensed",
+  },
+  accentLine: {
+    width: 60,
+    height: 3,
+    backgroundColor: "#00ff88",
+    shadowColor: "#00ff88",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 3,
   },
   subtitleContainer: {
     alignItems: "center",
-    marginBottom: 20,
   },
   subtitle: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-    marginBottom: 8,
-    fontFamily: Platform.OS === "ios" ? "Hebrew" : "sans-serif",
-  },
-  description: {
     fontSize: 16,
-    fontWeight: "400",
     color: "rgba(255, 255, 255, 0.7)",
     textAlign: "center",
-    fontFamily: Platform.OS === "ios" ? "Hebrew" : "sans-serif",
   },
   spacer: {
     flex: 1,
+    minHeight: 40,
   },
   actionsSection: {
-    width: "100%",
+    gap: 16,
   },
   primaryActions: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 16,
+    gap: 12,
   },
   primaryButton: {
-    flex: 1,
     backgroundColor: "#00ff88",
     borderRadius: 12,
     paddingVertical: 18,
     shadowColor: "#00ff88",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0, 255, 136, 0.8)",
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
   },
   secondaryButton: {
-    flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderColor: "rgba(255, 255, 255, 0.4)",
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingVertical: 18,
-  },
-  guestButton: {
     backgroundColor: "transparent",
     borderColor: "rgba(255, 255, 255, 0.3)",
     borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 18,
-    marginBottom: 20,
   },
-
-  // 🎭 Dev Panel Styles
-  devPanel: {
-    marginTop: 20,
-    padding: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    borderRadius: 16,
+  guestButton: {
+    backgroundColor: "transparent",
+    borderColor: "rgba(255, 255, 255, 0.2)",
     borderWidth: 1,
-    borderColor: "rgba(255, 107, 53, 0.4)",
+    borderRadius: 12,
+    paddingVertical: 16,
+  },
+  devPanel: {
+    marginTop: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
   devHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
+    gap: 8,
   },
   devIndicator: {
-    width: 20,
-    height: 2,
-    backgroundColor: "#ff6b35",
-    marginHorizontal: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#00ff88",
   },
   devTitle: {
-    color: "#ff6b35",
-    fontWeight: "800",
+    color: "#00ff88",
     fontSize: 12,
-    letterSpacing: 2,
+    fontWeight: "bold",
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   demoSectionTitle: {
