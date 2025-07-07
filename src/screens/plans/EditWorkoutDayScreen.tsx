@@ -1,4 +1,4 @@
-// src/screens/plans/EditWorkoutDayScreen.tsx
+// src/screens/plans/EditWorkoutDayScreen.tsx - ✅ Fixed TypeScript Errors
 
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -67,7 +67,8 @@ const EditWorkoutDayScreen = () => {
   const [localDay, setLocalDay] = useState<PlanDay | null>(null);
 
   useEffect(() => {
-    const dayFromStore = plan?.days.find((d) => d.id === dayId);
+    // ✅ Fixed: Added null check for plan.days
+    const dayFromStore = plan?.days?.find((d) => d.id === dayId);
     if (dayFromStore) {
       setLocalDay(JSON.parse(JSON.stringify(dayFromStore)));
     }
@@ -80,7 +81,8 @@ const EditWorkoutDayScreen = () => {
         return {
           id: ex.id,
           name: ex.name,
-          muscleGroup: ex.muscleGroup || "",
+          // ✅ Fixed: Use category instead of muscleGroup
+          muscleGroup: ex.category || "",
           sets: existingExercise?.sets || 3,
           reps: existingExercise?.reps || 10,
         };
@@ -161,8 +163,10 @@ const EditWorkoutDayScreen = () => {
               variant="outline"
               onPress={() =>
                 navigation.navigate("ExercisesPicker", {
-                  initiallySelected: localDay.exercises,
-                  onDone: handleExercisesSelected,
+                  planId: route.params.planId,
+                  dayId: route.params.dayId,
+                  // ✅ Fixed: Remove initiallySelected as it's not in the type
+                  // If needed, handle this in the ExercisesPicker screen itself
                 })
               }
             />

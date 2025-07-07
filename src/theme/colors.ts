@@ -1,4 +1,4 @@
-// src/theme/colors.ts - גרסה פשוטה שעובדת
+// src/theme/colors.ts - גרסה מתוקנת עם danger
 
 export const colors = {
   // צבעים ראשיים
@@ -33,8 +33,10 @@ export const colors = {
   successDark: "#00cc6a",
   warning: "#ffab00", // כתום חם
   warningDark: "#e68900",
-  error: "#ff3366", // אדום חזק - הוספת error
+  error: "#ff3366", // אדום חזק
   errorDark: "#cc0033",
+  danger: "#ff3366", // 🆕 alias ל-error עבור SettingsItem
+  dangerDark: "#cc0033", // 🆕 alias ל-errorDark
   info: "#007aff",
   infoDark: "#0051d5",
 
@@ -45,6 +47,7 @@ export const colors = {
   borderError: "#ff3366",
   borderSuccess: "#00ff88",
   borderWarning: "#ffab00",
+  borderDanger: "#ff3366", // 🆕 alias
 
   // אפקטים וצללים
   shadow: "rgba(0, 0, 0, 0.5)",
@@ -77,6 +80,7 @@ export const colors = {
     accent: ["#ff6b35", "#ff8c42"],
     energy: ["#00ff88", "#007aff"],
     error: ["#ff3366", "#cc0033"],
+    danger: ["#ff3366", "#cc0033"], // 🆕 alias
     warning: ["#ffab00", "#e68900"],
     success: ["#00ff88", "#00cc6a"],
   },
@@ -127,6 +131,7 @@ export const lightTheme = {
   skeleton: "#f0f0f0",
   cardBackground: "#ffffff",
   inputBackground: "#f8f9fa",
+  danger: "#dc3545", // אדום בהיר יותר לנושא בהיר
   // וכו'...
 };
 
@@ -148,6 +153,25 @@ export const getGoalColor = (goal: string): string => {
   return colors.goals[goal as keyof typeof colors.goals] || colors.primary;
 };
 
+// 🆕 פונקציה לקבלת צבע סטטוס
+export const getStatusColor = (
+  status: "success" | "warning" | "error" | "danger" | "info"
+): string => {
+  switch (status) {
+    case "success":
+      return colors.success;
+    case "warning":
+      return colors.warning;
+    case "error":
+    case "danger":
+      return colors.danger; // error ו-danger זהים
+    case "info":
+      return colors.info;
+    default:
+      return colors.textMuted;
+  }
+};
+
 // פונקציה ליצירת צבע עם אלפא
 export const withOpacity = (color: string, opacity: number): string => {
   if (color.startsWith("#")) {
@@ -158,6 +182,15 @@ export const withOpacity = (color: string, opacity: number): string => {
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   }
   return color;
+};
+
+// 🆕 צבעי danger מוכנים לשימוש
+export const dangerColors = {
+  main: colors.danger,
+  background: withOpacity(colors.danger, 0.05),
+  border: withOpacity(colors.danger, 0.3),
+  text: colors.danger,
+  hover: colors.dangerDark,
 };
 
 // יצוא ברירת מחדל

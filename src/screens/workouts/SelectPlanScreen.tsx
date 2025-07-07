@@ -1,4 +1,5 @@
-// src/screens/workouts/SelectPlanScreen.tsx
+// src/screens/workouts/SelectPlanScreen.tsx - ✅ Fixed TypeScript Errors
+
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -26,7 +27,8 @@ const SelectPlanScreen = () => {
   }
 
   const handleSelectPlan = (plan: Plan) => {
-    navigation.navigate("SelectWorkoutDay", { plan });
+    // ✅ Fixed: Pass only planId as required by RootStackParamList
+    navigation.navigate("SelectWorkoutDay", { planId: plan.id });
   };
 
   return (
@@ -51,7 +53,8 @@ const SelectPlanScreen = () => {
             <View>
               <Text style={styles.planName}>{item.name}</Text>
               <Text style={styles.planDetails}>
-                {item.days.length} ימי אימון
+                {/* ✅ Fixed: Added null check for item.days */}
+                {item.days?.length || 0} ימי אימון
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={colors.primary} />
@@ -59,7 +62,15 @@ const SelectPlanScreen = () => {
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.centered}>לא נמצאו תוכניות.</Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="fitness-outline"
+              size={64}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.emptyText}>אין תוכניות אימון זמינות</Text>
+            <Text style={styles.emptySubtext}>צור תוכנית חדשה כדי להתחיל</Text>
+          </View>
         }
       />
     </View>
@@ -67,39 +78,85 @@ const SelectPlanScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background || "#f5f5f5" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  headerContainer: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  backButton: { padding: 8 },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    paddingTop: 50,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 12,
+  },
   header: {
     fontSize: 24,
     fontWeight: "bold",
-    textAlign: "right",
+    color: colors.text,
     flex: 1,
-    marginRight: 16,
+    textAlign: "center",
+    marginRight: 40, // Compensate for back button
   },
-  list: { paddingHorizontal: 16 },
+  list: {
+    padding: 16,
+  },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  planName: { fontSize: 18, fontWeight: "600", textAlign: "right" },
+  planName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 4,
+    textAlign: "right",
+  },
   planDetails: {
     fontSize: 14,
-    color: "#666",
+    color: colors.textSecondary,
     textAlign: "right",
-    marginTop: 4,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
 

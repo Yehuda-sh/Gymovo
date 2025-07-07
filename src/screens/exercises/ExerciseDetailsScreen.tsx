@@ -1,4 +1,4 @@
-// src/screens/exercises/ExerciseDetailsScreen.tsx - תוקן
+// src/screens/exercises/ExerciseDetailsScreen.tsx - ✅ Fixed TypeScript Errors
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React from "react";
@@ -62,19 +62,22 @@ const ExerciseDetailsScreen = ({ route, navigation }: Props) => {
         </Text>
       </View>
 
-      {/* שימוש ב-instructions כ-string או array */}
+      {/* ✅ Fixed: שימוש נכון ב-instructions עם type checking */}
       {exercise.instructions && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>הוראות ביצוע</Text>
           {typeof exercise.instructions === "string" ? (
             <Text style={styles.instruction}>{exercise.instructions}</Text>
           ) : Array.isArray(exercise.instructions) ? (
-            exercise.instructions.map((inst: string, index: number) => (
-              <Text
-                key={index}
-                style={styles.instruction}
-              >{`\u2022 ${inst}`}</Text>
-            ))
+            /* ✅ Fixed: הוספת type assertion כדי שTypeScript יבין שזה array */
+            (exercise.instructions as string[]).map(
+              (inst: string, index: number) => (
+                <Text
+                  key={index}
+                  style={styles.instruction}
+                >{`\u2022 ${inst}`}</Text>
+              )
+            )
           ) : (
             <Text style={styles.instruction}>אין הוראות זמינות</Text>
           )}
@@ -91,11 +94,14 @@ const ExerciseDetailsScreen = ({ route, navigation }: Props) => {
                 <Text style={styles.muscleText}>{exercise.targetMuscles}</Text>
               </View>
             ) : Array.isArray(exercise.targetMuscles) ? (
-              exercise.targetMuscles.map((muscle: string, index: number) => (
-                <View key={index} style={styles.muscleTag}>
-                  <Text style={styles.muscleText}>{muscle}</Text>
-                </View>
-              ))
+              /* ✅ Fixed: type assertion לarray */
+              (exercise.targetMuscles as string[]).map(
+                (muscle: string, index: number) => (
+                  <View key={index} style={styles.muscleTag}>
+                    <Text style={styles.muscleText}>{muscle}</Text>
+                  </View>
+                )
+              )
             ) : null}
           </View>
         </View>
@@ -110,11 +116,14 @@ const ExerciseDetailsScreen = ({ route, navigation }: Props) => {
                 <Text style={styles.equipmentText}>{exercise.equipment}</Text>
               </View>
             ) : Array.isArray(exercise.equipment) ? (
-              exercise.equipment.map((item: string, index: number) => (
-                <View key={index} style={styles.equipmentTag}>
-                  <Text style={styles.equipmentText}>{item}</Text>
-                </View>
-              ))
+              /* ✅ Fixed: type assertion לarray */
+              (exercise.equipment as string[]).map(
+                (item: string, index: number) => (
+                  <View key={index} style={styles.equipmentTag}>
+                    <Text style={styles.equipmentText}>{item}</Text>
+                  </View>
+                )
+              )
             ) : null}
           </View>
         </View>
@@ -154,7 +163,7 @@ const getDifficultyColor = (difficulty: string): string => {
     case "intermediate":
       return colors.warning;
     case "advanced":
-      return colors.danger;
+      return colors.error; // ✅ Fixed: שימוש ב-error במקום danger
     default:
       return colors.textMuted;
   }

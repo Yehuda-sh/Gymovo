@@ -1,6 +1,8 @@
-// File: src/screens/workouts/ExercisesPickerScreen.tsx
+// src/screens/workouts/ExercisesPickerScreen.tsx - ✅ Fixed TypeScript Errors
+
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,6 +16,7 @@ import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useExercises } from "../../hooks/useExercises";
+import { usePlanEditorStore } from "../../stores/planEditorStore";
 import { colors } from "../../theme/colors";
 import { Exercise } from "../../types/exercise";
 import { RootStackParamList } from "../../types/navigation";
@@ -21,14 +24,22 @@ import { RootStackParamList } from "../../types/navigation";
 type ScreenRouteProp = RouteProp<RootStackParamList, "ExercisesPicker">;
 
 const ExercisesPickerScreen = () => {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ScreenRouteProp>();
-  const { initiallySelected = [], onDone } = route.params;
+  const { planId, dayId } = route.params;
+
+  // ✅ Fixed: Get plan and day data from the plan editor store instead of route params
+  const { plan, updateDay } = usePlanEditorStore();
 
   const { data: allExercises = [], isLoading, isError } = useExercises();
 
+  // ✅ Fixed: Get initially selected exercises from the day in the plan
+  const currentDay = plan?.days?.find((d) => d.id === dayId);
+  const initiallySelected = currentDay?.exercises || [];
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set(initiallySelected.map((ex) => ex.id))
+    () => new Set(initiallySelected.map((ex: any) => ex.id)) // ✅ Fixed: Added type annotation
   );
 
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
@@ -37,8 +48,10 @@ const ExercisesPickerScreen = () => {
 
   useEffect(() => {
     if (allExercises) {
-      const filtered = allExercises.filter((ex) =>
-        ex.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      const filtered = allExercises.filter(
+        (
+          ex: Exercise // ✅ Fixed: Added type annotation
+        ) => ex.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
       setFilteredExercises(filtered);
     }
@@ -57,10 +70,25 @@ const ExercisesPickerScreen = () => {
   }, []);
 
   const handleDone = () => {
-    const selectedExercises = allExercises.filter((ex) =>
+    if (!currentDay) return;
+
+    const selectedExercises = allExercises.filter((ex: Exercise) =>
       selectedIds.has(ex.id)
     );
-    onDone(selectedExercises);
+
+    // ✅ Fixed: Convert selected exercises to PlanExercises and update the day
+    const updatedDay = {
+      ...currentDay,
+      exercises: selectedExercises.map((ex: Exercise) => ({
+        id: ex.id,
+        name: ex.name,
+        muscleGroup: ex.category || "", // ✅ Fixed: Use category instead of muscleGroup
+        sets: 3, // Default sets
+        reps: 10, // Default reps
+      })),
+    };
+
+    updateDay(dayId, updatedDay);
     navigation.goBack();
   };
 
@@ -74,14 +102,15 @@ const ExercisesPickerScreen = () => {
         >
           <View>
             <Text style={styles.exerciseName}>{item.name}</Text>
-            {item.muscleGroup && (
-              <Text style={styles.muscleGroup}>{item.muscleGroup}</Text>
+            {/* ✅ Fixed: Use category instead of muscleGroup */}
+            {item.category && (
+              <Text style={styles.muscleGroup}>{item.category}</Text>
             )}
           </View>
           <Ionicons
             name={isSelected ? "checkbox" : "square-outline"}
             size={24}
-            color={isSelected ? colors.primary : "#ccc"}
+            color={isSelected ? colors.primary : colors.textSecondary}
           />
         </TouchableOpacity>
       );
@@ -90,40 +119,84 @@ const ExercisesPickerScreen = () => {
   );
 
   if (isLoading) {
-    return <ActivityIndicator size="large" style={styles.centered} />;
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>טוען תרגילים...</Text>
+      </View>
+    );
   }
+
   if (isError) {
-    return <Text style={styles.centered}>שגיאה בטעינת התרגילים מהשרת.</Text>;
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>שגיאה בטעינת התרגילים</Text>
+        <Button title="נסה שוב" onPress={() => navigation.goBack()} />
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerButton}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>בחר תרגילים</Text>
+        <TouchableOpacity onPress={handleDone} style={styles.headerButton}>
+          <Text style={styles.doneText}>סיום</Text>
+        </TouchableOpacity>
       </View>
-      <Input
-        placeholder="חפש תרגיל..."
-        value={searchTerm}
-        onChangeText={setSearchTerm}
-        iconName="search"
-        style={styles.searchInput}
-      />
 
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Input
+          placeholder="חיפוש תרגילים..."
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          iconName="search-outline"
+        />
+      </View>
+
+      {/* Selected count */}
+      <View style={styles.selectedCountContainer}>
+        <Text style={styles.selectedCountText}>
+          נבחרו {selectedIds.size} תרגילים
+        </Text>
+      </View>
+
+      {/* Exercise list */}
       <FlatList
         data={filteredExercises}
-        renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        extraData={selectedIds}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>לא נמצאו תרגילים</Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="fitness-outline"
+              size={64}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.emptyText}>
+              {searchTerm ? "לא נמצאו תרגילים" : "טוען תרגילים..."}
+            </Text>
+          </View>
         }
       />
 
+      {/* Footer with action button */}
       <View style={styles.footer}>
         <Button
-          title={`אשר בחירה (${selectedIds.size})`}
+          title={`הוסף ${selectedIds.size} תרגילים`}
           onPress={handleDone}
+          disabled={selectedIds.size === 0}
+          style={styles.addButton}
         />
       </View>
     </View>
@@ -131,45 +204,128 @@ const ExercisesPickerScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { paddingHorizontal: 16, paddingTop: 60, paddingBottom: 8 },
-  headerTitle: { fontSize: 32, fontWeight: "bold", textAlign: "right" },
-  searchInput: { margin: 16 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    flexDirection: "row-reverse",
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+
+  // Header
+  header: {
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    padding: 16,
+    paddingTop: 50,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerButton: {
+    padding: 8,
+    minWidth: 50,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.text,
+    textAlign: "center",
+    flex: 1,
+  },
+  doneText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  // Search
+  searchContainer: {
+    padding: 16,
+    backgroundColor: colors.surface,
+  },
+
+  // Selected count
+  selectedCountContainer: {
+    padding: 12,
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+  },
+  selectedCountText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  // List
+  list: {
+    padding: 16,
+  },
+  card: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
     borderWidth: 2,
     borderColor: "transparent",
   },
   cardSelected: {
     borderColor: colors.primary,
-    backgroundColor: "#eef4fc",
+    backgroundColor: colors.primary + "10",
   },
-  exerciseName: { fontSize: 16, fontWeight: "500", textAlign: "right" },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 4,
+    textAlign: "right",
+  },
   muscleGroup: {
     fontSize: 14,
-    color: "#888",
+    color: colors.textSecondary,
     textAlign: "right",
-    marginTop: 2,
   },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    backgroundColor: "#fff",
+
+  // Empty state
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
   },
   emptyText: {
-    textAlign: "center",
-    marginTop: 40,
     fontSize: 16,
-    color: "#888",
+    color: colors.textSecondary,
+    marginTop: 16,
+    textAlign: "center",
+  },
+
+  // Footer
+  footer: {
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  addButton: {
+    marginVertical: 0,
   },
 });
 
