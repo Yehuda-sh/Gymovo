@@ -1,4 +1,4 @@
-// src/screens/auth/WelcomeScreen.tsx - גרסה מתוקנת ללא שגיאות
+// src/screens/auth/WelcomeScreen.tsx - ✅ מעודכן לשימוש בקובץ demoUsers המרכזי
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -19,41 +19,11 @@ import { clearAllData } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { RootStackParamList } from "../../types/navigation";
 import { User } from "../../types/user";
+import { demoUsers, getDemoUserById } from "../../constants/demoUsers"; // ✅ ייבוא מהקובץ המרכזי
 
-const { width } = Dimensions.get("window"); // ✅ הסרת height שלא בשימוש
+const { width } = Dimensions.get("window");
 
 type Props = NativeStackScreenProps<RootStackParamList, "Welcome">;
-
-// ✅ נתוני דמו מקומיים (פתרון זמני)
-const mockDemoUsers: User[] = [
-  {
-    id: "demo-user-avi",
-    email: "avi@gymovo.app",
-    name: "אבי כהן",
-    age: 28,
-    experience: "intermediate",
-    goals: ["muscle_gain", "strength"],
-    joinedAt: "2024-10-01T00:00:00Z",
-  },
-  {
-    id: "demo-user-maya",
-    email: "maya@gymovo.app",
-    name: "מאיה לוי",
-    age: 32,
-    experience: "advanced",
-    goals: ["weight_loss", "endurance"],
-    joinedAt: "2024-09-15T00:00:00Z",
-  },
-  {
-    id: "demo-user-yoni",
-    email: "yoni@gymovo.app",
-    name: "יוני רוזן",
-    age: 24,
-    experience: "beginner",
-    goals: ["general_fitness"],
-    joinedAt: "2024-11-01T00:00:00Z",
-  },
-];
 
 const WelcomeScreen = ({ navigation }: Props) => {
   const becomeGuest = useUserStore((state: UserState) => state.becomeGuest);
@@ -66,63 +36,49 @@ const WelcomeScreen = ({ navigation }: Props) => {
   const logoScale = useRef(new Animated.Value(0.2)).current;
   const logoRotate = useRef(new Animated.Value(0)).current;
   const glowPulse = useRef(new Animated.Value(0.5)).current;
-  const titleSlide = useRef(new Animated.Value(-50)).current;
-  const subtitleSlide = useRef(new Animated.Value(50)).current;
+  const titleSlide = useRef(new Animated.Value(50)).current;
+  const subtitleSlide = useRef(new Animated.Value(30)).current;
   const buttonsSlide = useRef(new Animated.Value(100)).current;
   const particleFloat = useRef(new Animated.Value(0)).current;
 
-  // ✅ פונקציית אנימציה מובקת עם useCallback
+  // 🎬 הפעלת אנימציות
   const startAnimations = useCallback(() => {
-    // אנימציית כניסה קינמטית מקצועית
-    Animated.sequence([
-      // Phase 1: Logo Entrance
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(logoScale, {
-          toValue: 1,
-          tension: 100,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoRotate, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ]),
-
-      // Phase 2: Text Slides
-      Animated.parallel([
-        Animated.spring(titleSlide, {
-          toValue: 0,
-          tension: 80,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.spring(subtitleSlide, {
-          toValue: 0,
-          tension: 80,
-          friction: 8,
-          delay: 200,
-          useNativeDriver: true,
-        }),
-      ]),
-
-      // Phase 3: Buttons Entrance
-      Animated.spring(buttonsSlide, {
+    // אנימציה ראשית
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoRotate, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleSlide, {
         toValue: 0,
-        tension: 80,
-        friction: 8,
-        delay: 400,
+        duration: 1200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(subtitleSlide, {
+        toValue: 0,
+        duration: 1400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonsSlide, {
+        toValue: 0,
+        duration: 1600,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // תחילת אנימציות רקע רציפות
+    // אנימציית זוהר מתמשכת
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, {
@@ -138,6 +94,7 @@ const WelcomeScreen = ({ navigation }: Props) => {
       ])
     ).start();
 
+    // אנימציית חלקיקים צפים
     Animated.loop(
       Animated.sequence([
         Animated.timing(particleFloat, {
@@ -161,11 +118,11 @@ const WelcomeScreen = ({ navigation }: Props) => {
     subtitleSlide,
     buttonsSlide,
     particleFloat,
-  ]); // ✅ הוספת כל ה-dependencies
+  ]);
 
   useEffect(() => {
     startAnimations();
-  }, [startAnimations]); // ✅ תיקון dependency array
+  }, [startAnimations]);
 
   // פונקציה לאיפוס הנתונים (למפתחים בלבד)
   const resetAllData = async () => {
@@ -184,12 +141,39 @@ const WelcomeScreen = ({ navigation }: Props) => {
 
   // פונקציה לכניסה כמשתמש דמו
   const handleDemoLogin = async (demoUser: User) => {
-    // ✅ תיקון טיפוס
     try {
       console.log(`🎭 Logging in as demo user: ${demoUser.name}`);
       await loginAsDemoUser(demoUser);
     } catch (error) {
       console.error("Failed to login as demo user:", error);
+    }
+  };
+
+  // פונקציה לקבלת אייקון לפי רמת ניסיון
+  const getExperienceIcon = (experience: string) => {
+    switch (experience) {
+      case "beginner":
+        return "🌱";
+      case "intermediate":
+        return "💪";
+      case "advanced":
+        return "🔥";
+      default:
+        return "💯";
+    }
+  };
+
+  // פונקציה לקבלת תיאור רמת ניסיון
+  const getExperienceLabel = (experience: string) => {
+    switch (experience) {
+      case "beginner":
+        return "מתחיל";
+      case "intermediate":
+        return "בינוני";
+      case "advanced":
+        return "מתקדם";
+      default:
+        return "כללי";
     }
   };
 
@@ -221,26 +205,25 @@ const WelcomeScreen = ({ navigation }: Props) => {
             },
           ]}
         >
-          {[...Array(8)].map((_, index) => (
-            <View
-              key={index}
+          {[...Array(6)].map((_, i) => (
+            <Animated.View
+              key={i}
               style={[
                 styles.particle,
                 {
-                  left: (index * width) / 8,
-                  opacity: 0.6,
-                  transform: [
-                    {
-                      scale: 0.5 + (index % 3) * 0.3,
-                    },
-                  ],
+                  left: `${15 + i * 12}%`,
+                  top: `${20 + (i % 3) * 25}%`,
+                  opacity: fadeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.6],
+                  }),
                 },
               ]}
             />
           ))}
         </Animated.View>
 
-        {/* Content */}
+        {/* Main Content */}
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           {/* Logo Section */}
           <View style={styles.logoSection}>
@@ -268,9 +251,7 @@ const WelcomeScreen = ({ navigation }: Props) => {
                   },
                 ]}
               />
-              <View style={styles.logo}>
-                <Text style={styles.logoText}>💪</Text>
-              </View>
+              <Text style={styles.logo}>💪</Text>
             </Animated.View>
 
             <Animated.View
@@ -282,7 +263,6 @@ const WelcomeScreen = ({ navigation }: Props) => {
               ]}
             >
               <Text style={styles.title}>Gymovo</Text>
-              <View style={styles.accentLine} />
             </Animated.View>
 
             <Animated.View
@@ -340,7 +320,7 @@ const WelcomeScreen = ({ navigation }: Props) => {
 
                 <Text style={styles.demoSectionTitle}>🎭 משתמשי דמו</Text>
                 <View style={styles.devActions}>
-                  {mockDemoUsers.map((demoUser) => (
+                  {demoUsers.map((demoUser) => (
                     <TouchableOpacity
                       key={demoUser.id}
                       style={[
@@ -363,32 +343,29 @@ const WelcomeScreen = ({ navigation }: Props) => {
                       ]}
                       onPress={() => handleDemoLogin(demoUser)}
                     >
-                      <Text style={styles.demoButtonText}>{demoUser.name}</Text>
+                      <Text style={styles.demoButtonText}>
+                        {getExperienceIcon(demoUser.experience || "beginner")}{" "}
+                        {demoUser.name}
+                      </Text>
                       <Text style={styles.demoButtonSubtext}>
-                        {demoUser.experience === "beginner"
-                          ? "מתחיל"
-                          : demoUser.experience === "intermediate"
-                          ? "בינוני"
-                          : "מתקדם"}
+                        {getExperienceLabel(demoUser.experience || "beginner")}
+                      </Text>
+                      <Text style={styles.demoButtonDetails}>
+                        {demoUser.stats?.workoutsCount || 0} אימונים •{" "}
+                        {demoUser.stats?.streakDays || 0} ימי רצף
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
+                {/* כפתור איפוס נתונים */}
                 <TouchableOpacity
-                  style={[
-                    styles.resetButton,
-                    {
-                      backgroundColor: "rgba(239, 68, 68, 0.2)",
-                      borderColor: "#ef4444",
-                      borderWidth: 1,
-                      marginTop: 8,
-                    },
-                  ]}
+                  style={styles.resetButton}
                   onPress={resetAllData}
                 >
-                  <Text style={styles.demoButtonText}>🗑️ איפוס נתונים</Text>
-                  <Text style={styles.demoButtonSubtext}>מחק הכל ורענן</Text>
+                  <Text style={styles.resetButtonText}>
+                    🗑️ איפוס כל הנתונים
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -406,96 +383,85 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     flex: 1,
-    justifyContent: "center",
+    width: "100%",
+    height: "100%",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
   },
   particleContainer: {
     ...StyleSheet.absoluteFillObject,
+    pointerEvents: "none",
   },
   particle: {
     position: "absolute",
-    width: 4,
-    height: 4,
-    backgroundColor: "#00ff88",
-    borderRadius: 2,
-    top: "20%",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#3B82F6",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 48,
-    justifyContent: "space-between",
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   logoSection: {
     alignItems: "center",
     marginTop: 60,
   },
   logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 32,
+    position: "relative",
+    marginBottom: 30,
   },
   logoGlow: {
     position: "absolute",
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "#00ff88",
-    shadowColor: "#00ff88",
+    backgroundColor: "#3B82F6",
+    top: -10,
+    left: -10,
+    shadowColor: "#3B82F6",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.5,
     shadowRadius: 20,
-    elevation: 10,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(0, 255, 136, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#00ff88",
-  },
-  logoText: {
-    fontSize: 36,
+    fontSize: 100,
+    textAlign: "center",
   },
   titleContainer: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 42,
-    fontWeight: "bold",
-    color: "#ffffff",
+    fontSize: 48,
+    fontWeight: "800",
+    color: "#FFFFFF",
     textAlign: "center",
-    marginBottom: 8,
-    fontFamily: Platform.OS === "ios" ? "Futura" : "sans-serif-condensed",
-  },
-  accentLine: {
-    width: 60,
-    height: 3,
-    backgroundColor: "#00ff88",
-    shadowColor: "#00ff88",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 5,
-    elevation: 3,
+    letterSpacing: 2,
+    textShadowColor: "rgba(59, 130, 246, 0.5)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   subtitleContainer: {
     alignItems: "center",
   },
   subtitle: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 18,
+    color: "#94A3B8",
     textAlign: "center",
+    fontWeight: "500",
+    letterSpacing: 0.5,
   },
   spacer: {
     flex: 1,
-    minHeight: 40,
   },
   actionsSection: {
     gap: 16,
@@ -504,66 +470,65 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: "#00ff88",
-    borderRadius: 12,
-    paddingVertical: 18,
-    shadowColor: "#00ff88",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#3B82F6",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 8,
   },
   secondaryButton: {
-    backgroundColor: "transparent",
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 18,
+    height: 56,
+    borderRadius: 16,
+    borderColor: "#3B82F6",
+    borderWidth: 2,
   },
   guestButton: {
-    backgroundColor: "transparent",
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    borderWidth: 1,
+    height: 48,
     borderRadius: 12,
-    paddingVertical: 16,
+    borderColor: "#64748B",
+    borderWidth: 1,
+    backgroundColor: "rgba(100, 116, 139, 0.1)",
   },
+  // Dev Panel Styles
   devPanel: {
-    marginTop: 24,
+    marginTop: 20,
+    padding: 16,
     backgroundColor: "rgba(0, 0, 0, 0.8)",
     borderRadius: 12,
-    padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: "#374151",
   },
   devHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 12,
     gap: 8,
   },
   devIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#00ff88",
+    backgroundColor: "#10B981",
   },
   devTitle: {
-    color: "#00ff88",
+    color: "#10B981",
     fontSize: 12,
-    fontWeight: "bold",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontWeight: "700",
+    letterSpacing: 1,
   },
   demoSectionTitle: {
-    color: "#fff",
+    color: "#F59E0B",
     fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 12,
+    fontWeight: "600",
     textAlign: "center",
+    marginBottom: 12,
   },
   devActions: {
     gap: 8,
-    marginBottom: 12,
   },
   devButton: {
     paddingVertical: 12,
@@ -572,22 +537,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   demoButtonText: {
-    color: "#fff",
-    fontSize: 14,
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "600",
-    textAlign: "center",
+    marginBottom: 2,
   },
   demoButtonSubtext: {
-    color: "rgba(255, 255, 255, 0.7)",
+    color: "#94A3B8",
     fontSize: 12,
-    marginTop: 2,
-    textAlign: "center",
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  demoButtonDetails: {
+    color: "#64748B",
+    fontSize: 11,
+    fontWeight: "400",
   },
   resetButton: {
-    paddingVertical: 12,
+    marginTop: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    backgroundColor: "rgba(239, 68, 68, 0.2)",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#ef4444",
     alignItems: "center",
+  },
+  resetButtonText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
 
