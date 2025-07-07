@@ -1,4 +1,4 @@
-// File: src/constants/demoPlans.ts
+// src/constants/demoPlans.ts - תיקון מהיר להוספת שדות נדרשים
 import { Plan } from "../types/plan";
 
 export const demoPlans: Plan[] = [
@@ -7,6 +7,12 @@ export const demoPlans: Plan[] = [
     name: "תוכנית כוח - PPL",
     description: "תוכנית קלאסית בחלוקת Push, Pull, Legs לבניית כוח ומסה.",
     creator: "demo",
+
+    // ✅ שדות נדרשים שנוספו
+    createdAt: "2024-01-01T10:00:00.000Z",
+    updatedAt: "2024-01-01T10:00:00.000Z",
+    userId: "demo_user",
+
     days: [
       {
         id: "day_ppl_push",
@@ -115,74 +121,183 @@ export const demoPlans: Plan[] = [
   {
     id: "plan_split_2",
     name: "פיצול עליון/תחתון (Upper/Lower)",
-    description: "תוכנית פופולרית לחלוקת אימונים, מתאימה ל-4 אימונים בשבוע.",
+    description: "תוכנית פופולרית לחלוקת אימונים, מתאימה ל-4 אימונים בשבוع.",
     creator: "demo",
+
+    // ✅ שדות נדרשים שנוספו
+    createdAt: "2024-01-02T10:00:00.000Z",
+    updatedAt: "2024-01-02T10:00:00.000Z",
+    userId: "demo_user",
+
     days: [
       {
-        id: "day_split_upper_a",
-        name: "אימון עליון A",
+        id: "day_upper_1",
+        name: "יום א' - חלק עליון",
         exercises: [
           {
-            id: "ex_bench_press_2",
-            name: "לחיצת חזה",
+            id: "ex_pushups",
+            name: "שכיבות סמיכה",
             muscleGroup: "חזה",
-            sets: 4,
-            reps: 8,
+            sets: 3,
+            reps: 12,
           },
           {
-            id: "ex_seated_row",
-            name: "חתירה בישיבה",
+            id: "ex_db_row",
+            name: "חתירה עם משקולת יחידה",
             muscleGroup: "גב",
-            sets: 4,
+            sets: 3,
             reps: 10,
           },
           {
-            id: "ex_shoulder_press_2",
-            name: "לחיצת כתפיים",
+            id: "ex_db_shoulder_press",
+            name: "לחיצת כתפיים במשקולות",
             muscleGroup: "כתפיים",
             sets: 3,
             reps: 10,
           },
           {
-            id: "ex_bicep_curl_2",
-            name: "כפיפת מרפקים",
-            muscleGroup: "יד קדמית",
+            id: "ex_assisted_pullups",
+            name: "מתח בעזרה",
+            muscleGroup: "גב",
             sets: 3,
+            reps: 8,
+          },
+          {
+            id: "ex_db_bicep_curl",
+            name: "כפיפת מרפקים במשקולות",
+            muscleGroup: "יד קדמית",
+            sets: 2,
             reps: 12,
+          },
+          {
+            id: "ex_tricep_dips",
+            name: "דיפים על ספסל",
+            muscleGroup: "יד אחורית",
+            sets: 2,
+            reps: 10,
           },
         ],
       },
       {
-        id: "day_split_lower_a",
-        name: "אימון תחתון A",
+        id: "day_lower_1",
+        name: "יום ב' - חלק תחתון",
         exercises: [
           {
-            id: "ex_squat_2",
-            name: "סקוואט",
-            muscleGroup: "רגליים",
-            sets: 4,
-            reps: 8,
-          },
-          {
-            id: "ex_leg_press_2",
-            name: "לחיצת רגליים",
-            muscleGroup: "רגליים",
-            sets: 4,
-            reps: 10,
-          },
-          {
-            id: "ex_leg_extension",
-            name: "פשיטת ברכיים",
+            id: "ex_bodyweight_squat",
+            name: "סקוואט במשקל גוף",
             muscleGroup: "רגליים",
             sets: 3,
             reps: 15,
           },
           {
-            id: "ex_calf_raises_2",
-            name: "הרמות עקב",
+            id: "ex_lunges",
+            name: "פילטיס (צעדי אימון)",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 12,
+          },
+          {
+            id: "ex_glute_bridge",
+            name: "הרמת ישבן בשכיבה",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 15,
+          },
+          {
+            id: "ex_wall_sit",
+            name: "ישיבה על קיר",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 30,
+          },
+          {
+            id: "ex_standing_calf_raises",
+            name: "הרמות עקבים בעמידה",
             muscleGroup: "שוקיים",
             sets: 3,
             reps: 20,
+          },
+        ],
+      },
+      {
+        id: "day_upper_2",
+        name: "יום ג' - חלק עליון (מגוון)",
+        exercises: [
+          {
+            id: "ex_incline_pushups",
+            name: "שכיבות סמיכה בשיפוע",
+            muscleGroup: "חזה",
+            sets: 3,
+            reps: 10,
+          },
+          {
+            id: "ex_db_chest_fly",
+            name: "פתיחות חזה במשקולות",
+            muscleGroup: "חזה",
+            sets: 3,
+            reps: 12,
+          },
+          {
+            id: "ex_reverse_fly",
+            name: "פתיחות אחוריות",
+            muscleGroup: "גב",
+            sets: 3,
+            reps: 12,
+          },
+          {
+            id: "ex_lateral_raises_light",
+            name: "הרמות צד קלות",
+            muscleGroup: "כתפיים",
+            sets: 3,
+            reps: 15,
+          },
+          {
+            id: "ex_concentration_curl",
+            name: "כפיפת ריכוז",
+            muscleGroup: "יד קדמית",
+            sets: 2,
+            reps: 10,
+          },
+        ],
+      },
+      {
+        id: "day_lower_2",
+        name: "יום ד' - חלק תחתון (מגוון)",
+        exercises: [
+          {
+            id: "ex_sumo_squat",
+            name: "סקוואט סומו",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 12,
+          },
+          {
+            id: "ex_reverse_lunges",
+            name: "פילטיס לאחור",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 10,
+          },
+          {
+            id: "ex_single_leg_deadlift",
+            name: "דדליפט על רגל אחת",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 8,
+          },
+          {
+            id: "ex_squat_pulses",
+            name: "דופקי סקוואט",
+            muscleGroup: "רגליים",
+            sets: 3,
+            reps: 20,
+          },
+          {
+            id: "ex_seated_calf_raises",
+            name: "הרמות עקבים בישיבה",
+            muscleGroup: "שוקיים",
+            sets: 3,
+            reps: 25,
           },
         ],
       },
