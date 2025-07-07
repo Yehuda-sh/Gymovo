@@ -1,11 +1,11 @@
-// src/components/common/ErrorBoundary.tsx - גרסה מתקדמת עם retry mechanism - מתוקן
+// src/components/common/ErrorBoundary.tsx - Error Boundary מתקדם
 
 import { Ionicons } from "@expo/vector-icons";
-import React, { Component, ReactNode } from "react";
+import * as Haptics from "expo-haptics";
+import React, { Component, ErrorInfo, ReactNode } from "react";
 import {
   Alert,
-  Linking,
-  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,24 +15,25 @@ import { colors } from "../../theme/colors";
 
 interface Props {
   children: ReactNode;
-  onError?: (error: Error, errorInfo: any) => void;
-  showDetails?: boolean;
   fallback?: ReactNode;
-  maxRetries?: number;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  resetKeys?: (string | number)[];
+  resetOnPropsChange?: boolean;
+  isolate?: boolean; // אם true, לא יפיל את כל האפליקציה
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: any;
+  errorInfo: ErrorInfo | null;
   errorId: string | null;
   retryCount: number;
+  showDetails: boolean;
   isRetrying: boolean;
 }
 
-// 🛡️ Error Boundary מתקדם עם retry mechanism
 export class ErrorBoundary extends Component<Props, State> {
-  private retryTimeouts: NodeJS.Timeout[] = [];
+  private resetTimeoutId: number | null = null;
 
   constructor(props: Props) {
     super(props);
@@ -42,79 +43,96 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo: null,
       errorId: null,
       retryCount: 0,
+      showDetails: false,
       isRetrying: false,
     };
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    // יצירת מזהה שגיאה ייחודי
-    const errorId = `ERR_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-
+    // עדכון state כדי שהרינדור הבא יציג fallback UI
     return {
       hasError: true,
       error,
-      errorId,
+      errorId: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error("🚨 ErrorBoundary caught an error:", error);
-    console.error("📋 Error info:", errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Log השגיאה
+    console.error("🚨 ErrorBoundary caught an error:", error, errorInfo);
 
+    // עדכון state עם פרטי השגיאה
     this.setState({
       errorInfo,
     });
+
+    // Haptic feedback
+    if (this.props.isolate !== true) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
 
     // קריאה לפונקציית callback אם קיימת
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
 
-    // בעתיד: שליחה לשירות מעקב שגיאות
-    this.logErrorToService(error, errorInfo);
+    // דיווח לשירות analytics (בעתיד)
+    if (__DEV__) {
+      console.group("🔍 Error Details:");
+      console.error("Error:", error);
+      console.error("Component Stack:", errorInfo.componentStack);
+      console.error("Error Boundary Props:", this.props);
+      console.groupEnd();
+    }
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    const { resetKeys, resetOnPropsChange } = this.props;
+    const { hasError } = this.state;
+
+    // בדיקה אם צריך לאפס על פי שינוי ב-resetKeys
+    if (hasError && prevProps.resetKeys !== resetKeys) {
+      if (resetKeys?.some((key, i) => prevProps.resetKeys?.[i] !== key)) {
+        this.resetErrorBoundary();
+      }
+    }
+
+    // איפוס אוטומטי על שינוי בProps
+    if (hasError && resetOnPropsChange && prevProps !== this.props) {
+      this.resetErrorBoundary();
+    }
   }
 
   componentWillUnmount() {
-    // ניקוי timers
-    this.retryTimeouts.forEach((timeout) => clearTimeout(timeout));
+    if (this.resetTimeoutId) {
+      clearTimeout(this.resetTimeoutId);
+    }
   }
 
-  // 📊 לוג שגיאות לשירות חיצוני (בעתיד)
-  private logErrorToService = (error: Error, errorInfo: any) => {
-    try {
-      // כאן אפשר להוסיף:
-      // - Sentry.captureException(error, { extra: errorInfo });
-      // - Analytics.trackError('error_boundary_catch', { error: error.message });
-      // - Firebase Crashlytics
-
-      if (__DEV__) {
-        console.log("📊 Error logged (dev mode only):", {
-          message: error.message,
-          stack: error.stack,
-          componentStack: errorInfo.componentStack,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (loggingError) {
-      console.error("Failed to log error:", loggingError);
+  resetErrorBoundary = () => {
+    if (this.resetTimeoutId) {
+      clearTimeout(this.resetTimeoutId);
     }
+
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: null,
+      showDetails: false,
+      isRetrying: false,
+    });
   };
 
-  // 🔄 ניסיון חוזר חכם
-  private handleRetry = () => {
-    const { maxRetries = 3 } = this.props;
+  handleRetry = () => {
     const { retryCount } = this.state;
 
-    if (retryCount >= maxRetries) {
+    // הגבלת מספר ניסיונות
+    if (retryCount >= 3) {
       Alert.alert(
-        "מגבלת ניסיונות",
-        `מספר הניסיונות המקסימלי (${maxRetries}) הושג. אנא רענן את האפליקציה או פנה לתמיכה.`,
-        [
-          { text: "ביטול", style: "cancel" },
-          { text: "פנה לתמיכה", onPress: this.handleContactSupport },
-        ]
+        "יותר מדי ניסיונות",
+        "האפליקציה נתקלת בשגיאה חוזרת. אנא צור קשר עם התמיכה.",
+        [{ text: "הבנתי", style: "default" }]
       );
       return;
     }
@@ -124,145 +142,79 @@ export class ErrorBoundary extends Component<Props, State> {
       retryCount: retryCount + 1,
     });
 
-    // דיליי מתקדם - כל ניסיון לוקח יותר זמן
-    const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const timeout = setTimeout(() => {
-      this.setState({
-        hasError: false,
-        error: null,
-        errorInfo: null,
-        errorId: null,
-        isRetrying: false,
-      });
-    }, delay);
-
-    this.retryTimeouts.push(timeout);
+    // דחיית האיפוס כדי לתת למשתמש לראות שמשהו קורה
+    this.resetTimeoutId = setTimeout(() => {
+      this.resetErrorBoundary();
+    }, 500) as any;
   };
 
-  // 📧 פנייה לתמיכה
-  private handleContactSupport = () => {
-    const { error, errorId } = this.state;
-
-    const subject = encodeURIComponent("שגיאה באפליקציית Gymovo");
-    const body = encodeURIComponent(`
-שלום,
-
-נתקלתי בשגיאה באפליקציה:
-
-מזהה שגיאה: ${errorId}
-הודעת השגיאה: ${error?.message || "לא זמין"}
-פלטפורמה: ${Platform.OS} ${Platform.Version}
-זמן: ${new Date().toLocaleString("he-IL")}
-
-תיאור נוסף:
-[נא תאר מה עשית לפני השגיאה]
-    `);
-
-    const emailUrl = `mailto:support@gymovo.com?subject=${subject}&body=${body}`;
-
-    Linking.canOpenURL(emailUrl).then((supported) => {
-      if (supported) {
-        Linking.openURL(emailUrl);
-      } else {
-        Alert.alert(
-          "לא ניתן לפתוח אימייל",
-          "אנא פנה אלינו בכתובת: support@gymovo.com"
-        );
-      }
-    });
-  };
-
-  // 🐛 דיווח על בעיה מתקדם
-  private handleReportError = () => {
-    const { error, errorId, errorInfo } = this.state;
-
-    Alert.alert("דווח על שגיאה", "תרצה לשלוח דוח שגיאה לצוות הפיתוח?", [
-      { text: "ביטול", style: "cancel" },
-      {
-        text: "שלח דוח",
-        onPress: () => {
-          // כאן אפשר להוסיף שליחה אוטומטית לשירות
-          console.log("📤 Error report sent:", {
-            errorId,
-            message: error?.message,
-            stack: error?.stack,
-            componentStack: errorInfo?.componentStack,
-          });
-
-          Alert.alert("תודה!", "הדוח נשלח בהצלחה");
-        },
-      },
-    ]);
-  };
-
-  // 🔄 איפוס מלא
-  private handleFullReset = () => {
-    Alert.alert("איפוס מלא", "זה יאפס את כל הנתונים המקומיים. האם אתה בטוח?", [
-      { text: "ביטול", style: "cancel" },
-      {
-        text: "אפס",
-        style: "destructive",
-        onPress: () => {
-          // כאן אפשר להוסיף:
-          // - AsyncStorage.clear()
-          // - Reset stores
-          // - Navigate to welcome screen
-          this.setState({
-            hasError: false,
-            error: null,
-            errorInfo: null,
-            errorId: null,
-            retryCount: 0,
-            isRetrying: false,
-          });
-        },
-      },
-    ]);
+  toggleDetails = () => {
+    this.setState((prevState) => ({
+      showDetails: !prevState.showDetails,
+    }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   render() {
-    const { children, fallback, showDetails = false } = this.props;
-    const { hasError, error, errorId, retryCount, isRetrying, errorInfo } =
-      this.state;
+    const {
+      hasError,
+      error,
+      errorInfo,
+      errorId,
+      retryCount,
+      showDetails,
+      isRetrying,
+    } = this.state;
+    const { children, fallback, isolate } = this.props;
 
-    // אם יש fallback מותאם אישית
-    if (hasError && fallback) {
-      return fallback;
-    }
-
-    // מסך שגיאה מקצועי
     if (hasError) {
+      // אם יש fallback מותאם אישית, השתמש בו
+      if (fallback) {
+        return fallback;
+      }
+
+      // UI ברירת מחדל לשגיאה
       return (
-        <View style={styles.container}>
-          <View style={styles.content}>
+        <View style={[styles.container, isolate && styles.isolatedContainer]}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* אייקון שגיאה */}
             <View style={styles.iconContainer}>
               <Ionicons
-                name="warning"
-                size={64}
-                color={colors.warning}
-                style={styles.icon}
+                name="warning-outline"
+                size={isolate ? 32 : 48}
+                color={colors.error}
               />
             </View>
 
-            {/* כותרת ותיאור */}
-            <Text style={styles.title}>משהו השתבש</Text>
-            <Text style={styles.subtitle}>
+            {/* כותרת השגיאה */}
+            <Text style={[styles.title, isolate && styles.isolatedTitle]}>
+              {isolate ? "שגיאה ברכיב" : "אופס! משהו השתבש"}
+            </Text>
+
+            {/* תיאור השגיאה */}
+            <Text style={[styles.message, isolate && styles.isolatedMessage]}>
               {retryCount > 0
                 ? `אירעה שגיאה חוזרת (ניסיון ${retryCount})`
+                : isolate
+                ? "רכיב זה נתקל בשגיאה."
                 : "אירעה שגיאה בלתי צפויה. אנא נסה שוב."}
             </Text>
 
             {/* מזהה שגיאה */}
-            {errorId && (
+            {errorId && !isolate && (
               <Text style={styles.errorId}>
                 מזהה שגיאה: {errorId.slice(-12)}
               </Text>
             )}
 
             {/* פרטי שגיאה למפתחים */}
-            {showDetails && error && (
+            {showDetails && error && !isolate && (
               <View style={styles.errorDetails}>
                 <Text style={styles.errorTitle}>פרטי השגיאה (למפתחים):</Text>
                 <Text style={styles.errorText} numberOfLines={6}>
@@ -283,61 +235,48 @@ export class ErrorBoundary extends Component<Props, State> {
                 style={[
                   styles.retryButton,
                   isRetrying && styles.retryingButton,
+                  isolate && styles.isolatedButton,
                 ]}
                 onPress={this.handleRetry}
                 disabled={isRetrying}
               >
                 {isRetrying ? (
-                  <>
-                    <Ionicons name="time" size={20} color="#fff" />
-                    <Text style={styles.retryText}>מנסה שוב...</Text>
-                  </>
+                  <Text style={styles.retryingText}>מנסה שוב...</Text>
                 ) : (
                   <>
-                    <Ionicons name="refresh" size={20} color="#fff" />
-                    <Text style={styles.retryText}>
-                      נסה שוב {retryCount > 0 && `(${retryCount})`}
-                    </Text>
+                    <Ionicons name="refresh" size={20} color="#ffffff" />
+                    <Text style={styles.retryText}>נסה שוב</Text>
                   </>
                 )}
               </TouchableOpacity>
 
-              {/* כפתור דיווח */}
-              <TouchableOpacity
-                style={styles.reportButton}
-                onPress={this.handleReportError}
-              >
-                <Ionicons name="bug-outline" size={20} color="#cccccc" />
-                <Text style={styles.reportText}>דווח על בעיה</Text>
-              </TouchableOpacity>
-
-              {/* כפתור פנייה לתמיכה */}
-              {retryCount >= 2 && (
+              {/* כפתור הצגת פרטים (רק במצב לא-isolate) */}
+              {!isolate && (
                 <TouchableOpacity
-                  style={styles.supportButton}
-                  onPress={this.handleContactSupport}
+                  style={styles.detailsButton}
+                  onPress={this.toggleDetails}
                 >
+                  <Text style={styles.detailsText}>
+                    {showDetails ? "הסתר פרטים" : "הצג פרטים"}
+                  </Text>
                   <Ionicons
-                    name="mail-outline"
-                    size={20}
+                    name={showDetails ? "chevron-up" : "chevron-down"}
+                    size={16}
                     color={colors.primary}
                   />
-                  <Text style={styles.supportText}>פנה לתמיכה</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* כפתור איפוס מלא - רק במקרים קיצוניים */}
-              {retryCount >= 3 && (
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={this.handleFullReset}
-                >
-                  <Ionicons name="refresh-circle" size={20} color="#ff3366" />
-                  <Text style={styles.resetText}>איפוס מלא</Text>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+
+            {/* מידע נוסף למפתחים */}
+            {__DEV__ && !isolate && (
+              <View style={styles.devInfo}>
+                <Text style={styles.devInfoText}>
+                  🔧 מצב פיתוח: ראה console לפרטים נוספים
+                </Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
       );
     }
@@ -346,151 +285,171 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-// 🎨 Styles מעודכנים עם צבעים קבועים
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  isolatedContainer: {
+    minHeight: 120,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    margin: 8,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#0a0a0a", // צבע קבוע
-    padding: 20,
-  },
-  content: {
-    alignItems: "center",
-    maxWidth: 340,
-    width: "100%",
+    padding: 24,
   },
   iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: `${colors.warning}20`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  icon: {
-    opacity: 0.8,
+    marginBottom: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#ffffff", // צבע קבוע
+    color: colors.text,
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  subtitle: {
+  isolatedTitle: {
+    fontSize: 18,
+    marginBottom: 6,
+  },
+  message: {
     fontSize: 16,
-    color: "#cccccc", // צבע קבוע
+    color: colors.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  isolatedMessage: {
+    fontSize: 14,
+    marginBottom: 12,
   },
   errorId: {
     fontSize: 12,
-    color: "#888888", // צבע קבוע
-    textAlign: "center",
-    marginBottom: 24,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    backgroundColor: "#262626", // צבע קבוע
+    color: colors.textSecondary,
+    fontFamily: "monospace",
+    marginBottom: 16,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
+    backgroundColor: colors.surface,
     borderRadius: 6,
   },
   errorDetails: {
-    backgroundColor: "#262626", // צבע קבוע
-    padding: 16,
+    backgroundColor: colors.surface,
     borderRadius: 8,
-    marginBottom: 24,
+    padding: 16,
+    marginBottom: 20,
     width: "100%",
-    borderLeftWidth: 3,
-    borderLeftColor: colors.warning,
+    maxHeight: 200,
   },
   errorTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#ffffff", // צבע קבוע
+    color: colors.text,
     marginBottom: 8,
   },
   errorText: {
     fontSize: 12,
-    color: "#cccccc", // צבע קבוע
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: colors.textSecondary,
+    fontFamily: "monospace",
     lineHeight: 16,
   },
   actions: {
-    width: "100%",
+    flexDirection: "column",
+    alignItems: "center",
     gap: 12,
   },
   retryButton: {
+    backgroundColor: colors.primary,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
     gap: 8,
+  },
+  isolatedButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   retryingButton: {
-    backgroundColor: "#888888", // צבע קבוע
+    backgroundColor: colors.textSecondary,
   },
   retryText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: "bold",
-  },
-  reportButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#333333", // צבע קבוע
-    gap: 8,
-  },
-  reportText: {
-    color: "#cccccc", // צבע קבוע
-    fontSize: 14,
     fontWeight: "600",
   },
-  supportButton: {
+  retryingText: {
+    color: "#ffffff",
+    fontSize: 16,
+  },
+  detailsButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: `${colors.primary}10`,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 4,
   },
-  supportText: {
+  detailsText: {
     color: colors.primary,
     fontSize: 14,
-    fontWeight: "600",
   },
-  resetButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ff336610", // צבע קבוע
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+  devInfo: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "rgba(255, 165, 0, 0.1)",
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#ff3366", // צבע קבוע
-    gap: 8,
+    borderColor: "rgba(255, 165, 0, 0.3)",
   },
-  resetText: {
-    color: "#ff3366", // צבע קבוע
-    fontSize: 14,
-    fontWeight: "600",
+  devInfoText: {
+    fontSize: 12,
+    color: "#FF8C00",
+    textAlign: "center",
   },
 });
+
+// Hook לשימוש קל יותר
+export const useErrorBoundary = () => {
+  const [error, setError] = React.useState<Error | null>(null);
+
+  const resetError = React.useCallback(() => {
+    setError(null);
+  }, []);
+
+  const captureError = React.useCallback((error: Error) => {
+    setError(error);
+  }, []);
+
+  React.useEffect(() => {
+    if (error) {
+      throw error;
+    }
+  }, [error]);
+
+  return { captureError, resetError };
+};
+
+// HOC לעטיפת רכיבים
+export const withErrorBoundary = <P extends object>(
+  Component: React.ComponentType<P>,
+  errorBoundaryProps?: Omit<Props, "children">
+) => {
+  const WrappedComponent = (props: P) => (
+    <ErrorBoundary {...errorBoundaryProps}>
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+
+  WrappedComponent.displayName = `withErrorBoundary(${
+    Component.displayName || Component.name
+  })`;
+  return WrappedComponent;
+};
 
 export default ErrorBoundary;

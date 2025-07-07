@@ -1,396 +1,506 @@
-// src/components/common/LoadingSkeleton.tsx - גרסה מעודכנת עם נושא כהה ושיפורים
+// src/components/common/LoadingSkeleton.tsx - Loading Skeletons מתקדמים
 
-import React from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import React, { useEffect, useRef } from "react";
+import {
+  Animated,
+  Dimensions,
+  StyleSheet,
+  View,
+  ViewStyle,
+} from "react-native";
 import { colors } from "../../theme/colors";
-
-interface SkeletonProps {
-  width?: number | string;
-  height?: number | string;
-  borderRadius?: number;
-  style?: any;
-  variant?: "light" | "medium" | "shimmer";
-}
 
 const { width: screenWidth } = Dimensions.get("window");
 
-// 🎨 Base Skeleton component עם אנימציה מתקדמת
-export const SkeletonBox = ({
-  width = "100%",
+interface SkeletonProps {
+  width?: number | string;
+  height?: number;
+  borderRadius?: number;
+  style?: ViewStyle;
+  animated?: boolean;
+  shimmerColors?: string[];
+}
+
+// רכיב Skeleton בסיסי עם אנימציה
+export const Skeleton: React.FC<SkeletonProps> = ({
+  width = 100,
   height = 20,
-  borderRadius = 8,
+  borderRadius = 4,
   style,
-  variant = "shimmer",
-}: SkeletonProps) => {
-  const opacity = useSharedValue(0.3);
-  const translateX = useSharedValue(-200);
+  animated = true,
+  shimmerColors = [
+    colors.surface || "#f0f0f0",
+    colors.border || "#e0e0e0",
+    colors.surface || "#f0f0f0",
+  ],
+}) => {
+  const shimmerAnimation = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
-    if (variant === "shimmer") {
-      // Shimmer effect - גל רץ
-      translateX.value = withRepeat(
-        withSequence(
-          withTiming(screenWidth + 200, { duration: 1200 }),
-          withTiming(-200, { duration: 0 })
-        ),
-        -1,
-        false
-      );
-    } else {
-      // Pulse effect - דפיקה
-      opacity.value = withRepeat(
-        withSequence(
-          withTiming(0.8, { duration: 800 }),
-          withTiming(0.3, { duration: 800 })
-        ),
-        -1,
-        false
-      );
-    }
-  }, [variant]);
+  useEffect(() => {
+    if (!animated) return;
 
-  const animatedStyle = useAnimatedStyle(() => {
-    if (variant === "shimmer") {
-      return {
-        transform: [{ translateX: translateX.value }],
-      };
-    }
-    return {
-      opacity: opacity.value,
+    const shimmer = () => {
+      Animated.sequence([
+        Animated.timing(shimmerAnimation, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(shimmerAnimation, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: false,
+        }),
+      ]).start(() => shimmer());
     };
-  });
 
-  const getSkeletonColor = () => {
-    switch (variant) {
-      case "light":
-        return colors.surface;
-      case "medium":
-        return colors.border;
-      default:
-        return colors.surface;
-    }
-  };
+    shimmer();
+  }, [shimmerAnimation, animated]);
+
+  const backgroundColor = animated
+    ? shimmerAnimation.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: shimmerColors,
+      })
+    : shimmerColors[0];
 
   return (
-    <View
+    <Animated.View
       style={[
-        styles.skeletonContainer,
-        { width, height, borderRadius, backgroundColor: getSkeletonColor() },
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor,
+        },
         style,
       ]}
-    >
-      {variant === "shimmer" && (
-        <Animated.View
-          style={[styles.shimmerGradient, { borderRadius }, animatedStyle]}
-        />
-      )}
-      {variant !== "shimmer" && (
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: getSkeletonColor(), borderRadius },
-            animatedStyle,
-          ]}
-        />
-      )}
-    </View>
+    />
   );
 };
 
-// 🏋️ Skeleton לכרטיס תוכנית אימון - נושא כהה
-export const PlanCardSkeleton = () => (
-  <View style={styles.planCard}>
-    <View style={styles.planHeader}>
-      <View style={styles.planInfo}>
-        <SkeletonBox width="70%" height={20} style={{ marginBottom: 8 }} />
-        <SkeletonBox width="40%" height={14} />
+// Loading Skeleton עבור כרטיס אימון
+export const WorkoutCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
+  style,
+}) => (
+  <View style={[styles.workoutCard, style]}>
+    <View style={styles.workoutCardHeader}>
+      <Skeleton width="60%" height={20} borderRadius={6} />
+      <Skeleton width="25%" height={16} borderRadius={4} />
+    </View>
+
+    <Skeleton
+      width="80%"
+      height={14}
+      borderRadius={4}
+      style={{ marginBottom: 12 }}
+    />
+
+    <View style={styles.workoutCardStats}>
+      <View style={styles.statItem}>
+        <Skeleton width={16} height={16} borderRadius={8} />
+        <Skeleton width={40} height={12} borderRadius={4} />
       </View>
-      <SkeletonBox width={60} height={24} borderRadius={12} />
-    </View>
-
-    <SkeletonBox width="85%" height={16} style={{ marginVertical: 12 }} />
-    <SkeletonBox width="95%" height={16} style={{ marginBottom: 16 }} />
-
-    <View style={styles.planTags}>
-      <SkeletonBox width={60} height={20} borderRadius={10} />
-      <SkeletonBox width={80} height={20} borderRadius={10} />
-      <SkeletonBox width={50} height={20} borderRadius={10} />
-    </View>
-
-    <View style={styles.planActions}>
-      <SkeletonBox width="60%" height={40} borderRadius={8} />
-      <SkeletonBox width={40} height={40} borderRadius={20} />
+      <View style={styles.statItem}>
+        <Skeleton width={16} height={16} borderRadius={8} />
+        <Skeleton width={50} height={12} borderRadius={4} />
+      </View>
+      <View style={styles.statItem}>
+        <Skeleton width={16} height={16} borderRadius={8} />
+        <Skeleton width={30} height={12} borderRadius={4} />
+      </View>
     </View>
   </View>
 );
 
-// 🏃‍♂️ Skeleton לרשימת תרגילים - משופר
-export const ExerciseListSkeleton = () => (
-  <View style={styles.exerciseList}>
-    {[1, 2, 3, 4, 5].map((i) => (
-      <View key={i} style={styles.exerciseItem}>
-        <SkeletonBox width={50} height={50} borderRadius={25} />
+// Loading Skeleton עבור כרטיס תוכנית
+export const PlanCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
+  style,
+}) => (
+  <View style={[styles.planCard, style]}>
+    <View style={styles.planCardHeader}>
+      <View style={styles.planMainInfo}>
+        <Skeleton width="70%" height={20} borderRadius={6} />
+        <Skeleton
+          width="40%"
+          height={14}
+          borderRadius={4}
+          style={{ marginTop: 4 }}
+        />
+      </View>
+      <Skeleton width={60} height={24} borderRadius={12} />
+    </View>
+
+    <Skeleton
+      width="85%"
+      height={14}
+      borderRadius={4}
+      style={{ marginBottom: 16 }}
+    />
+
+    <View style={styles.planCardFooter}>
+      <View style={styles.planTags}>
+        <Skeleton width={50} height={20} borderRadius={10} />
+        <Skeleton width={60} height={20} borderRadius={10} />
+      </View>
+      <Skeleton width={24} height={24} borderRadius={12} />
+    </View>
+  </View>
+);
+
+// Loading Skeleton עבור פרופיל משתמש
+export const UserProfileSkeleton: React.FC<{ style?: ViewStyle }> = ({
+  style,
+}) => (
+  <View style={[styles.userProfile, style]}>
+    <Skeleton width={80} height={80} borderRadius={40} />
+    <View style={styles.userInfo}>
+      <Skeleton width="60%" height={20} borderRadius={6} />
+      <Skeleton
+        width="40%"
+        height={16}
+        borderRadius={4}
+        style={{ marginTop: 8 }}
+      />
+    </View>
+  </View>
+);
+
+// Loading Skeleton עבור סטטיסטיקות
+export const StatsGridSkeleton: React.FC<{
+  columns?: number;
+  style?: ViewStyle;
+}> = ({ columns = 4, style }) => (
+  <View style={[styles.statsGrid, style]}>
+    {Array.from({ length: columns }).map((_, index) => (
+      <View key={index} style={styles.statCard}>
+        <Skeleton
+          width={32}
+          height={32}
+          borderRadius={16}
+          style={{ marginBottom: 8 }}
+        />
+        <Skeleton
+          width="80%"
+          height={16}
+          borderRadius={4}
+          style={{ marginBottom: 4 }}
+        />
+        <Skeleton width="60%" height={12} borderRadius={4} />
+      </View>
+    ))}
+  </View>
+);
+
+// Loading Skeleton עבור רשימת תרגילים
+export const ExerciseListSkeleton: React.FC<{
+  count?: number;
+  style?: ViewStyle;
+}> = ({ count = 5, style }) => (
+  <View style={[styles.exerciseList, style]}>
+    {Array.from({ length: count }).map((_, index) => (
+      <View key={index} style={styles.exerciseItem}>
+        <Skeleton width={50} height={50} borderRadius={8} />
         <View style={styles.exerciseInfo}>
-          <SkeletonBox width="70%" height={18} style={{ marginBottom: 6 }} />
-          <SkeletonBox width="50%" height={14} style={{ marginBottom: 4 }} />
-          <SkeletonBox width="40%" height={12} />
+          <Skeleton width="70%" height={16} borderRadius={4} />
+          <Skeleton
+            width="50%"
+            height={14}
+            borderRadius={4}
+            style={{ marginTop: 6 }}
+          />
+          <Skeleton
+            width="40%"
+            height={12}
+            borderRadius={4}
+            style={{ marginTop: 4 }}
+          />
         </View>
-        <View style={styles.exerciseActions}>
-          <SkeletonBox width={24} height={24} borderRadius={12} />
-        </View>
+        <Skeleton width={24} height={24} borderRadius={12} />
       </View>
     ))}
   </View>
 );
 
-// 📊 Skeleton לסטטיסטיקות בית - מקצועי יותר
-export const HomeStatsSkeleton = () => (
-  <View style={styles.statsGrid}>
-    {[1, 2, 3, 4].map((i) => (
-      <View key={i} style={styles.statCard}>
-        <View style={styles.statHeader}>
-          <SkeletonBox width={32} height={32} borderRadius={16} />
-          <SkeletonBox width={20} height={20} borderRadius={10} />
-        </View>
-        <SkeletonBox width="90%" height={24} style={{ marginBottom: 4 }} />
-        <SkeletonBox width="60%" height={14} />
-      </View>
-    ))}
-  </View>
-);
-
-// 👤 Skeleton לפרופיל משתמש - עיצוב חדש
-export const UserProfileSkeleton = () => (
-  <View style={styles.profileContainer}>
-    <View style={styles.profileHeader}>
-      <SkeletonBox width={100} height={100} borderRadius={50} />
-      <View style={styles.profileInfo}>
-        <SkeletonBox width="80%" height={24} style={{ marginBottom: 8 }} />
-        <SkeletonBox width="60%" height={16} style={{ marginBottom: 12 }} />
-        <View style={styles.profileBadges}>
-          <SkeletonBox width={60} height={20} borderRadius={10} />
-          <SkeletonBox width={80} height={20} borderRadius={10} />
-        </View>
-      </View>
-    </View>
-
-    <View style={styles.profileStatsGrid}>
-      {[1, 2, 3].map((i) => (
-        <View key={i} style={styles.profileStat}>
-          <SkeletonBox width="100%" height={28} style={{ marginBottom: 4 }} />
-          <SkeletonBox width="80%" height={14} />
-        </View>
-      ))}
-    </View>
-  </View>
-);
-
-// 🏠 Skeleton למסך בית מלא
-export const HomeScreenSkeleton = () => (
-  <View style={styles.homeContainer}>
+// Loading Skeleton עבור מסך הבית
+export const HomeDashboardSkeleton: React.FC<{ style?: ViewStyle }> = ({
+  style,
+}) => (
+  <View style={[styles.homeDashboard, style]}>
     {/* Header */}
     <View style={styles.homeHeader}>
       <View>
-        <SkeletonBox width="60%" height={24} style={{ marginBottom: 8 }} />
-        <SkeletonBox width="40%" height={16} />
+        <Skeleton width="40%" height={24} borderRadius={6} />
+        <Skeleton
+          width="30%"
+          height={16}
+          borderRadius={4}
+          style={{ marginTop: 8 }}
+        />
       </View>
-      <SkeletonBox width={44} height={44} borderRadius={22} />
+      <Skeleton width={40} height={40} borderRadius={20} />
     </View>
 
-    {/* Quick Actions */}
-    <View style={styles.quickActions}>
-      <SkeletonBox width="45%" height={120} borderRadius={12} />
-      <SkeletonBox width="45%" height={120} borderRadius={12} />
-    </View>
+    {/* Quick Stats */}
+    <StatsGridSkeleton columns={3} style={{ marginVertical: 20 }} />
 
-    {/* Stats Section */}
+    {/* Recent Workouts */}
     <View style={styles.homeSection}>
-      <SkeletonBox width="40%" height={20} style={{ marginBottom: 16 }} />
-      <HomeStatsSkeleton />
+      <Skeleton
+        width="50%"
+        height={20}
+        borderRadius={6}
+        style={{ marginBottom: 16 }}
+      />
+      <WorkoutCardSkeleton style={{ marginBottom: 12 }} />
+      <WorkoutCardSkeleton style={{ marginBottom: 12 }} />
     </View>
 
-    {/* Recent Plans */}
+    {/* Recommended Plan */}
     <View style={styles.homeSection}>
-      <View style={styles.sectionHeader}>
-        <SkeletonBox width="50%" height={20} />
-        <SkeletonBox width="20%" height={16} />
-      </View>
+      <Skeleton
+        width="60%"
+        height={20}
+        borderRadius={6}
+        style={{ marginBottom: 16 }}
+      />
       <PlanCardSkeleton />
     </View>
   </View>
 );
 
-// 📋 Skeleton לרשימת תוכניות מלאה
-export const PlansListSkeleton = () => (
-  <View style={styles.plansContainer}>
-    {[1, 2, 3].map((i) => (
-      <PlanCardSkeleton key={i} />
-    ))}
+// Loading Skeleton עבור מסך תוכניות
+export const PlansScreenSkeleton: React.FC<{ style?: ViewStyle }> = ({
+  style,
+}) => (
+  <View style={[styles.plansScreen, style]}>
+    {/* Header */}
+    <View style={styles.screenHeader}>
+      <Skeleton width="40%" height={28} borderRadius={8} />
+      <Skeleton width={32} height={32} borderRadius={16} />
+    </View>
+
+    {/* Filter/Sort Bar */}
+    <View style={styles.filterBar}>
+      <Skeleton width={80} height={32} borderRadius={16} />
+      <Skeleton width={60} height={32} borderRadius={16} />
+      <Skeleton width={40} height={32} borderRadius={16} />
+    </View>
+
+    {/* Plans List */}
+    <View style={styles.plansList}>
+      {[1, 2, 3, 4].map((index) => (
+        <PlanCardSkeleton key={index} style={{ marginBottom: 16 }} />
+      ))}
+    </View>
   </View>
 );
 
-// 🎨 Styles מעודכנים לנושא כהה
+// Shimmer Effect (אנימציה מתקדמת יותר)
+export const ShimmerEffect: React.FC<{
+  children: React.ReactNode;
+  visible?: boolean;
+  duration?: number;
+}> = ({ children, visible = true, duration = 1500 }) => {
+  const shimmerAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const shimmer = () => {
+      Animated.timing(shimmerAnimation, {
+        toValue: 1,
+        duration,
+        useNativeDriver: true,
+      }).start(() => {
+        shimmerAnimation.setValue(0);
+        shimmer();
+      });
+    };
+
+    shimmer();
+  }, [shimmerAnimation, visible, duration]);
+
+  const translateX = shimmerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-screenWidth, screenWidth],
+  });
+
+  if (!visible) return <>{children}</>;
+
+  return (
+    <View style={styles.shimmerContainer}>
+      {children}
+      <Animated.View
+        style={[
+          styles.shimmerOverlay,
+          {
+            transform: [{ translateX }],
+          },
+        ]}
+      />
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  // Base skeleton styles
-  skeletonContainer: {
-    overflow: "hidden",
+  // Workout Card Skeleton
+  workoutCard: {
     backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  shimmerGradient: {
-    width: 100,
-    height: "100%",
-    backgroundColor: `${colors.primary}20`,
-    position: "absolute",
+  workoutCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  workoutCardStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
   // Plan Card Skeleton
   planCard: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  planHeader: {
+  planCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
-  planInfo: {
+  planMainInfo: {
     flex: 1,
     marginRight: 12,
+  },
+  planCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   planTags: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 20,
   },
-  planActions: {
+
+  // User Profile Skeleton
+  userProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+
+  // Stats Grid Skeleton
+  statsGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingHorizontal: 16,
+  },
+  statCard: {
     alignItems: "center",
+    flex: 1,
   },
 
   // Exercise List Skeleton
   exerciseList: {
-    gap: 12,
+    padding: 16,
   },
   exerciseItem: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 12,
     backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 12,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   exerciseInfo: {
     flex: 1,
-  },
-  exerciseActions: {
-    alignItems: "center",
+    marginLeft: 12,
   },
 
-  // Home Stats Skeleton
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: (screenWidth - 60) / 2,
-    backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  // Profile Skeleton
-  profileContainer: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  profileHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-    gap: 16,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileBadges: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  profileStatsGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  profileStat: {
-    flex: 1,
-    alignItems: "center",
-  },
-
-  // Home Screen Skeleton
-  homeContainer: {
+  // Home Dashboard Skeleton
+  homeDashboard: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: 20,
+    padding: 16,
   },
   homeHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
-  },
-  quickActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 32,
+    marginBottom: 20,
   },
   homeSection: {
     marginBottom: 24,
   },
-  sectionHeader: {
+
+  // Plans Screen Skeleton
+  plansScreen: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: 16,
+  },
+  screenHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  filterBar: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+  plansList: {
+    flex: 1,
   },
 
-  // Plans List
-  plansContainer: {
-    padding: 20,
+  // Shimmer Effect
+  shimmerContainer: {
+    overflow: "hidden",
+  },
+  shimmerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    width: screenWidth,
   },
 });
 
 export default {
-  SkeletonBox,
+  Skeleton,
+  WorkoutCardSkeleton,
   PlanCardSkeleton,
-  ExerciseListSkeleton,
-  HomeStatsSkeleton,
   UserProfileSkeleton,
-  HomeScreenSkeleton,
-  PlansListSkeleton,
+  StatsGridSkeleton,
+  ExerciseListSkeleton,
+  HomeDashboardSkeleton,
+  PlansScreenSkeleton,
+  ShimmerEffect,
 };
