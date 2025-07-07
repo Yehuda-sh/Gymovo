@@ -1,27 +1,31 @@
-// File: src/types/navigation.ts
-import { NavigatorScreenParams } from "@react-navigation/native";
-import { RegisterData } from "../stores/userStore";
-import { Exercise } from "./exercise";
-import { Plan, PlanDay, PlanExercise } from "./plan";
-import { AppTabsParamList } from "./tabs";
-import { Workout } from "./workout";
+// src/types/navigation.ts - עדכון עם תמיכה בהמשכת שאלון
+
+import { QuizAnswers } from "../services/planGenerator";
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  age: number;
+  name?: string;
+}
 
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Signup: undefined;
-  Quiz: { signupData: Omit<RegisterData, "name"> };
-  Main: NavigatorScreenParams<AppTabsParamList>;
-  WorkoutSummary: { workout: Workout };
-  ExerciseDetails: { exerciseId: string };
-  Settings: undefined;
-  ExercisesPicker: {
-    initiallySelected: PlanExercise[];
-    onDone: (selectedExercises: Exercise[]) => void;
+  Quiz: {
+    signupData: RegisterData;
+    resumeFrom?: string; // מזהה השאלה להמשיך ממנה
+    existingAnswers?: Partial<QuizAnswers>; // תשובות קיימות
   };
+  Main: { screen?: string };
   SelectPlan: undefined;
-  SelectWorkoutDay: { plan: Plan };
-  ActiveWorkout: { plan: Plan; day: PlanDay };
+  SelectWorkoutDay: { planId: string };
+  ActiveWorkout: undefined;
+  WorkoutSummary: { workoutData: any };
+  ExerciseDetails: { exerciseId: string };
   CreateOrEditPlan: { planId?: string };
-  EditWorkoutDay: { dayId?: string };
+  EditWorkoutDay: { planId: string; dayId: string };
+  ExercisesPicker: { planId: string; dayId: string };
+  Settings: undefined;
 };
