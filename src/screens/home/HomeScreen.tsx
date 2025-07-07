@@ -18,9 +18,9 @@ import {
 
 // Components
 import {
-  ExerciseListSkeleton,
-  HomeStatsSkeleton,
+  ExerciseListSkeleton, // ✅ זה קיים
   PlanCardSkeleton,
+  StatsGridSkeleton,
 } from "../../components/common/LoadingSkeleton";
 
 // Services & Stores
@@ -382,15 +382,33 @@ const HomeScreen = () => {
     return (
       <ScrollView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>שלום!</Text>
-          <HomeStatsSkeleton />
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeText}>שלום!</Text>
+            <Text style={styles.welcomeSubtext}>טוען נתונים...</Text>
+          </View>
+          <View style={styles.notificationButton}>
+            <StatsGridSkeleton columns={1} />
+          </View>
         </View>
-        <PlanCardSkeleton />
-        <ExerciseListSkeleton />
+
+        {/* סטטיסטיקות */}
+        <View style={styles.statsSection}>
+          <StatsGridSkeleton columns={4} />
+        </View>
+
+        {/* תוכניות */}
+        <View style={styles.section}>
+          <PlanCardSkeleton />
+          <PlanCardSkeleton style={{ marginTop: 12 }} />
+        </View>
+
+        {/* אימונים אחרונים */}
+        <View style={styles.section}>
+          <ExerciseListSkeleton count={3} />
+        </View>
       </ScrollView>
     );
   }
-
   // 📱 המסך הראשי
   return (
     <ScrollView

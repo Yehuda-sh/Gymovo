@@ -1,7 +1,24 @@
 {
+  "cSpell.words": [
+    "prefs",
+    "gymovo",
+    "haptics",
+    "zustand",
+    "mmkv",
+    "פרופיל",
+    "אימון",
+    "תוכנית",
+    "משתמש",
+    "התקדמות",
+    "סטטיסטיקה"
+  ],
+  "cSpell.language": "en,he",
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
+    "source.fixAll.eslint": "explicit"
+  },
+  "emmet.includeLanguages": {
+    "typescript": "typescriptreact"
   }
 }

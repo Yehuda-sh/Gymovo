@@ -1,4 +1,4 @@
-// src/components/common/LoadingSkeleton.tsx - Loading Skeletons מתקדמים
+// src/components/common/LoadingSkeleton.tsx - תיקון שגיאת הטיפוסים
 
 import React, { useEffect, useRef } from "react";
 import {
@@ -21,7 +21,7 @@ interface SkeletonProps {
   shimmerColors?: string[];
 }
 
-// רכיב Skeleton בסיסי עם אנימציה
+// רכיב Skeleton בסיסי עם אנימציה - מתוקן!
 export const Skeleton: React.FC<SkeletonProps> = ({
   width = 100,
   height = 20,
@@ -44,7 +44,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         Animated.timing(shimmerAnimation, {
           toValue: 1,
           duration: 1000,
-          useNativeDriver: false,
+          useNativeDriver: false, // לא יכול להיות true בגלל backgroundColor
         }),
         Animated.timing(shimmerAnimation, {
           toValue: 0,
@@ -64,22 +64,21 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       })
     : shimmerColors[0];
 
-  return (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          borderRadius,
-          backgroundColor,
-        },
-        style,
-      ]}
-    />
-  );
+  // ✅ תיקון השגיאה - הפרדה בין style אובייקט לפרופס Animated
+  const baseStyle: ViewStyle = {
+    width,
+    height,
+    borderRadius,
+  };
+
+  const animatedStyle = {
+    backgroundColor,
+  };
+
+  return <Animated.View style={[baseStyle, animatedStyle, style]} />;
 };
 
-// Loading Skeleton עבור כרטיס אימון
+// שאר הרכיבים נשארים אותו הדבר...
 export const WorkoutCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => (
@@ -113,7 +112,6 @@ export const WorkoutCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
   </View>
 );
 
-// Loading Skeleton עבור כרטיס תוכנית
 export const PlanCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => (
@@ -148,7 +146,6 @@ export const PlanCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
   </View>
 );
 
-// Loading Skeleton עבור פרופיל משתמש
 export const UserProfileSkeleton: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => (
@@ -166,7 +163,6 @@ export const UserProfileSkeleton: React.FC<{ style?: ViewStyle }> = ({
   </View>
 );
 
-// Loading Skeleton עבור סטטיסטיקות
 export const StatsGridSkeleton: React.FC<{
   columns?: number;
   style?: ViewStyle;
@@ -192,7 +188,6 @@ export const StatsGridSkeleton: React.FC<{
   </View>
 );
 
-// Loading Skeleton עבור רשימת תרגילים
 export const ExerciseListSkeleton: React.FC<{
   count?: number;
   style?: ViewStyle;
@@ -222,7 +217,6 @@ export const ExerciseListSkeleton: React.FC<{
   </View>
 );
 
-// Loading Skeleton עבור מסך הבית
 export const HomeDashboardSkeleton: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => (
@@ -269,25 +263,21 @@ export const HomeDashboardSkeleton: React.FC<{ style?: ViewStyle }> = ({
   </View>
 );
 
-// Loading Skeleton עבור מסך תוכניות
 export const PlansScreenSkeleton: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => (
   <View style={[styles.plansScreen, style]}>
-    {/* Header */}
     <View style={styles.screenHeader}>
       <Skeleton width="40%" height={28} borderRadius={8} />
       <Skeleton width={32} height={32} borderRadius={16} />
     </View>
 
-    {/* Filter/Sort Bar */}
     <View style={styles.filterBar}>
       <Skeleton width={80} height={32} borderRadius={16} />
       <Skeleton width={60} height={32} borderRadius={16} />
       <Skeleton width={40} height={32} borderRadius={16} />
     </View>
 
-    {/* Plans List */}
     <View style={styles.plansList}>
       {[1, 2, 3, 4].map((index) => (
         <PlanCardSkeleton key={index} style={{ marginBottom: 16 }} />
@@ -296,7 +286,6 @@ export const PlansScreenSkeleton: React.FC<{ style?: ViewStyle }> = ({
   </View>
 );
 
-// Shimmer Effect (אנימציה מתקדמת יותר)
 export const ShimmerEffect: React.FC<{
   children: React.ReactNode;
   visible?: boolean;
@@ -343,8 +332,8 @@ export const ShimmerEffect: React.FC<{
   );
 };
 
+// Styles remain the same...
 const styles = StyleSheet.create({
-  // Workout Card Skeleton
   workoutCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -370,8 +359,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-
-  // Plan Card Skeleton
   planCard: {
     backgroundColor: colors.surface,
     borderRadius: 16,
@@ -401,8 +388,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-
-  // User Profile Skeleton
   userProfile: {
     flexDirection: "row",
     alignItems: "center",
@@ -412,8 +397,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 16,
   },
-
-  // Stats Grid Skeleton
   statsGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -423,8 +406,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-
-  // Exercise List Skeleton
   exerciseList: {
     padding: 16,
   },
@@ -440,8 +421,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-
-  // Home Dashboard Skeleton
   homeDashboard: {
     flex: 1,
     backgroundColor: colors.background,
@@ -456,8 +435,6 @@ const styles = StyleSheet.create({
   homeSection: {
     marginBottom: 24,
   },
-
-  // Plans Screen Skeleton
   plansScreen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -477,8 +454,6 @@ const styles = StyleSheet.create({
   plansList: {
     flex: 1,
   },
-
-  // Shimmer Effect
   shimmerContainer: {
     overflow: "hidden",
   },
@@ -493,6 +468,7 @@ const styles = StyleSheet.create({
   },
 });
 
+// ✅ תיקון הייצוא - שנוי להיות named exports
 export default {
   Skeleton,
   WorkoutCardSkeleton,
