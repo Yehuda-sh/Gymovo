@@ -351,7 +351,7 @@ const HomeScreen = () => {
       subtitle: "בחר תוכנית וקדימה",
       icon: "play-circle" as const,
       color: colors.primary,
-      onPress: () => navigation.navigate("StartWorkout" as any),
+      onPress: () => navigation.navigate("StartWorkout"),
       disabled: !dashboardData?.activePlans.length,
     },
     {

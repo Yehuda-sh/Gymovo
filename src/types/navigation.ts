@@ -15,17 +15,28 @@ export type RootStackParamList = {
   Signup: undefined;
   Quiz: {
     signupData: RegisterData;
-    resumeFrom?: string; // מזהה השאלה להמשיך ממנה
-    existingAnswers?: Partial<QuizAnswers>; // תשובות קיימות
+    resumeFrom?: string;
+    existingAnswers?: Partial<QuizAnswers>;
   };
+
+  // ✅ מסכי אימון
+  StartWorkout: undefined;
+  CreatePlan: undefined;
+  ExerciseSelection: undefined;
+  ActiveWorkout: undefined;
+
+  // ✅ מסכים ראשיים
   Main: { screen?: string };
   SelectPlan: undefined;
   SelectWorkoutDay: { planId: string };
-  ActiveWorkout: undefined;
   WorkoutSummary: { workoutData: any };
   ExerciseDetails: { exerciseId: string };
+
+  // ✅ מסכי ניהול תוכניות
   CreateOrEditPlan: { planId?: string };
   EditWorkoutDay: { planId: string; dayId: string };
   ExercisesPicker: { planId: string; dayId: string };
+
+  // ✅ הגדרות
   Settings: undefined;
 };

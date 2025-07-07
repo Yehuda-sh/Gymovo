@@ -33,7 +33,8 @@ import WorkoutsScreen from "../screens/workouts/WorkoutsScreen";
 import ExerciseDetailsScreen from "../screens/exercises/ExerciseDetailsScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
 import WorkoutSummaryScreen from "../screens/workouts/WorkoutSummaryScreen";
-
+import StartWorkoutScreen from "../screens/workouts/StartWorkoutScreen";
+import ExerciseSelectionScreen from "../screens/exercises/ExerciseSelectionScreen";
 // 🔗 Types
 import { UserState, useUserStore } from "../stores/userStore";
 import { RootStackParamList } from "../types/navigation";
@@ -196,7 +197,7 @@ const AppTabs = () => {
 
       <Tab.Screen
         name="StartWorkout"
-        component={ActiveWorkoutScreen}
+        component={() => <PlaceholderScreen title="אימון מהיר" />}
         options={{
           title: "אימון",
           headerTitle: "התחל אימון",
@@ -323,6 +324,31 @@ const AppStack = () => {
         options={({ route }) => ({
           title: route.params?.exerciseId ? "פרטי תרגיל" : "תרגיל",
         })}
+      />
+      <Stack.Screen
+        name="StartWorkout"
+        component={StartWorkoutScreen}
+        options={{
+          title: "התחל אימון",
+          headerShown: false, // המסך מטפל בheader בעצמו
+        }}
+      />
+
+      <Stack.Screen
+        name="ExerciseSelection"
+        component={ExerciseSelectionScreen}
+        options={{
+          title: "בחר תרגילים",
+          headerShown: false, // המסך מטפל בheader בעצמו
+        }}
+      />
+
+      <Stack.Screen
+        name="CreatePlan"
+        component={() => <PlaceholderScreen title="יצירת תוכנית" />}
+        options={{
+          title: "צור תוכנית",
+        }}
       />
 
       {/* הגדרות */}

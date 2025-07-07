@@ -1,4 +1,4 @@
-// src/stores/workoutStore.ts - תיקון שגיאות TypeScript
+// src/stores/workoutStore.ts - Store מלא ומעודכן לניהול אימונים
 
 import { produce } from "immer";
 import { create } from "zustand";
@@ -6,187 +6,481 @@ import { Exercise } from "../types/exercise";
 import { Plan } from "../types/plan";
 import { Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
 
-// הממשק שמגדיר את כל המידע והפעולות ב-store של אימון פעיל
+// ממשק מלא למצב ה-store
 export interface WorkoutState {
+  // 🏋️ מצב אימון פעיל
   activeWorkout: Workout | null;
   currentExerciseIndex: number;
   isResting: boolean;
   restTimeLeft: number;
+  restTimer: NodeJS.Timeout | null;
 
-  startWorkout: (plan: Plan, dayId: string) => void;
+  // 📊 סטטיסטיקות אימון
+  currentWorkoutStats: {
+    startTime: Date | null;
+    duration: number; // בדקות
+    completedSets: number;
+    totalSets: number;
+    calories: number;
+  };
+
+  // 🎯 פעולות אימון
+  startWorkout: (workout: Workout, plan?: Plan) => void;
+  startCustomWorkout: (exercises: Exercise[]) => Promise<void>;
   updateSet: (
-    exId: string,
+    exerciseId: string,
     setId: string,
     values: { weight?: number; reps?: number }
   ) => void;
-  toggleSetCompleted: (exId: string, setId: string) => void;
+  toggleSetCompleted: (exerciseId: string, setId: string) => void;
+  addExercise: (exercise: Exercise) => void;
+  removeExercise: (exerciseId: string) => void;
+
+  // 📱 ניווט בין תרגילים
   goToNextExercise: () => boolean;
   goToPrevExercise: () => void;
-  addExercise: (exercise: Exercise) => void;
-  finishWorkout: () => void;
+  goToExercise: (index: number) => void;
+
+  // ⏱️ ניהול מנוחה
+  startRest: (duration?: number) => void;
+  skipRest: () => void;
+  pauseRest: () => void;
+  resumeRest: () => void;
+
+  // 🏁 סיום אימון
+  finishWorkout: () => Promise<Workout>;
+  cancelWorkout: () => void;
+  saveWorkoutProgress: () => void;
+
+  // 🔄 איפוס
+  resetWorkout: () => void;
 }
 
-// קבוע עבור אורך זמן המנוחה בשניות
-const REST_DURATION_SECONDS = 90;
+// ⚙️ קבועים
+const DEFAULT_REST_TIME = 90; // שניות
+const DEFAULT_SETS_PER_EXERCISE = 3;
+const DEFAULT_REPS_PER_SET = 12;
 
-// יצירת ה-store עם Zustand ו-Immer
+// 🏭 יצירת Store עם Zustand
 export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
+  // 🏁 מצב התחלתי
   activeWorkout: null,
   currentExerciseIndex: 0,
   isResting: false,
   restTimeLeft: 0,
+  restTimer: null,
+  currentWorkoutStats: {
+    startTime: null,
+    duration: 0,
+    completedSets: 0,
+    totalSets: 0,
+    calories: 0,
+  },
 
-  // פעולה להתחלת אימון חדש על בסיס יום ספציפי מתוכנית
-  startWorkout: (plan, dayId) => {
-    // ✅ תיקון: בדיקה שplan.days קיים
-    if (!plan.days) {
-      console.error("Plan has no days!");
-      return;
-    }
+  // 🚀 התחלת אימון עם תוכנית קיימת
+  startWorkout: (workout: Workout, plan?: Plan) => {
+    console.log(`🏋️ Starting workout: ${workout.name}`);
 
-    const selectedDay = plan.days.find((day) => day.id === dayId);
-    if (!selectedDay) {
-      console.error("Day not found in plan!");
-      return;
-    }
+    set({
+      activeWorkout: {
+        ...workout,
+        date: new Date().toISOString(),
+        id: `workout_${Date.now()}`,
+      },
+      currentExerciseIndex: 0,
+      isResting: false,
+      restTimeLeft: 0,
+      restTimer: null,
+      currentWorkoutStats: {
+        startTime: new Date(),
+        duration: 0,
+        completedSets: 0,
+        totalSets: workout.exercises.reduce(
+          (total, ex) => total + ex.sets.length,
+          0
+        ),
+        calories: 0,
+      },
+    });
+  },
 
-    const newWorkout: Workout = {
-      id: `workout_${Date.now()}`,
-      name: `${plan.name} - ${selectedDay.name}`,
+  // 🎯 התחלת אימון מותאם עם תרגילים נבחרים
+  startCustomWorkout: async (exercises: Exercise[]) => {
+    console.log(
+      `🎯 Starting custom workout with ${exercises.length} exercises`
+    );
+
+    const customWorkout: Workout = {
+      id: `custom_workout_${Date.now()}`,
+      name: "אימון מותאם",
       date: new Date().toISOString(),
-      // ✅ תיקון: הוספת השדה name ו-exercise מלא עם category
-      exercises: selectedDay.exercises.map((planEx) => ({
-        id: planEx.id,
-        name: planEx.name, // ✅ הוספת השדה החסר
+      exercises: exercises.map((exercise, index) => ({
+        id: `${exercise.id}_${index}`,
+        name: exercise.name,
         exercise: {
-          id: planEx.id,
-          name: planEx.name,
-          category: planEx.muscleGroup || "כללי", // ✅ הוספת category נדרש
+          id: exercise.id,
+          name: exercise.name,
+          category: exercise.category,
         },
-        sets: Array.from({ length: planEx.sets }, (_, i) => ({
-          id: `${planEx.id}_set_${i}`,
-          reps: planEx.reps,
+        sets: Array.from({ length: DEFAULT_SETS_PER_EXERCISE }, (_, i) => ({
+          id: `${exercise.id}_set_${i}`,
+          reps: DEFAULT_REPS_PER_SET,
           weight: 0,
           status: "pending" as const,
         })),
       })),
     };
 
+    const totalSets = customWorkout.exercises.reduce(
+      (total, ex) => total + ex.sets.length,
+      0
+    );
+
     set({
-      activeWorkout: newWorkout,
+      activeWorkout: customWorkout,
       currentExerciseIndex: 0,
       isResting: false,
       restTimeLeft: 0,
+      restTimer: null,
+      currentWorkoutStats: {
+        startTime: new Date(),
+        duration: 0,
+        completedSets: 0,
+        totalSets,
+        calories: 0,
+      },
     });
   },
 
-  // עדכון סט ספציפי (משקל או חזרות)
-  updateSet: (exId, setId, values) =>
+  // ⚖️ עדכון נתוני סט (משקל/חזרות)
+  updateSet: (
+    exerciseId: string,
+    setId: string,
+    values: { weight?: number; reps?: number }
+  ) => {
     set(
       produce((state: WorkoutState) => {
         const exercise = state.activeWorkout?.exercises.find(
-          (e: WorkoutExercise) => e.id === exId
+          (e) => e.id === exerciseId
         );
         if (exercise) {
-          const setItem = exercise.sets.find((s: WorkoutSet) => s.id === setId);
+          const setItem = exercise.sets.find((s) => s.id === setId);
           if (setItem) {
-            if (values.reps !== undefined) setItem.reps = values.reps;
-            if (values.weight !== undefined) setItem.weight = values.weight;
-          }
-        }
-      })
-    ),
-
-  // שינוי סטטוס של סט (בוצע / לא בוצע) והפעלת טיימר
-  toggleSetCompleted: (exId, setId) => {
-    let shouldStartTimer = false;
-    set(
-      produce((state: WorkoutState) => {
-        const exercise = state.activeWorkout?.exercises.find(
-          (e: WorkoutExercise) => e.id === exId
-        );
-        const setItem = exercise?.sets.find((s: WorkoutSet) => s.id === setId);
-        if (setItem) {
-          const newStatus =
-            setItem.status === "completed" ? "pending" : "completed";
-          setItem.status = newStatus;
-          if (newStatus === "completed") {
-            shouldStartTimer = true;
+            if (values.reps !== undefined)
+              setItem.reps = Math.max(0, values.reps);
+            if (values.weight !== undefined)
+              setItem.weight = Math.max(0, values.weight);
           }
         }
       })
     );
+  },
 
-    // אם צריך להתחיל טיימר, מפעילים אותו
-    if (shouldStartTimer) {
-      set({ isResting: true, restTimeLeft: REST_DURATION_SECONDS });
-      const interval = setInterval(() => {
-        const { restTimeLeft: currentTime, isResting } = get();
-        if (!isResting || currentTime <= 1) {
-          clearInterval(interval);
-          set({ isResting: false, restTimeLeft: 0 });
-        } else {
-          set({ restTimeLeft: currentTime - 1 });
+  // ✅ סימון סט כמושלם/לא מושלם
+  toggleSetCompleted: (exerciseId: string, setId: string) => {
+    const state = get();
+    let shouldStartRest = false;
+
+    set(
+      produce((draft: WorkoutState) => {
+        const exercise = draft.activeWorkout?.exercises.find(
+          (e) => e.id === exerciseId
+        );
+        const setItem = exercise?.sets.find((s) => s.id === setId);
+
+        if (setItem) {
+          const wasCompleted = setItem.status === "completed";
+          setItem.status = wasCompleted ? "pending" : "completed";
+
+          // עדכון סטטיסטיקות
+          if (wasCompleted) {
+            draft.currentWorkoutStats.completedSets--;
+          } else {
+            draft.currentWorkoutStats.completedSets++;
+            shouldStartRest = true;
+          }
+
+          // חישוב קלוריות משוער (10 קלוריות לסט)
+          draft.currentWorkoutStats.calories =
+            draft.currentWorkoutStats.completedSets * 10;
         }
-      }, 1000);
+      })
+    );
+
+    // התחל מנוחה אם הסט הושלם
+    if (shouldStartRest && !state.isResting) {
+      get().startRest();
     }
   },
 
-  // מעבר לתרגיל הבא באימון
+  // ➕ הוספת תרגיל לאימון הפעיל
+  addExercise: (exercise: Exercise) => {
+    set(
+      produce((state: WorkoutState) => {
+        if (state.activeWorkout) {
+          const newExercise: WorkoutExercise = {
+            id: `${exercise.id}_${Date.now()}`,
+            name: exercise.name,
+            exercise: {
+              id: exercise.id,
+              name: exercise.name,
+              category: exercise.category,
+            },
+            sets: Array.from({ length: DEFAULT_SETS_PER_EXERCISE }, (_, i) => ({
+              id: `${exercise.id}_${Date.now()}_set_${i}`,
+              reps: DEFAULT_REPS_PER_SET,
+              weight: 0,
+              status: "pending" as const,
+            })),
+          };
+
+          state.activeWorkout.exercises.push(newExercise);
+          state.currentWorkoutStats.totalSets += DEFAULT_SETS_PER_EXERCISE;
+        }
+      })
+    );
+  },
+
+  // ➖ הסרת תרגיל מהאימון
+  removeExercise: (exerciseId: string) => {
+    set(
+      produce((state: WorkoutState) => {
+        if (state.activeWorkout) {
+          const exerciseIndex = state.activeWorkout.exercises.findIndex(
+            (e) => e.id === exerciseId
+          );
+          if (exerciseIndex !== -1) {
+            const removedExercise =
+              state.activeWorkout.exercises[exerciseIndex];
+
+            // עדכון סטטיסטיקות
+            const completedSetsInExercise = removedExercise.sets.filter(
+              (s) => s.status === "completed"
+            ).length;
+            state.currentWorkoutStats.completedSets -= completedSetsInExercise;
+            state.currentWorkoutStats.totalSets -= removedExercise.sets.length;
+
+            // הסרת התרגיל
+            state.activeWorkout.exercises.splice(exerciseIndex, 1);
+
+            // התאמת האינדקס הנוכחי
+            if (
+              state.currentExerciseIndex >= exerciseIndex &&
+              state.currentExerciseIndex > 0
+            ) {
+              state.currentExerciseIndex--;
+            }
+          }
+        }
+      })
+    );
+  },
+
+  // ➡️ מעבר לתרגיל הבא
   goToNextExercise: () => {
-    const { activeWorkout, currentExerciseIndex } = get();
-    if (
-      activeWorkout &&
-      currentExerciseIndex < activeWorkout.exercises.length - 1
-    ) {
-      set({ currentExerciseIndex: currentExerciseIndex + 1 });
+    const state = get();
+    if (!state.activeWorkout) return false;
+
+    const nextIndex = state.currentExerciseIndex + 1;
+    if (nextIndex < state.activeWorkout.exercises.length) {
+      set({ currentExerciseIndex: nextIndex });
       return true;
     }
     return false;
   },
 
-  // חזרה לתרגיל הקודם באימון
+  // ⬅️ מעבר לתרגיל הקודם
   goToPrevExercise: () => {
-    const { currentExerciseIndex } = get();
-    if (currentExerciseIndex > 0) {
-      set({ currentExerciseIndex: currentExerciseIndex - 1 });
+    const state = get();
+    const prevIndex = state.currentExerciseIndex - 1;
+    if (prevIndex >= 0) {
+      set({ currentExerciseIndex: prevIndex });
     }
   },
 
-  // הוספת תרגיל חדש לאימון הפעיל
-  addExercise: (exercise) =>
-    set(
-      produce((state: WorkoutState) => {
-        if (state.activeWorkout) {
-          const exerciseExists = state.activeWorkout.exercises.some(
-            // ✅ תיקון: בדיקה שe.exercise קיים לפני הגישה אליו
-            (e) => e.exercise?.id === exercise.id
-          );
-          if (!exerciseExists) {
-            state.activeWorkout.exercises.push({
-              id: exercise.id,
-              name: exercise.name, // ✅ הוספת השדה החסר
-              exercise: exercise, // ✅ exercise כבר מכיל את כל השדות הנדרשים כולל category
-              sets: [
-                {
-                  id: `${exercise.id}_set_0`,
-                  reps: 8,
-                  weight: 10,
-                  status: "pending" as const,
-                },
-              ],
-            });
-          }
-        }
-      })
-    ),
+  // 🎯 מעבר לתרגיל ספציפי
+  goToExercise: (index: number) => {
+    const state = get();
+    if (
+      state.activeWorkout &&
+      index >= 0 &&
+      index < state.activeWorkout.exercises.length
+    ) {
+      set({ currentExerciseIndex: index });
+    }
+  },
 
-  // סיום וניקוי האימון הפעיל
-  finishWorkout: () =>
+  // ⏸️ התחלת מנוחה
+  startRest: (duration: number = DEFAULT_REST_TIME) => {
+    const state = get();
+
+    // נקה טיימר קודם אם קיים
+    if (state.restTimer) {
+      clearInterval(state.restTimer);
+    }
+
+    const timer = setInterval(() => {
+      const currentState = get();
+      if (currentState.restTimeLeft <= 1) {
+        clearInterval(timer);
+        set({
+          isResting: false,
+          restTimeLeft: 0,
+          restTimer: null,
+        });
+      } else {
+        set({ restTimeLeft: currentState.restTimeLeft - 1 });
+      }
+    }, 1000);
+
+    set({
+      isResting: true,
+      restTimeLeft: duration,
+      restTimer: timer,
+    });
+  },
+
+  // ⏭️ דילוג על מנוחה
+  skipRest: () => {
+    const state = get();
+    if (state.restTimer) {
+      clearInterval(state.restTimer);
+    }
+    set({
+      isResting: false,
+      restTimeLeft: 0,
+      restTimer: null,
+    });
+  },
+
+  // ⏸️ השהיית מנוחה
+  pauseRest: () => {
+    const state = get();
+    if (state.restTimer) {
+      clearInterval(state.restTimer);
+      set({ restTimer: null });
+    }
+  },
+
+  // ▶️ המשך מנוחה
+  resumeRest: () => {
+    const state = get();
+    if (state.isResting && !state.restTimer && state.restTimeLeft > 0) {
+      get().startRest(state.restTimeLeft);
+    }
+  },
+
+  // 🏁 סיום אימון
+  finishWorkout: async (): Promise<Workout> => {
+    const state = get();
+    if (!state.activeWorkout) {
+      throw new Error("No active workout to finish");
+    }
+
+    // חישוב משך האימון
+    const duration = state.currentWorkoutStats.startTime
+      ? Math.round(
+          (Date.now() - state.currentWorkoutStats.startTime.getTime()) / 60000
+        )
+      : 0;
+
+    const finishedWorkout: Workout = {
+      ...state.activeWorkout,
+      completedAt: new Date().toISOString(),
+      duration,
+      calories: state.currentWorkoutStats.calories,
+    };
+
+    // נקה טיימר אם קיים
+    if (state.restTimer) {
+      clearInterval(state.restTimer);
+    }
+
+    // שמירת האימון לזיכרון/DB (יתווסף בהמשך)
+    try {
+      // TODO: שמירה ל-AsyncStorage או API
+      console.log(
+        `✅ Workout finished: ${finishedWorkout.name}, Duration: ${duration}min`
+      );
+    } catch (error) {
+      console.error("Failed to save workout:", error);
+    }
+
+    // איפוס המצב
     set({
       activeWorkout: null,
       currentExerciseIndex: 0,
       isResting: false,
       restTimeLeft: 0,
-    }),
+      restTimer: null,
+      currentWorkoutStats: {
+        startTime: null,
+        duration: 0,
+        completedSets: 0,
+        totalSets: 0,
+        calories: 0,
+      },
+    });
+
+    return finishedWorkout;
+  },
+
+  // ❌ ביטול אימון
+  cancelWorkout: () => {
+    const state = get();
+
+    // נקה טיימר אם קיים
+    if (state.restTimer) {
+      clearInterval(state.restTimer);
+    }
+
+    console.log("❌ Workout cancelled");
+
+    // איפוס מלא
+    get().resetWorkout();
+  },
+
+  // 💾 שמירת התקדמות
+  saveWorkoutProgress: () => {
+    const state = get();
+    if (state.activeWorkout) {
+      try {
+        // TODO: שמירה ל-AsyncStorage
+        const progressData = {
+          workout: state.activeWorkout,
+          currentExerciseIndex: state.currentExerciseIndex,
+          stats: state.currentWorkoutStats,
+          timestamp: Date.now(),
+        };
+        console.log("💾 Workout progress saved", progressData);
+      } catch (error) {
+        console.error("Failed to save workout progress:", error);
+      }
+    }
+  },
+
+  // 🔄 איפוס מלא
+  resetWorkout: () => {
+    const state = get();
+
+    // נקה טיימר אם קיים
+    if (state.restTimer) {
+      clearInterval(state.restTimer);
+    }
+
+    set({
+      activeWorkout: null,
+      currentExerciseIndex: 0,
+      isResting: false,
+      restTimeLeft: 0,
+      restTimer: null,
+      currentWorkoutStats: {
+        startTime: null,
+        duration: 0,
+        completedSets: 0,
+        totalSets: 0,
+        calories: 0,
+      },
+    });
+  },
 }));
