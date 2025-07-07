@@ -19,8 +19,8 @@ import {
 // Components
 import {
   ExerciseListSkeleton,
+  HomeStatsSkeleton,
   PlanCardSkeleton,
-  StatsSkeleton,
 } from "../../components/common/LoadingSkeleton";
 
 // Services & Stores
@@ -383,7 +383,7 @@ const HomeScreen = () => {
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.welcomeText}>שלום!</Text>
-          <StatsSkeleton />
+          <HomeStatsSkeleton />
         </View>
         <PlanCardSkeleton />
         <ExerciseListSkeleton />
