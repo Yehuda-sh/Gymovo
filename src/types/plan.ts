@@ -134,7 +134,6 @@ export const convertModernToLegacy = (modernPlan: Plan): Plan => {
       sets: ex.sets?.length || 3,
       reps: ex.sets?.[0]?.reps || 10,
       weight: ex.sets?.[0]?.weight || 0,
-      notes: ex.notes,
     })),
     estimatedDuration: workout.duration || 45,
     targetMuscleGroups: workout.exercises
