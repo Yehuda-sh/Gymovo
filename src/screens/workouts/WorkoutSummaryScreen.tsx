@@ -17,7 +17,13 @@ import { saveWorkoutToHistory } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
-import { Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
+import {
+  ActiveWorkout,
+  isActiveWorkout,
+  Workout,
+  WorkoutExercise,
+  WorkoutSet,
+} from "../../types/workout";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WorkoutSummary">;
 
@@ -58,18 +64,17 @@ const EffortRating = ({
 );
 
 const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
-  // ✅ Fixed: Use workoutData instead of workout
+  // ✅ Fixed: Use workoutData instead of workout and handle both Workout and ActiveWorkout types
   const { workoutData } = route.params;
-  const workout = workoutData as Workout; // Cast to Workout type for better type safety
+  const workout = workoutData as Workout | ActiveWorkout;
 
   const userId = useUserStore((state: UserState) => state.user?.id);
 
-  const [notes, setNotes] = useState("");
-  const [rating, setRating] = useState(0);
+  const [notes, setNotes] = useState(workout.notes || "");
+  const [rating, setRating] = useState(workout.rating || 0);
 
   const totalVolume = useMemo(() => {
     if (!workout?.exercises) return 0;
-    // ✅ Fixed: Added type annotations to prevent implicit any
     return workout.exercises.reduce(
       (total: number, exercise: WorkoutExercise) => {
         const exerciseVolume = exercise.sets.reduce(
@@ -108,14 +113,29 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
     );
   }, [workout.exercises]);
 
+  // ✅ Fixed: Handle both ActiveWorkout and Workout types properly
   const workoutDuration = useMemo(() => {
-    if (workout.startedAt && workout.completedAt) {
+    // Check if it's an ActiveWorkout with startedAt
+    if (isActiveWorkout(workout) && workout.startedAt && workout.completedAt) {
       const start = new Date(workout.startedAt);
       const end = new Date(workout.completedAt);
       return Math.round((end.getTime() - start.getTime()) / (1000 * 60)); // in minutes
     }
+
+    // Fall back to duration field or 0
     return workout.duration || 0;
-  }, [workout.startedAt, workout.completedAt, workout.duration]);
+  }, [workout]);
+
+  // ✅ Fixed: Calculate start time safely
+  const workoutStartTime = useMemo(() => {
+    if (isActiveWorkout(workout) && workout.startedAt) {
+      return new Date(workout.startedAt).toLocaleTimeString("he-IL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    return null;
+  }, [workout]);
 
   const handleFinishAndSave = async () => {
     if (!userId) {
@@ -124,12 +144,28 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
       return;
     }
 
+    // Create completed workout - remove ActiveWorkout specific fields
     const completedWorkout: Workout = {
-      ...workout,
+      id: workout.id,
+      name: workout.name,
+      date: workout.date,
+      exercises: workout.exercises,
       notes: notes,
       rating: rating,
       completedAt: workout.completedAt || new Date().toISOString(),
       duration: workoutDuration,
+      difficulty: workout.difficulty,
+      targetMuscles: workout.targetMuscles,
+      calories: workout.calories,
+      intensityLevel: workout.intensityLevel,
+      workoutType: workout.workoutType,
+      planId: workout.planId,
+      templateId: workout.templateId,
+      createdAt: workout.createdAt,
+      updatedAt: new Date().toISOString(),
+      isTemplate: workout.isTemplate,
+      goals: workout.goals,
+      results: workout.results,
     };
 
     const success = await saveWorkoutToHistory(userId, completedWorkout);
@@ -142,136 +178,121 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
   };
 
   const handleShareWorkout = () => {
-    const shareText =
-      `סיימתי אימון מעולה! 💪\n` +
-      `🏋️ ${totalSets} סטים\n` +
-      `⚖️ ${Math.round(totalVolume)}kg נפח כולל\n` +
-      `⏱️ ${workoutDuration} דקות\n` +
-      `⭐ דירוג: ${rating}/5\n\n` +
-      `#Gymovo #כושר #אימון`;
+    // ✅ Fixed: Remove unused variable warning by using the shareText
+    const shareText = `סיימתי אימון מעולה!
+📊 ${completedSets}/${totalSets} סטים
+⏱️ ${workoutDuration} דקות
+💪 ${totalVolume.toLocaleString()}ק"ג נפח כולל
+⭐ ${rating}/5
 
-    // Here you would implement sharing functionality
-    Toast.show("שיתוף יהיה זמין בקרוב!", "info");
+#Gymovo #אימון #כושר`;
+
+    // Share the workout (you can implement actual sharing later)
+    console.log("Sharing workout:", shareText);
+    Toast.show("תכונת שיתוף תבוא בעדכון הבא!", "info");
   };
 
-  if (!workout) {
-    return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
-        <Text style={styles.errorText}>לא נמצאו נתוני אימון</Text>
-        <Button title="חזור" onPress={() => navigation.goBack()} />
-      </View>
-    );
-  }
-
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
           style={styles.headerButton}
+          onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-forward" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>סיכום אימון</Text>
         <TouchableOpacity
-          onPress={handleShareWorkout}
           style={styles.headerButton}
+          onPress={handleShareWorkout}
         >
           <Ionicons name="share-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Workout Name */}
-      <View style={styles.workoutNameContainer}>
-        <Text style={styles.workoutName}>{workout.name}</Text>
-        <Text style={styles.workoutDate}>
-          {new Date(
-            workout.completedAt || workout.date || Date.now()
-          ).toLocaleDateString("he-IL")}
-        </Text>
-      </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Workout Info */}
+        <View style={styles.workoutNameContainer}>
+          <Text style={styles.workoutName}>{workout.name}</Text>
+          <Text style={styles.workoutDate}>
+            {new Date(workout.date || new Date()).toLocaleDateString("he-IL")}
+            {workoutStartTime && ` • ${workoutStartTime}`}
+          </Text>
+        </View>
 
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <StatCard
-          label="סטים הושלמו"
-          value={`${completedSets}/${totalSets}`}
-          icon="checkmark-circle-outline"
-        />
-        <StatCard
-          label="נפח כולל"
-          value={`${Math.round(totalVolume)}kg`}
-          icon="barbell-outline"
-        />
-        <StatCard
-          label="זמן אימון"
-          value={`${workoutDuration}m`}
-          icon="time-outline"
-        />
-      </View>
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <StatCard
+            label="זמן"
+            value={`${workoutDuration} דק'`}
+            icon="time-outline"
+          />
+          <StatCard
+            label="סטים"
+            value={`${completedSets}/${totalSets}`}
+            icon="fitness-outline"
+          />
+          <StatCard
+            label="נפח כולל"
+            value={`${totalVolume.toLocaleString()}ק"ג`}
+            icon="barbell-outline"
+          />
+        </View>
 
-      {/* Exercise Summary */}
-      <View style={styles.exercisesSection}>
-        <Text style={styles.sectionTitle}>סיכום תרגילים</Text>
-        {workout.exercises?.map((ex, index) => (
-          <View key={index} style={styles.exerciseBlock}>
-            <Text style={styles.exerciseName}>
-              {/* ✅ Fixed: Added null check for ex.exercise */}
-              {ex.exercise?.name || ex.name}
-            </Text>
-            {ex.sets.map((set, setIndex) => (
-              <View key={setIndex} style={styles.setRow}>
-                <Text style={[styles.setText, styles.bold]}>
-                  סט {setIndex + 1}:
-                </Text>
-                <Text style={styles.setText}>
-                  {set.weight || 0}kg × {set.reps || 0} חזרות
-                  {set.status === "completed" || set.completed ? " ✅" : " ⏳"}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ))}
-      </View>
+        {/* Exercises Breakdown */}
+        <View style={styles.exercisesSection}>
+          <Text style={styles.sectionTitle}>פירוט תרגילים</Text>
+          {workout.exercises.map((exercise, index) => (
+            <View key={index} style={styles.exerciseBlock}>
+              <Text style={styles.exerciseName}>{exercise.name}</Text>
+              {exercise.sets.map((set, setIndex) => (
+                <View key={setIndex} style={styles.setRow}>
+                  <Text style={styles.setText}>סט {setIndex + 1}:</Text>
+                  <Text style={[styles.setText, styles.bold]}>
+                    {set.weight ? `${set.weight}ק"ג × ` : ""}
+                    {set.reps ? `${set.reps} חזרות` : ""}
+                    {set.duration ? ` • ${set.duration}"` : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
 
-      {/* Rating Section */}
-      <View style={styles.feedbackSection}>
-        <Text style={styles.sectionTitle}>איך הרגשת באימון?</Text>
-        <EffortRating rating={rating} onRate={setRating} />
-      </View>
+        {/* Feedback Section */}
+        <View style={styles.feedbackSection}>
+          <Text style={styles.sectionTitle}>איך היה האימון?</Text>
+          <EffortRating rating={rating} onRate={setRating} />
 
-      {/* Notes Section */}
-      <View style={styles.feedbackSection}>
-        <Text style={styles.sectionTitle}>הערות (אופציונלי)</Text>
-        <Input
-          placeholder="איך היה האימון? מה למדת? איך אתה מרגיש?"
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          numberOfLines={4}
-          style={styles.notesInput}
-        />
-      </View>
+          <Input
+            label="הערות"
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="איך היה האימון? הערות להבא..."
+            multiline
+            style={styles.notesInput}
+          />
+        </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionsContainer}>
-        <Button
-          title="שמור וסיים"
-          onPress={handleFinishAndSave}
-          style={styles.saveButton}
-        />
-        <Button
-          title="חזור לבית"
-          variant="outline"
-          onPress={() => navigation.popToTop()}
-          style={styles.homeButton}
-        />
-      </View>
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
+          <Button
+            title="שמור וסיים"
+            onPress={handleFinishAndSave}
+            style={styles.saveButton}
+          />
+          <Button
+            title="חזור לבית"
+            variant="outline"
+            onPress={() => navigation.popToTop()}
+            style={styles.homeButton}
+          />
+        </View>
 
-      <View style={styles.bottomPadding} />
-    </ScrollView>
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </View>
   );
 };
 
@@ -280,28 +301,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    color: colors.error,
-    textAlign: "center",
-    marginTop: 16,
-    marginBottom: 24,
-  },
 
   // Header
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    paddingTop: 50,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
