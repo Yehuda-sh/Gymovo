@@ -1,4 +1,4 @@
-// src/components/common/Input.tsx - עדכון לטקסט נראה
+// src/components/common/Input.tsx - עדכון לטקסט נראה - מתוקן
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -74,11 +74,11 @@ const styles = StyleSheet.create({
     paddingRight: 0,
   },
   inputError: {
-    borderColor: colors.danger,
+    borderColor: "#ff3366", // צבע קבוע במקום colors.danger
     borderWidth: 2,
   },
   errorText: {
-    color: colors.danger,
+    color: "#ff3366", // צבע קבוע במקום colors.danger
     fontSize: 12,
     marginTop: 4,
     textAlign: "right",

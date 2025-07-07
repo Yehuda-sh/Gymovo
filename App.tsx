@@ -1,4 +1,4 @@
-// App.tsx - גרסה מקצועית לשלב 1 עם יציבות (עם ה-dependencies הקיימים)
+// App.tsx - גרסה מתוקנת ללא שגיאות
 
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef, useState } from "react";
@@ -17,7 +17,6 @@ import { ErrorBoundary } from "./src/components/common/ErrorBoundary";
 import AppWithProviders from "./src/navigation/RootLayout";
 
 // 🎨 עיצוב ונושא
-import { colors } from "./src/theme/colors";
 
 // 🔧 הגדרות גלובליות
 
@@ -177,10 +176,10 @@ const App = () => {
   // 📱 רינדור האפליקציה הראשית
   return (
     <>
-      {/* 🎨 סטטוס בר מותאם לעיצוב */}
+      {/* 🎨 סטטוס בר מותאם לעיצוב - תיקון הבעיה כאן */}
       <StatusBar
         barStyle="light-content" // תואם לעיצוב הכהה
-        backgroundColor={colors.background}
+        backgroundColor="#0a0a0a" // שחור עמוק - צבע ישיר במקום אובייקט
         translucent={false}
       />
 
@@ -197,10 +196,11 @@ export default App;
 // 📊 מידע לפיתוח (רק במצב debug)
 if (__DEV__) {
   // יצירת כמה פונקציות עזר גלובליות לפיתוח
+  // 🔧 תיקון השגיאה השנייה - החלפת require ב-import
+  import AsyncStorage from "@react-native-async-storage/async-storage";
+
   (global as any).__DEV_HELPERS__ = {
     clearAsyncStorage: async () => {
-      const AsyncStorage =
-        require("@react-native-async-storage/async-storage").default;
       await AsyncStorage.clear();
       console.log("🗑️ AsyncStorage cleared");
     },

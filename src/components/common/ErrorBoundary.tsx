@@ -1,185 +1,421 @@
-// src/components/common/ErrorBoundary.tsx
+// src/components/common/ErrorBoundary.tsx - גרסה מתקדמת עם retry mechanism - מתוקן
+
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React, { Component, ReactNode } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { colors } from "../../theme/colors";
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
   onError?: (error: Error, errorInfo: any) => void;
-  showDetails?: boolean; // להציג פרטי שגיאה גם בפרודקשן
+  showDetails?: boolean;
+  fallback?: ReactNode;
+  maxRetries?: number;
 }
 
 interface State {
   hasError: boolean;
-  error?: Error;
-  errorId?: string; // מזהה ייחודי לשגיאה
+  error: Error | null;
+  errorInfo: any;
+  errorId: string | null;
+  retryCount: number;
+  isRetrying: boolean;
 }
 
+// 🛡️ Error Boundary מתקדם עם retry mechanism
 export class ErrorBoundary extends Component<Props, State> {
+  private retryTimeouts: NodeJS.Timeout[] = [];
+
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: null,
+      retryCount: 0,
+      isRetrying: false,
+    };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    // יצירת מזהה שגיאה ייחודי
+    const errorId = `ERR_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     return {
       hasError: true,
       error,
-      errorId: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      errorId,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
-    this.props.onError?.(error, errorInfo);
+    console.error("🚨 ErrorBoundary caught an error:", error);
+    console.error("📋 Error info:", errorInfo);
 
-    // רטט כדי להודיע למשתמש על הבעיה
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    this.setState({
+      errorInfo,
+    });
 
-    // בעתיד - שליחה לsentry או crashlytics
-    // Sentry.captureException(error, { extra: errorInfo });
+    // קריאה לפונקציית callback אם קיימת
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
+
+    // בעתיד: שליחה לשירות מעקב שגיאות
+    this.logErrorToService(error, errorInfo);
   }
 
-  handleRetry = () => {
-    console.log("🔄 User requested retry for error:", this.state.errorId);
-    this.setState({ hasError: false, error: undefined, errorId: undefined });
+  componentWillUnmount() {
+    // ניקוי timers
+    this.retryTimeouts.forEach((timeout) => clearTimeout(timeout));
+  }
 
-    // רטט קל לאישור
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  // 📊 לוג שגיאות לשירות חיצוני (בעתיד)
+  private logErrorToService = (error: Error, errorInfo: any) => {
+    try {
+      // כאן אפשר להוסיף:
+      // - Sentry.captureException(error, { extra: errorInfo });
+      // - Analytics.trackError('error_boundary_catch', { error: error.message });
+      // - Firebase Crashlytics
+
+      if (__DEV__) {
+        console.log("📊 Error logged (dev mode only):", {
+          message: error.message,
+          stack: error.stack,
+          componentStack: errorInfo.componentStack,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (loggingError) {
+      console.error("Failed to log error:", loggingError);
+    }
   };
 
-  handleReportError = () => {
-    // בעתיד - פתיחת מסך דיווח שגיאה או שליחת מייל
-    console.log("📧 User wants to report error:", this.state.errorId);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // 🔄 ניסיון חוזר חכם
+  private handleRetry = () => {
+    const { maxRetries = 3 } = this.props;
+    const { retryCount } = this.state;
+
+    if (retryCount >= maxRetries) {
+      Alert.alert(
+        "מגבלת ניסיונות",
+        `מספר הניסיונות המקסימלי (${maxRetries}) הושג. אנא רענן את האפליקציה או פנה לתמיכה.`,
+        [
+          { text: "ביטול", style: "cancel" },
+          { text: "פנה לתמיכה", onPress: this.handleContactSupport },
+        ]
+      );
+      return;
+    }
+
+    this.setState({
+      isRetrying: true,
+      retryCount: retryCount + 1,
+    });
+
+    // דיליי מתקדם - כל ניסיון לוקח יותר זמן
+    const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+
+    const timeout = setTimeout(() => {
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        errorId: null,
+        isRetrying: false,
+      });
+    }, delay);
+
+    this.retryTimeouts.push(timeout);
+  };
+
+  // 📧 פנייה לתמיכה
+  private handleContactSupport = () => {
+    const { error, errorId } = this.state;
+
+    const subject = encodeURIComponent("שגיאה באפליקציית Gymovo");
+    const body = encodeURIComponent(`
+שלום,
+
+נתקלתי בשגיאה באפליקציה:
+
+מזהה שגיאה: ${errorId}
+הודעת השגיאה: ${error?.message || "לא זמין"}
+פלטפורמה: ${Platform.OS} ${Platform.Version}
+זמן: ${new Date().toLocaleString("he-IL")}
+
+תיאור נוסף:
+[נא תאר מה עשית לפני השגיאה]
+    `);
+
+    const emailUrl = `mailto:support@gymovo.com?subject=${subject}&body=${body}`;
+
+    Linking.canOpenURL(emailUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(emailUrl);
+      } else {
+        Alert.alert(
+          "לא ניתן לפתוח אימייל",
+          "אנא פנה אלינו בכתובת: support@gymovo.com"
+        );
+      }
+    });
+  };
+
+  // 🐛 דיווח על בעיה מתקדם
+  private handleReportError = () => {
+    const { error, errorId, errorInfo } = this.state;
+
+    Alert.alert("דווח על שגיאה", "תרצה לשלוח דוח שגיאה לצוות הפיתוח?", [
+      { text: "ביטול", style: "cancel" },
+      {
+        text: "שלח דוח",
+        onPress: () => {
+          // כאן אפשר להוסיף שליחה אוטומטית לשירות
+          console.log("📤 Error report sent:", {
+            errorId,
+            message: error?.message,
+            stack: error?.stack,
+            componentStack: errorInfo?.componentStack,
+          });
+
+          Alert.alert("תודה!", "הדוח נשלח בהצלחה");
+        },
+      },
+    ]);
+  };
+
+  // 🔄 איפוס מלא
+  private handleFullReset = () => {
+    Alert.alert("איפוס מלא", "זה יאפס את כל הנתונים המקומיים. האם אתה בטוח?", [
+      { text: "ביטול", style: "cancel" },
+      {
+        text: "אפס",
+        style: "destructive",
+        onPress: () => {
+          // כאן אפשר להוסיף:
+          // - AsyncStorage.clear()
+          // - Reset stores
+          // - Navigate to welcome screen
+          this.setState({
+            hasError: false,
+            error: null,
+            errorInfo: null,
+            errorId: null,
+            retryCount: 0,
+            isRetrying: false,
+          });
+        },
+      },
+    ]);
   };
 
   render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
+    const { children, fallback, showDetails = false } = this.props;
+    const { hasError, error, errorId, retryCount, isRetrying, errorInfo } =
+      this.state;
 
-      const showDetails = this.props.showDetails || __DEV__;
+    // אם יש fallback מותאם אישית
+    if (hasError && fallback) {
+      return fallback;
+    }
 
+    // מסך שגיאה מקצועי
+    if (hasError) {
       return (
         <View style={styles.container}>
           <View style={styles.content}>
-            <Ionicons
-              name="warning-outline"
-              size={64}
-              color={colors.danger}
-              style={styles.icon}
-            />
-            <Text style={styles.title}>אופס! משהו השתבש</Text>
+            {/* אייקון שגיאה */}
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="warning"
+                size={64}
+                color={colors.warning}
+                style={styles.icon}
+              />
+            </View>
+
+            {/* כותרת ותיאור */}
+            <Text style={styles.title}>משהו השתבש</Text>
             <Text style={styles.subtitle}>
-              אירעה שגיאה בלתי צפויה. אנא נסה שוב.
+              {retryCount > 0
+                ? `אירעה שגיאה חוזרת (ניסיון ${retryCount})`
+                : "אירעה שגיאה בלתי צפויה. אנא נסה שוב."}
             </Text>
 
-            {this.state.errorId && (
+            {/* מזהה שגיאה */}
+            {errorId && (
               <Text style={styles.errorId}>
-                מזהה שגיאה: {this.state.errorId.slice(-8)}
+                מזהה שגיאה: {errorId.slice(-12)}
               </Text>
             )}
 
-            {showDetails && this.state.error && (
+            {/* פרטי שגיאה למפתחים */}
+            {showDetails && error && (
               <View style={styles.errorDetails}>
                 <Text style={styles.errorTitle}>פרטי השגיאה (למפתחים):</Text>
-                <Text style={styles.errorText}>
-                  {this.state.error.toString()}
+                <Text style={styles.errorText} numberOfLines={6}>
+                  {error.toString()}
                 </Text>
+                {errorInfo?.componentStack && (
+                  <Text style={styles.errorText} numberOfLines={4}>
+                    {errorInfo.componentStack}
+                  </Text>
+                )}
               </View>
             )}
 
+            {/* כפתורי פעולה */}
             <View style={styles.actions}>
+              {/* כפתור ניסיון חוזר */}
               <TouchableOpacity
-                style={styles.retryButton}
+                style={[
+                  styles.retryButton,
+                  isRetrying && styles.retryingButton,
+                ]}
                 onPress={this.handleRetry}
+                disabled={isRetrying}
               >
-                <Ionicons name="refresh" size={20} color="#fff" />
-                <Text style={styles.retryText}>נסה שוב</Text>
+                {isRetrying ? (
+                  <>
+                    <Ionicons name="time" size={20} color="#fff" />
+                    <Text style={styles.retryText}>מנסה שוב...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="refresh" size={20} color="#fff" />
+                    <Text style={styles.retryText}>
+                      נסה שוב {retryCount > 0 && `(${retryCount})`}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
 
+              {/* כפתור דיווח */}
               <TouchableOpacity
                 style={styles.reportButton}
                 onPress={this.handleReportError}
               >
-                <Ionicons
-                  name="bug-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
+                <Ionicons name="bug-outline" size={20} color="#cccccc" />
                 <Text style={styles.reportText}>דווח על בעיה</Text>
               </TouchableOpacity>
+
+              {/* כפתור פנייה לתמיכה */}
+              {retryCount >= 2 && (
+                <TouchableOpacity
+                  style={styles.supportButton}
+                  onPress={this.handleContactSupport}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.supportText}>פנה לתמיכה</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* כפתור איפוס מלא - רק במקרים קיצוניים */}
+              {retryCount >= 3 && (
+                <TouchableOpacity
+                  style={styles.resetButton}
+                  onPress={this.handleFullReset}
+                >
+                  <Ionicons name="refresh-circle" size={20} color="#ff3366" />
+                  <Text style={styles.resetText}>איפוס מלא</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }
 
+// 🎨 Styles מעודכנים עם צבעים קבועים
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
+    backgroundColor: "#0a0a0a", // צבע קבוע
     padding: 20,
   },
   content: {
     alignItems: "center",
-    maxWidth: 320,
+    maxWidth: 340,
     width: "100%",
   },
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: `${colors.warning}20`,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
   icon: {
-    marginBottom: 16,
+    opacity: 0.8,
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    color: colors.text,
+    color: "#ffffff", // צבע קבוע
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: "#cccccc", // צבע קבוע
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 16,
+    lineHeight: 24,
+    marginBottom: 20,
   },
   errorId: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: "#888888", // צבע קבוע
     textAlign: "center",
-    marginBottom: 20,
-    fontFamily: "monospace",
+    marginBottom: 24,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    backgroundColor: "#262626", // צבע קבוע
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   errorDetails: {
-    backgroundColor: colors.surface,
-    padding: 12,
+    backgroundColor: "#262626", // צבע קבוע
+    padding: 16,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 24,
     width: "100%",
     borderLeftWidth: 3,
-    borderLeftColor: colors.danger,
+    borderLeftColor: colors.warning,
   },
   errorTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: colors.text,
+    color: "#ffffff", // צבע קבוע
     marginBottom: 8,
   },
   errorText: {
     fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: "monospace",
+    color: "#cccccc", // צבע קבוע
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     lineHeight: 16,
   },
   actions: {
@@ -192,9 +428,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
+  },
+  retryingButton: {
+    backgroundColor: "#888888", // צבע קבוע
   },
   retryText: {
     color: "#fff",
@@ -210,12 +449,48 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "#333333", // צבע קבוע
     gap: 8,
   },
   reportText: {
-    color: colors.textSecondary,
+    color: "#cccccc", // צבע קבוע
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  supportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: `${colors.primary}10`,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    gap: 8,
+  },
+  supportText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  resetButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ff336610", // צבע קבוע
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ff3366", // צבע קבוע
+    gap: 8,
+  },
+  resetText: {
+    color: "#ff3366", // צבע קבוע
     fontSize: 14,
     fontWeight: "600",
   },
 });
+
+export default ErrorBoundary;

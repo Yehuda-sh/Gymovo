@@ -1,4 +1,4 @@
-// src/components/common/NetworkError.tsx
+// src/components/common/NetworkError.tsx - מתוקן
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -15,7 +15,7 @@ export const NetworkError = ({
   message = "בעיה בחיבור לאינטרנט",
 }: NetworkErrorProps) => (
   <View style={networkStyles.container}>
-    <Ionicons name="wifi-outline" size={48} color={colors.textSecondary} />
+    <Ionicons name="wifi-outline" size={48} color="#cccccc" />
     <Text style={networkStyles.title}>אין חיבור</Text>
     <Text style={networkStyles.message}>{message}</Text>
     <TouchableOpacity style={networkStyles.retryButton} onPress={onRetry}>
@@ -35,13 +35,13 @@ const networkStyles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "bold",
-    color: colors.text,
+    color: "#ffffff", // צבע קבוע במקום colors.text
     marginTop: 16,
     marginBottom: 8,
   },
   message: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: "#cccccc", // צבע קבוע במקום colors.textSecondary
     textAlign: "center",
     marginBottom: 24,
   },

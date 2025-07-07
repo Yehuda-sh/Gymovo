@@ -1,30 +1,38 @@
-// src/components/cards/WorkoutCard.tsx - 💫 Enhanced Workout Card
+// src/components/cards/WorkoutCard.tsx - 💫 Enhanced Workout Card - מתוקן
 
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
-  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  getCurrentColors,
-  getDifficultyColor,
-  getMuscleColor,
-} from "../../theme/colors";
+import { colors, getDifficultyColor } from "../../theme/colors";
 import { Workout } from "../../types/workout";
 
-const { width } = Dimensions.get("window");
-
-// 🎨 Enhanced Color System
-const useColors = () => getCurrentColors();
+// 🎨 פונקציית עזר לצבע שריר
+const getMuscleColor = (muscle: string): string => {
+  const muscleColors: { [key: string]: string } = {
+    chest: "#ff6b35",
+    back: "#007aff",
+    legs: "#fbbf24",
+    shoulders: "#8b5cf6",
+    arms: "#00ff88",
+    core: "#f59e0b",
+    biceps: "#00ff88",
+    triceps: "#00ff88",
+    quadriceps: "#fbbf24",
+    hamstrings: "#fbbf24",
+    calves: "#fbbf24",
+    abs: "#f59e0b",
+  };
+  return muscleColors[muscle.toLowerCase()] || colors.primary;
+};
 
 // 💀 Skeleton Loading Component
 export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
-  const colors = useColors();
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -66,8 +74,8 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
       style={[
         styles.skeletonContainer,
         {
-          backgroundColor: colors.background.card,
-          borderColor: colors.border.light,
+          backgroundColor: "#1e1e1e",
+          borderColor: "#333333",
           transform: [{ translateY: slideAnim }],
         },
       ]}
@@ -78,7 +86,7 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
           style={[
             styles.skeletonTitle,
             {
-              backgroundColor: colors.border.medium,
+              backgroundColor: "#444444",
               opacity: skeletonOpacity,
             },
           ]}
@@ -87,7 +95,7 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
           style={[
             styles.skeletonBadge,
             {
-              backgroundColor: colors.border.medium,
+              backgroundColor: "#444444",
               opacity: skeletonOpacity,
             },
           ]}
@@ -99,7 +107,7 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
         style={[
           styles.skeletonDate,
           {
-            backgroundColor: colors.border.medium,
+            backgroundColor: "#444444",
             opacity: skeletonOpacity,
           },
         ]}
@@ -113,7 +121,7 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
             style={[
               styles.skeletonStat,
               {
-                backgroundColor: colors.border.medium,
+                backgroundColor: "#444444",
                 opacity: skeletonOpacity,
               },
             ]}
@@ -126,7 +134,7 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
         style={[
           styles.skeletonNotes,
           {
-            backgroundColor: colors.border.medium,
+            backgroundColor: "#444444",
             opacity: skeletonOpacity,
           },
         ]}
@@ -140,7 +148,7 @@ export const WorkoutCardSkeleton = ({ index = 0 }: { index?: number }) => {
             style={[
               styles.skeletonMuscleTag,
               {
-                backgroundColor: colors.border.medium,
+                backgroundColor: "#444444",
                 opacity: skeletonOpacity,
               },
             ]}
@@ -177,7 +185,7 @@ const DifficultyBadge = ({ difficulty }: { difficulty?: string }) => {
         };
       default:
         return {
-          color: getCurrentColors().text.secondary,
+          color: "#cccccc",
           text: difficulty,
           icon: "help",
         };
@@ -198,8 +206,6 @@ const DifficultyBadge = ({ difficulty }: { difficulty?: string }) => {
 
 // ⭐ Rating Stars Component
 const RatingStars = ({ rating }: { rating?: number }) => {
-  const colors = useColors();
-
   if (!rating) return null;
 
   return (
@@ -209,14 +215,10 @@ const RatingStars = ({ rating }: { rating?: number }) => {
           key={star}
           name={star <= rating ? "star" : "star-outline"}
           size={12}
-          color={
-            star <= rating
-              ? colors.workout.rating.star
-              : colors.workout.rating.starEmpty
-          }
+          color={star <= rating ? "#ffab00" : "#444444"}
         />
       ))}
-      <Text style={[styles.ratingText, { color: colors.text.secondary }]}>
+      <Text style={[styles.ratingText, { color: "#cccccc" }]}>
         ({rating.toFixed(1)})
       </Text>
     </View>
@@ -225,8 +227,6 @@ const RatingStars = ({ rating }: { rating?: number }) => {
 
 // 📊 Workout Stats Component
 const WorkoutStats = ({ workout }: { workout: Workout }) => {
-  const colors = useColors();
-
   const totalVolume = React.useMemo(() => {
     return workout.exercises.reduce((total, exercise) => {
       const exerciseVolume = exercise.sets.reduce((setTotal, set) => {
@@ -250,35 +250,23 @@ const WorkoutStats = ({ workout }: { workout: Workout }) => {
   return (
     <View style={styles.statsContainer}>
       <View style={styles.statItem}>
-        <Ionicons
-          name="barbell-outline"
-          size={14}
-          color={colors.text.secondary}
-        />
-        <Text style={[styles.statText, { color: colors.text.secondary }]}>
+        <Ionicons name="barbell-outline" size={14} color="#cccccc" />
+        <Text style={[styles.statText, { color: "#cccccc" }]}>
           {workout.exercises.length} תרגילים
         </Text>
       </View>
 
       <View style={styles.statItem}>
-        <Ionicons
-          name="layers-outline"
-          size={14}
-          color={colors.text.secondary}
-        />
-        <Text style={[styles.statText, { color: colors.text.secondary }]}>
+        <Ionicons name="layers-outline" size={14} color="#cccccc" />
+        <Text style={[styles.statText, { color: "#cccccc" }]}>
           {totalSets} סטים
         </Text>
       </View>
 
       {workout.duration && (
         <View style={styles.statItem}>
-          <Ionicons
-            name="time-outline"
-            size={14}
-            color={colors.text.secondary}
-          />
-          <Text style={[styles.statText, { color: colors.text.secondary }]}>
+          <Ionicons name="time-outline" size={14} color="#cccccc" />
+          <Text style={[styles.statText, { color: "#cccccc" }]}>
             {workout.duration} דק׳
           </Text>
         </View>
@@ -286,12 +274,8 @@ const WorkoutStats = ({ workout }: { workout: Workout }) => {
 
       {totalVolume > 0 && (
         <View style={styles.statItem}>
-          <Ionicons
-            name="trending-up-outline"
-            size={14}
-            color={colors.text.secondary}
-          />
-          <Text style={[styles.statText, { color: colors.text.secondary }]}>
+          <Ionicons name="trending-up-outline" size={14} color="#cccccc" />
+          <Text style={[styles.statText, { color: "#cccccc" }]}>
             {formatVolume(totalVolume)} ק״ג
           </Text>
         </View>
@@ -302,8 +286,6 @@ const WorkoutStats = ({ workout }: { workout: Workout }) => {
 
 // 💪 Target Muscles Component
 const TargetMuscles = ({ muscles }: { muscles?: string[] }) => {
-  const colors = useColors();
-
   if (!muscles || muscles.length === 0) return null;
 
   return (
@@ -325,15 +307,8 @@ const TargetMuscles = ({ muscles }: { muscles?: string[] }) => {
         </View>
       ))}
       {muscles.length > 4 && (
-        <View
-          style={[
-            styles.moreMuscles,
-            { backgroundColor: colors.background.tertiary },
-          ]}
-        >
-          <Text
-            style={[styles.moreMusclesText, { color: colors.text.tertiary }]}
-          >
+        <View style={[styles.moreMuscles, { backgroundColor: "#2c2c2e" }]}>
+          <Text style={[styles.moreMusclesText, { color: "#8e8e93" }]}>
             +{muscles.length - 4}
           </Text>
         </View>
@@ -344,8 +319,6 @@ const TargetMuscles = ({ muscles }: { muscles?: string[] }) => {
 
 // 🔥 Workout Intensity Indicator
 const IntensityIndicator = ({ workout }: { workout: Workout }) => {
-  const colors = useColors();
-
   const intensity = React.useMemo(() => {
     // Calculate intensity based on volume, duration, and sets
     const totalVolume = workout.exercises.reduce((total, exercise) => {
@@ -375,7 +348,7 @@ const IntensityIndicator = ({ workout }: { workout: Workout }) => {
     if (intensity >= 80) return colors.error;
     if (intensity >= 60) return colors.warning;
     if (intensity >= 40) return colors.success;
-    return colors.text.tertiary;
+    return "#8e8e93";
   };
 
   const getIntensityLabel = (intensity: number) => {
@@ -387,9 +360,7 @@ const IntensityIndicator = ({ workout }: { workout: Workout }) => {
 
   return (
     <View style={styles.intensityContainer}>
-      <View
-        style={[styles.intensityBar, { backgroundColor: colors.border.light }]}
-      >
+      <View style={[styles.intensityBar, { backgroundColor: "#333333" }]}>
         <View
           style={[
             styles.intensityFill,
@@ -427,7 +398,6 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
   showIntensity = true,
   compact = false,
 }) => {
-  const colors = useColors();
   const animatedValue = useRef(new Animated.Value(0)).current;
   const scaleValue = useRef(new Animated.Value(1)).current;
 
@@ -506,9 +476,9 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
           styles.card,
           compact && styles.compactCard,
           {
-            backgroundColor: colors.background.card,
-            borderColor: colors.border.light,
-            shadowColor: colors.shadow.medium,
+            backgroundColor: "#1e1e1e",
+            borderColor: "#333333",
+            shadowColor: "rgba(0, 0, 0, 0.3)",
           },
         ]}
         onPress={onPress}
@@ -521,7 +491,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleContainer}>
             <Text
-              style={[styles.cardTitle, { color: colors.text.primary }]}
+              style={[styles.cardTitle, { color: "#ffffff" }]}
               numberOfLines={1}
             >
               {workout.name}
@@ -529,7 +499,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
             <DifficultyBadge difficulty={workout.difficulty} />
           </View>
           <View style={styles.cardMeta}>
-            <Text style={[styles.timeAgo, { color: colors.text.tertiary }]}>
+            <Text style={[styles.timeAgo, { color: "#8e8e93" }]}>
               {timeAgo}
             </Text>
             <RatingStars rating={workout.rating} />
@@ -537,7 +507,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
         </View>
 
         {/* Date */}
-        <Text style={[styles.cardDate, { color: colors.text.secondary }]}>
+        <Text style={[styles.cardDate, { color: "#cccccc" }]}>
           {workoutDate}
         </Text>
 
@@ -550,10 +520,10 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
         {/* Notes Preview */}
         {workout.notes && !compact && (
           <Text
-            style={[styles.notesPreview, { color: colors.text.secondary }]}
+            style={[styles.notesPreview, { color: "#cccccc" }]}
             numberOfLines={2}
           >
-            "{workout.notes}"
+            &ldquo;{workout.notes}&rdquo;
           </Text>
         )}
 
@@ -562,11 +532,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
 
         {/* Arrow */}
         <View style={styles.cardArrow}>
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors.text.tertiary}
-          />
+          <Ionicons name="chevron-forward" size={20} color="#8e8e93" />
         </View>
 
         {/* Completion Badge */}
@@ -587,11 +553,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1e1e1e",
     borderRadius: 16,
     padding: 16,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
