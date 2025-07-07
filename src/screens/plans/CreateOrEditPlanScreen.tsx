@@ -1,4 +1,4 @@
-// src/screens/plans/CreateOrEditPlanScreen.tsx
+// src/screens/plans/CreateOrEditPlanScreen.tsx - תוקן
 
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -35,14 +35,29 @@ type ScreenRouteProp = RouteProp<RootStackParamList, "CreateOrEditPlan">;
 const DayCard = ({ item, drag, isActive }: RenderItemParams<PlanDay>) => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<ScreenRouteProp>();
+  const { planId } = route.params || {};
+
   return (
     <ScaleDecorator>
       <TouchableOpacity
         style={[styles.dayCard, isActive && styles.dayCardActive]}
         onLongPress={drag}
-        onPress={() =>
-          navigation.navigate("EditWorkoutDay", { dayId: item.id })
-        }
+        onPress={() => {
+          if (planId) {
+            navigation.navigate("EditWorkoutDay", {
+              planId: planId,
+              dayId: item.id,
+            });
+          } else {
+            // עבור תוכנית חדשה, נצטרך לשמור אותה קודם
+            Alert.alert(
+              "שמור תוכנית",
+              "יש לשמור את התוכנית לפני עריכת ימי אימון",
+              [{ text: "הבנתי", style: "default" }]
+            );
+          }
+        }}
         disabled={isActive}
       >
         <Ionicons name="reorder-three-outline" size={24} color="#ccc" />
@@ -107,14 +122,24 @@ const CreateOrEditPlanScreen = () => {
   };
 
   const handleAddNewDay = () => {
+    if (!plan) return;
+
     const newDayId = `day_${Date.now()}`;
+    const currentDaysCount = plan.days?.length || 0;
     const newDay: PlanDay = {
       id: newDayId,
-      name: `יום אימון ${plan ? plan.days.length + 1 : 1}`,
+      name: `יום אימון ${currentDaysCount + 1}`,
       exercises: [],
     };
     addDay(newDay);
-    navigation.navigate("EditWorkoutDay", { dayId: newDayId });
+
+    // אם זו תוכנית קיימת, ניתן לערוך מיד
+    if (planId) {
+      navigation.navigate("EditWorkoutDay", {
+        planId: planId,
+        dayId: newDayId,
+      });
+    }
   };
 
   if (!plan) {
@@ -124,6 +149,9 @@ const CreateOrEditPlanScreen = () => {
       </View>
     );
   }
+
+  // וידוא שיש days array
+  const planDays = plan.days || [];
 
   return (
     <View style={styles.container}>
@@ -146,7 +174,7 @@ const CreateOrEditPlanScreen = () => {
       </View>
 
       <DraggableFlatList
-        data={plan.days}
+        data={planDays}
         keyExtractor={(item) => item.id}
         renderItem={DayCard}
         onDragEnd={({ data }) => reorderDays(data)}
@@ -183,8 +211,15 @@ const CreateOrEditPlanScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background || "#f5f5f5" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   header: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
@@ -192,44 +227,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    backgroundColor: "#fff",
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  headerTitle: { fontSize: 20, fontWeight: "bold" },
-  headerButton: { padding: 5 },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  headerButton: {
+    padding: 5,
+  },
   saveButton: {
     width: "auto",
     paddingVertical: 8,
     paddingHorizontal: 20,
     marginVertical: 0,
   },
-  list: { padding: 16, paddingBottom: 100 },
+  list: {
+    padding: 16,
+    paddingBottom: 100,
+  },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: colors.text,
     marginBottom: 8,
     textAlign: "right",
     marginTop: 16,
   },
   dayCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 10,
     marginBottom: 10,
     flexDirection: "row-reverse",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   dayCardActive: {
-    backgroundColor: "#eef4fc",
+    backgroundColor: colors.primaryLight,
     elevation: 4,
     shadowOpacity: 0.1,
   },
-  dayDetailsContainer: { flex: 1, marginHorizontal: 10 },
-  dayTitle: { fontSize: 18, fontWeight: "bold", textAlign: "right" },
+  dayDetailsContainer: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  dayTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "right",
+    color: colors.text,
+  },
   daySubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: colors.textSecondary,
     textAlign: "right",
     marginTop: 4,
   },

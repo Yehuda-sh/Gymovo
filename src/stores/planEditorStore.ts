@@ -36,7 +36,7 @@ export const usePlanEditorStore = create<PlanEditorState>((set, get) => ({
         id: `plan_${Date.now()}`,
         name: "",
         description: "",
-        days: [],
+        days: [], // ✅ תמיד מאתחל מערך ריק
       },
       isDirty: false,
     });
@@ -44,7 +44,12 @@ export const usePlanEditorStore = create<PlanEditorState>((set, get) => ({
 
   // טוען תוכנית קיימת לעורך (מבצע העתקה עמוקה)
   loadPlanForEdit: (planToEdit) => {
-    set({ plan: JSON.parse(JSON.stringify(planToEdit)), isDirty: false });
+    const copiedPlan = JSON.parse(JSON.stringify(planToEdit));
+    // ✅ וידוא שיש מערך days
+    if (!copiedPlan.days) {
+      copiedPlan.days = [];
+    }
+    set({ plan: copiedPlan, isDirty: false });
   },
 
   // מאפס את מצב העורך (למשל, ביציאה מהמסך)
@@ -67,7 +72,8 @@ export const usePlanEditorStore = create<PlanEditorState>((set, get) => ({
   addDay: (day) =>
     set(
       produce((state: PlanEditorState) => {
-        if (state.plan) {
+        // ✅ בדיקה כפולה - גם state.plan וגם state.plan.days
+        if (state.plan && state.plan.days) {
           state.plan.days.push(day);
           state.isDirty = true;
         }
@@ -78,7 +84,8 @@ export const usePlanEditorStore = create<PlanEditorState>((set, get) => ({
   updateDay: (dayId, updatedDay) =>
     set(
       produce((state: PlanEditorState) => {
-        if (state.plan) {
+        // ✅ בדיקה כפולה
+        if (state.plan && state.plan.days) {
           const dayIndex = state.plan.days.findIndex((d) => d.id === dayId);
           if (dayIndex !== -1) {
             state.plan.days[dayIndex] = updatedDay;
@@ -92,7 +99,8 @@ export const usePlanEditorStore = create<PlanEditorState>((set, get) => ({
   removeDay: (dayId) =>
     set(
       produce((state: PlanEditorState) => {
-        if (state.plan) {
+        // ✅ בדיקה כפולה
+        if (state.plan && state.plan.days) {
           state.plan.days = state.plan.days.filter((d) => d.id !== dayId);
           state.isDirty = true;
         }
@@ -103,7 +111,8 @@ export const usePlanEditorStore = create<PlanEditorState>((set, get) => ({
   reorderDays: (reorderedDays) =>
     set(
       produce((state: PlanEditorState) => {
-        if (state.plan) {
+        // ✅ בדיקה כפולה
+        if (state.plan && state.plan.days) {
           state.plan.days = reorderedDays;
           state.isDirty = true;
         }
