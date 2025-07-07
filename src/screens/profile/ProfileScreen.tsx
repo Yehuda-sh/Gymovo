@@ -70,17 +70,19 @@ const loadQuizProgress = async (
 };
 
 // 🧠 רכיב מצב השאלון החכם
-const QuizStatusCard = ({ userId }: { userId: string }) => {
+const QuizStatusCard = ({
+  userId,
+  onLoadProgressRef,
+}: {
+  userId: string;
+  onLoadProgressRef?: React.MutableRefObject<(() => void) | null>;
+}) => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [quizProgress, setQuizProgress] = useState<QuizProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-
-  useEffect(() => {
-    loadProgress();
-  }, [userId]);
 
   const loadProgress = useCallback(async () => {
     setIsLoading(true);
@@ -103,6 +105,17 @@ const QuizStatusCard = ({ userId }: { userId: string }) => {
       }),
     ]).start();
   }, [userId, fadeAnim, slideAnim]);
+
+  useEffect(() => {
+    loadProgress();
+  }, [loadProgress]);
+
+  // חשיפת פונקציית הרענון לרכיב האב
+  useEffect(() => {
+    if (onLoadProgressRef) {
+      onLoadProgressRef.current = loadProgress;
+    }
+  }, [loadProgress, onLoadProgressRef]);
 
   const handleQuizAction = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -391,6 +404,7 @@ const ProfileScreen = () => {
   const logout = useUserStore((state: UserState) => state.logout);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const loadProgressRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -398,6 +412,12 @@ const ProfileScreen = () => {
       duration: 1000,
       useNativeDriver: true,
     }).start();
+  }, [fadeAnim]);
+
+  const refreshQuizStatus = useCallback(() => {
+    if (loadProgressRef.current) {
+      loadProgressRef.current();
+    }
   }, []);
 
   const handleDeleteAccount = useCallback(() => {
@@ -461,7 +481,10 @@ const ProfileScreen = () => {
           </View>
 
           {/* מצב השאלון */}
-          <QuizStatusCard userId={user.id} />
+          <QuizStatusCard
+            userId={user.id}
+            onLoadProgressRef={loadProgressRef}
+          />
 
           {/* כפתורי דמו למפתחים */}
           {__DEV__ && (
@@ -478,7 +501,7 @@ const ProfileScreen = () => {
                       answers: { goal: "hypertrophy", whereToTrain: ["gym"] },
                       lastUpdated: new Date().toISOString(),
                     };
-                    loadProgress();
+                    refreshQuizStatus();
                   }}
                 >
                   <Text style={styles.devButtonText}>דמה שאלון חלקי</Text>
@@ -500,7 +523,7 @@ const ProfileScreen = () => {
                       completedAt: new Date().toISOString(),
                       lastUpdated: new Date().toISOString(),
                     };
-                    loadProgress();
+                    refreshQuizStatus();
                   }}
                 >
                   <Text style={styles.devButtonText}>דמה שאלון מושלם</Text>
@@ -511,7 +534,7 @@ const ProfileScreen = () => {
                   onPress={() => {
                     // מחיקת כל ההתקדמות
                     delete quizProgressStorage[user.id];
-                    loadProgress();
+                    refreshQuizStatus();
                   }}
                 >
                   <Text style={styles.devButtonText}>אפס שאלון</Text>
