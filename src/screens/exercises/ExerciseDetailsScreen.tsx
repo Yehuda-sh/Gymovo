@@ -36,102 +36,67 @@ const ExerciseDetailsScreen = ({ route, navigation }: Props) => {
     }
   };
 
+  // פונקציה לקבלת צבע לפי רמת קושי
+  const getDifficultyColor = (difficulty?: string) => {
+    switch (difficulty) {
+      case "beginner":
+        return "#4ade80"; // ירוק
+      case "intermediate":
+        return "#facc15"; // צהוב
+      case "advanced":
+        return "#f87171"; // אדום
+      default:
+        return colors.textSecondary;
+    }
+  };
+
+  // פונקציה לתרגום רמת קושי
+  const getDifficultyText = (difficulty?: string) => {
+    switch (difficulty) {
+      case "beginner":
+        return "מתחיל";
+      case "intermediate":
+        return "בינוני";
+      case "advanced":
+        return "מתקדם";
+      default:
+        return "לא צוין";
+    }
+  };
+
   // טיפול במצבי טעינה או שגיאה
   if (isLoading) {
-    return <ActivityIndicator size="large" style={styles.centered} />;
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>טוען פרטי תרגיל...</Text>
+      </View>
+    );
   }
+
   if (isError || !exercise) {
-    return <Text style={styles.centered}>אירעה שגיאה בטעינת התרגיל.</Text>;
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>אירעה שגיאה בטעינת התרגיל.</Text>
+        <Button
+          title="חזור"
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        />
+      </View>
+    );
   }
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>{exercise.name}</Text>
+      <View style={styles.header}>
+        <Text style={styles.exerciseName}>{exercise.name}</Text>
 
-      {/* שימוש ב-category במקום muscleGroup */}
-      <Text style={styles.muscleGroup}>{exercise.category}</Text>
+        {/* קטגוריה (מחליף את muscleGroup) */}
+        <Text style={styles.category}>{exercise.category}</Text>
 
-      {exercise.imageUrl && (
-        <Image source={{ uri: exercise.imageUrl }} style={styles.image} />
-      )}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>תיאור</Text>
-        <Text style={styles.description}>
-          {exercise.description || "אין תיאור זמין"}
-        </Text>
-      </View>
-
-      {/* ✅ Fixed: שימוש נכון ב-instructions עם type checking */}
-      {exercise.instructions && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>הוראות ביצוע</Text>
-          {typeof exercise.instructions === "string" ? (
-            <Text style={styles.instruction}>{exercise.instructions}</Text>
-          ) : Array.isArray(exercise.instructions) ? (
-            /* ✅ Fixed: הוספת type assertion כדי שTypeScript יבין שזה array */
-            (exercise.instructions as string[]).map(
-              (inst: string, index: number) => (
-                <Text
-                  key={index}
-                  style={styles.instruction}
-                >{`\u2022 ${inst}`}</Text>
-              )
-            )
-          ) : (
-            <Text style={styles.instruction}>אין הוראות זמינות</Text>
-          )}
-        </View>
-      )}
-
-      {/* מידע נוסף על התרגיל - מסתיר אם לא קיים */}
-      {exercise.targetMuscles && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>שרירים מעורבים</Text>
-          <View style={styles.musclesContainer}>
-            {typeof exercise.targetMuscles === "string" ? (
-              <View style={styles.muscleTag}>
-                <Text style={styles.muscleText}>{exercise.targetMuscles}</Text>
-              </View>
-            ) : Array.isArray(exercise.targetMuscles) ? (
-              /* ✅ Fixed: type assertion לarray */
-              (exercise.targetMuscles as string[]).map(
-                (muscle: string, index: number) => (
-                  <View key={index} style={styles.muscleTag}>
-                    <Text style={styles.muscleText}>{muscle}</Text>
-                  </View>
-                )
-              )
-            ) : null}
-          </View>
-        </View>
-      )}
-
-      {exercise.equipment && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ציוד נדרש</Text>
-          <View style={styles.equipmentContainer}>
-            {typeof exercise.equipment === "string" ? (
-              <View style={styles.equipmentTag}>
-                <Text style={styles.equipmentText}>{exercise.equipment}</Text>
-              </View>
-            ) : Array.isArray(exercise.equipment) ? (
-              /* ✅ Fixed: type assertion לarray */
-              (exercise.equipment as string[]).map(
-                (item: string, index: number) => (
-                  <View key={index} style={styles.equipmentTag}>
-                    <Text style={styles.equipmentText}>{item}</Text>
-                  </View>
-                )
-              )
-            ) : null}
-          </View>
-        </View>
-      )}
-
-      {exercise.difficulty && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>רמת קושי</Text>
+        {/* רמת קושי */}
+        {exercise.difficulty && (
           <View
             style={[
               styles.difficultyBadge,
@@ -142,44 +107,102 @@ const ExerciseDetailsScreen = ({ route, navigation }: Props) => {
               {getDifficultyText(exercise.difficulty)}
             </Text>
           </View>
+        )}
+      </View>
+
+      {/* תמונת התרגיל */}
+      {exercise.imageUrl && (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: exercise.imageUrl }}
+            style={styles.image}
+            resizeMode="cover"
+          />
         </View>
       )}
 
-      {/* TODO: בעתיד, להוסיף כאן גרף התקדמות אישי של המשתמש בתרגיל זה */}
-      <Button
-        title="הוסף לאימון הנוכחי"
-        onPress={handleAddToWorkout}
-        style={{ margin: 16 }}
-      />
+      {/* תיאור התרגיל */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>תיאור</Text>
+        <Text style={styles.description}>
+          {exercise.description || "אין תיאור זמין"}
+        </Text>
+      </View>
+
+      {/* הוראות ביצוע */}
+      {exercise.instructions && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>הוראות ביצוע</Text>
+          {Array.isArray(exercise.instructions) ? (
+            exercise.instructions.map((instruction, index) => (
+              <Text key={index} style={styles.instruction}>
+                {`${index + 1}. ${instruction}`}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.instruction}>{exercise.instructions}</Text>
+          )}
+        </View>
+      )}
+
+      {/* ✅ תיקון: שימוש ב-targetMuscleGroups במקום targetMuscles */}
+      {exercise.targetMuscleGroups &&
+        exercise.targetMuscleGroups.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>שרירים מעורבים</Text>
+            <View style={styles.musclesContainer}>
+              {exercise.targetMuscleGroups.map((muscle, index) => (
+                <View key={index} style={styles.muscleTag}>
+                  <Text style={styles.muscleText}>{muscle}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+      {/* ציוד נדרש */}
+      {exercise.equipment && exercise.equipment.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ציוד נדרש</Text>
+          <View style={styles.equipmentContainer}>
+            {exercise.equipment.map((item, index) => (
+              <View key={index} style={styles.equipmentTag}>
+                <Text style={styles.equipmentText}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* משך זמן משוער */}
+      {exercise.duration && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>משך זמן משוער</Text>
+          <Text style={styles.duration}>
+            {Math.floor(exercise.duration / 60)} דקות ו-{exercise.duration % 60}{" "}
+            שניות
+          </Text>
+        </View>
+      )}
+
+      {/* קלוריות */}
+      {exercise.calories && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>קלוריות משוערות</Text>
+          <Text style={styles.calories}>{exercise.calories} קלוריות</Text>
+        </View>
+      )}
+
+      {/* כפתור הוספה לאימון */}
+      <View style={styles.addToWorkoutContainer}>
+        <Button
+          title="הוסף לאימון"
+          onPress={handleAddToWorkout}
+          style={styles.addToWorkoutButton}
+        />
+      </View>
     </ScrollView>
   );
-};
-
-// פונקציות עזר
-const getDifficultyColor = (difficulty: string): string => {
-  switch (difficulty) {
-    case "beginner":
-      return colors.success;
-    case "intermediate":
-      return colors.warning;
-    case "advanced":
-      return colors.error; // ✅ Fixed: שימוש ב-error במקום danger
-    default:
-      return colors.textMuted;
-  }
-};
-
-const getDifficultyText = (difficulty: string): string => {
-  switch (difficulty) {
-    case "beginner":
-      return "מתחיל";
-    case "intermediate":
-      return "בינוני";
-    case "advanced":
-      return "מתקדם";
-    default:
-      return difficulty;
-  }
 };
 
 const styles = StyleSheet.create({
@@ -191,61 +214,99 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    color: colors.text,
+    backgroundColor: colors.background,
+    gap: 16,
   },
-  header: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: colors.text,
-    textAlign: "center",
-    paddingTop: 24,
-    paddingHorizontal: 16,
-  },
-  muscleGroup: {
+  loadingText: {
     fontSize: 16,
-    color: colors.primary,
-    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.danger,
     textAlign: "center",
     marginBottom: 16,
   },
+  backButton: {
+    paddingHorizontal: 24,
+  },
+
+  // Header
+  header: {
+    padding: 20,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  exerciseName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.text,
+    textAlign: "right",
+    marginBottom: 8,
+  },
+  category: {
+    fontSize: 16,
+    color: colors.primary,
+    textAlign: "right",
+    marginBottom: 12,
+  },
+  difficultyBadge: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  difficultyText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+
+  // Image
+  imageContainer: {
+    padding: 20,
+  },
   image: {
     width: "100%",
-    height: 250,
-    resizeMode: "cover",
+    height: 200,
+    borderRadius: 12,
     backgroundColor: colors.surface,
   },
+
+  // Content sections
   section: {
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
+    color: colors.text,
     marginBottom: 12,
     textAlign: "right",
-    color: colors.text,
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
-    textAlign: "right",
     color: colors.textSecondary,
+    textAlign: "right",
   },
   instruction: {
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 8,
-    textAlign: "right",
     color: colors.textSecondary,
-    paddingRight: 8,
+    textAlign: "right",
   },
 
-  // מידע נוסף
+  // Muscles
   musclesContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    justifyContent: "flex-end",
   },
   muscleTag: {
     backgroundColor: colors.primary,
@@ -259,10 +320,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  // Equipment
   equipmentContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    justifyContent: "flex-end",
   },
   equipmentTag: {
     backgroundColor: colors.surface,
@@ -278,16 +341,27 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  difficultyBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  // Duration & Calories
+  duration: {
+    fontSize: 16,
+    color: colors.text,
+    textAlign: "right",
   },
-  difficultyText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
+  calories: {
+    fontSize: 16,
+    color: colors.text,
+    textAlign: "right",
+  },
+
+  // Add to workout button
+  addToWorkoutContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  addToWorkoutButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
   },
 });
 
