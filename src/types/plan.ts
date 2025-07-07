@@ -1,7 +1,52 @@
-// src/types/plan.ts - מעודכן לתמיכה במבנה קיים וחדש
+// 🎯 פונקציית עזר לקבלת תוכניות בפורמט אחיד
+// src/types/plan.ts - מעודכן עם שדה rating
 
-// 🔄 Import מחלקת הWorkout מהקובץ המתאים
 import { Workout } from "./workout";
+export const getPlanWorkouts = (plan: Plan): Workout[] => {
+  if (isModernPlan(plan)) {
+    return plan.workouts;
+  }
+
+  if (isLegacyPlan(plan)) {
+    const converted = convertLegacyToModern(plan);
+    return converted.workouts || [];
+  }
+
+  return [];
+};
+
+export const getPlanDays = (plan: Plan): PlanDay[] => {
+  if (isLegacyPlan(plan)) {
+    return plan.days;
+  }
+
+  if (isModernPlan(plan)) {
+    const converted = convertModernToLegacy(plan);
+    return converted.days || [];
+  }
+
+  return [];
+};
+
+// 🔧 Helper function לבדיקת תקינות Plan
+export const validatePlan = (plan: Plan): boolean => {
+  if (!plan.id || !plan.name || !plan.description) return false;
+
+  if (plan.days) {
+    return plan.days.every(
+      (day) => day.id && day.name && Array.isArray(day.exercises)
+    );
+  }
+
+  if (plan.workouts) {
+    return plan.workouts.every(
+      (workout) =>
+        workout.id && workout.name && Array.isArray(workout.exercises)
+    );
+  }
+
+  return false;
+};
 
 // ✅ שמירה על המבנה הקיים - PlanExercise & PlanDay
 export interface PlanExercise {
@@ -51,6 +96,7 @@ export interface Plan {
   // 🆕 שדות חדשים לשלב 1
   tags?: string[];
   weeklyGoal?: number; // כמה אימונים בשבוע
+  rating?: number; // ✅ FIXED: הוספת שדה rating (1-5 כוכבים)
 
   // 📊 Metadata
   metadata?: PlanMetadata;
@@ -86,11 +132,14 @@ export const convertLegacyToModern = (legacyPlan: Plan): Plan => {
           reps: ex.reps,
           weight: ex.weight || 0,
           status: "pending" as const,
-          rest: setIndex < ex.sets - 1 ? 60 : 90, // זמן מנוחה
+          rest: setIndex < ex.sets - 1 ? 60 : 0, // זמן מנוחה בשניות
         })),
-      category: ex.muscleGroup,
-      instructions: ex.notes || `בצע ${ex.reps} חזרות עם ${ex.weight || 0} ק"ג`,
+      category: ex.muscleGroup, // ✅ Fixed: category במקום muscleGroup
+      instructions: ex.notes, // ✅ Fixed: instructions במקום notes
+      targetMuscles: [ex.muscleGroup], // ✅ Added: targetMuscles array
     })),
+    date: new Date().toISOString(),
+    duration: 0,
     estimatedDuration: 45 + index * 5, // הערכה בסיסית
     difficulty: legacyPlan.metadata?.difficulty || "beginner",
     targetMuscles: day.exercises.map((ex) => ex.muscleGroup),
@@ -99,10 +148,11 @@ export const convertLegacyToModern = (legacyPlan: Plan): Plan => {
   return {
     ...legacyPlan,
     workouts,
+    rating: legacyPlan.rating || 0, // ✅ שמירה על rating קיים
     createdAt: legacyPlan.metadata?.generatedAt || new Date().toISOString(),
     isActive: true,
     tags: legacyPlan.metadata?.tags || [],
-    weeklyGoal: legacyPlan.days.length,
+    weeklyGoal: legacyPlan.days?.length || 3,
   };
 };
 
@@ -115,17 +165,18 @@ export const convertModernToLegacy = (modernPlan: Plan): Plan => {
     exercises: workout.exercises.map((ex) => ({
       id: ex.id,
       name: ex.name,
-      muscleGroup: ex.category || "כללי",
+      muscleGroup: ex.category || "כללי", // ✅ Fixed: category -> muscleGroup
       sets: ex.sets.length,
-      reps: ex.sets[0]?.reps || 10,
+      reps: ex.sets[0]?.reps || 0,
       weight: ex.sets[0]?.weight || 0,
-      notes: ex.instructions,
+      notes: ex.instructions, // ✅ Fixed: instructions -> notes
     })),
   }));
 
   return {
     ...modernPlan,
     days,
+    rating: modernPlan.rating || 0, // ✅ שמירה על rating
     metadata: {
       ...modernPlan.metadata,
       tags: modernPlan.tags,
@@ -133,31 +184,4 @@ export const convertModernToLegacy = (modernPlan: Plan): Plan => {
       difficulty: modernPlan.workouts[0]?.difficulty,
     },
   };
-};
-
-// 🎯 פונקציית עזר לקבלת תוכניות בפורמט אחיד
-export const getPlanWorkouts = (plan: Plan): Workout[] => {
-  if (isModernPlan(plan)) {
-    return plan.workouts;
-  }
-
-  if (isLegacyPlan(plan)) {
-    const converted = convertLegacyToModern(plan);
-    return converted.workouts || [];
-  }
-
-  return [];
-};
-
-export const getPlanDays = (plan: Plan): PlanDay[] => {
-  if (isLegacyPlan(plan)) {
-    return plan.days;
-  }
-
-  if (isModernPlan(plan)) {
-    const converted = convertModernToLegacy(plan);
-    return converted.days || [];
-  }
-
-  return [];
 };
