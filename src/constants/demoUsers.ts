@@ -1,6 +1,6 @@
-// src/constants/demoUsers.ts - גרסה משודרגת לשלב 1
+// src/constants/demoUsers.ts - גרסה עם היסטוריית אימונים מלאה
 
-import { Plan } from "../types/plan"; // 🔄 עדכון imports
+import { Plan } from "../types/plan";
 import { User } from "../types/user";
 import { Workout } from "../types/workout";
 
@@ -11,9 +11,9 @@ export const demoUsers: User[] = [
     email: "avi@gymovo.app",
     name: "אבי כהן",
     age: 28,
-    experience: "intermediate", // 🆕 רמת ניסיון
-    goals: ["muscle_gain", "strength"], // 🆕 מטרות
-    joinedAt: "2024-10-01T00:00:00Z", // 🆕 תאריך הצטרפות
+    experience: "intermediate",
+    goals: ["muscle_gain", "strength"],
+    joinedAt: "2024-10-01T00:00:00Z",
   },
   {
     id: "demo-user-maya",
@@ -44,225 +44,480 @@ export const demoUsers: User[] = [
   },
 ];
 
-// 🏋️ תוכניות דמו מקצועיות - במבנה החדש (workouts)
+// 🏋️ פונקציה ליצירת אימון רנדומלי מציאותי
+const createRandomWorkout = (
+  date: Date,
+  userId: string,
+  index: number
+): Workout => {
+  const workoutTemplates = [
+    {
+      name: "אימון חזה וכתפיים",
+      targetMuscles: ["חזה", "כתפיים", "יד אחורית"],
+      exercises: [
+        {
+          name: "לחיצת חזה במוט",
+          category: "חזה",
+          sets: 4,
+          baseReps: 8,
+          baseWeight: 80,
+        },
+        {
+          name: "לחיצת כתפיים עם משקולות",
+          category: "כתפיים",
+          sets: 3,
+          baseReps: 10,
+          baseWeight: 25,
+        },
+        {
+          name: "פתיחות עם משקולות",
+          category: "חזה",
+          sets: 3,
+          baseReps: 12,
+          baseWeight: 15,
+        },
+        {
+          name: "הרמות צד",
+          category: "כתפיים",
+          sets: 3,
+          baseReps: 15,
+          baseWeight: 10,
+        },
+        {
+          name: "דיפס",
+          category: "יד אחורית",
+          sets: 3,
+          baseReps: 12,
+          baseWeight: 0,
+        },
+      ],
+      baseDuration: 55,
+      baseCalories: 380,
+    },
+    {
+      name: "אימון גב ויד קדמית",
+      targetMuscles: ["גב", "יד קדמית"],
+      exercises: [
+        { name: "משיכות", category: "גב", sets: 4, baseReps: 6, baseWeight: 0 },
+        {
+          name: "חתירה עם מוט",
+          category: "גב",
+          sets: 4,
+          baseReps: 8,
+          baseWeight: 70,
+        },
+        {
+          name: "משיכת פולי עליון",
+          category: "גב",
+          sets: 3,
+          baseReps: 10,
+          baseWeight: 60,
+        },
+        {
+          name: "כפיפת מרפקים",
+          category: "יד קדמית",
+          sets: 3,
+          baseReps: 12,
+          baseWeight: 20,
+        },
+        {
+          name: "כפיפת מרפקים פטיש",
+          category: "יד קדמית",
+          sets: 3,
+          baseReps: 15,
+          baseWeight: 15,
+        },
+      ],
+      baseDuration: 50,
+      baseCalories: 340,
+    },
+    {
+      name: "אימון רגליים",
+      targetMuscles: ["רגליים", "שוקיים"],
+      exercises: [
+        {
+          name: "סקוואט",
+          category: "רגליים",
+          sets: 4,
+          baseReps: 10,
+          baseWeight: 100,
+        },
+        {
+          name: "דדליפט רומני",
+          category: "רגליים",
+          sets: 3,
+          baseReps: 8,
+          baseWeight: 90,
+        },
+        {
+          name: "לחיצת רגליים",
+          category: "רגליים",
+          sets: 3,
+          baseReps: 12,
+          baseWeight: 150,
+        },
+        {
+          name: "פשיטת ברכיים",
+          category: "רגליים",
+          sets: 3,
+          baseReps: 15,
+          baseWeight: 50,
+        },
+        {
+          name: "הרמות עקב",
+          category: "שוקיים",
+          sets: 4,
+          baseReps: 20,
+          baseWeight: 0,
+        },
+      ],
+      baseDuration: 65,
+      baseCalories: 420,
+    },
+    {
+      name: "אימון יד אחורית וליבה",
+      targetMuscles: ["יד אחורית", "ליבה"],
+      exercises: [
+        {
+          name: "דיפס במקביל",
+          category: "יד אחורית",
+          sets: 3,
+          baseReps: 12,
+          baseWeight: 0,
+        },
+        {
+          name: "פשיטת מרפקים בפולי",
+          category: "יד אחורית",
+          sets: 3,
+          baseReps: 15,
+          baseWeight: 30,
+        },
+        {
+          name: "פלאנק",
+          category: "ליבה",
+          sets: 3,
+          baseReps: 45,
+          baseWeight: 0,
+        },
+        {
+          name: "כפיפות בטן",
+          category: "ליבה",
+          sets: 3,
+          baseReps: 25,
+          baseWeight: 0,
+        },
+        {
+          name: "רוסיאן טוויסט",
+          category: "ליבה",
+          sets: 3,
+          baseReps: 30,
+          baseWeight: 0,
+        },
+      ],
+      baseDuration: 40,
+      baseCalories: 280,
+    },
+    {
+      name: "אימון קרדיו HIIT",
+      targetMuscles: ["קרדיו", "ליבה"],
+      exercises: [
+        {
+          name: "ריצה במקום",
+          category: "קרדיו",
+          sets: 5,
+          baseReps: 30,
+          baseWeight: 0,
+        },
+        {
+          name: "ברפיז",
+          category: "קרדיו",
+          sets: 4,
+          baseReps: 10,
+          baseWeight: 0,
+        },
+        {
+          name: "קפיצות גקס",
+          category: "קרדיו",
+          sets: 4,
+          baseReps: 20,
+          baseWeight: 0,
+        },
+        {
+          name: "מאונטיין קליימברס",
+          category: "קרדיו",
+          sets: 4,
+          baseReps: 30,
+          baseWeight: 0,
+        },
+        {
+          name: "קפיצות סקוואט",
+          category: "קרדיו",
+          sets: 3,
+          baseReps: 15,
+          baseWeight: 0,
+        },
+      ],
+      baseDuration: 35,
+      baseCalories: 450,
+    },
+    {
+      name: "אימון גוף מלא",
+      targetMuscles: ["גב", "חזה", "רגליים", "ליבה"],
+      exercises: [
+        {
+          name: "דדליפט",
+          category: "גב",
+          sets: 4,
+          baseReps: 6,
+          baseWeight: 120,
+        },
+        {
+          name: "לחיצת חזה עם משקולות",
+          category: "חזה",
+          sets: 3,
+          baseReps: 10,
+          baseWeight: 30,
+        },
+        {
+          name: "סקוואט גובלט",
+          category: "רגליים",
+          sets: 3,
+          baseReps: 12,
+          baseWeight: 25,
+        },
+        {
+          name: "שכיבות סמיכה",
+          category: "חזה",
+          sets: 2,
+          baseReps: 15,
+          baseWeight: 0,
+        },
+        {
+          name: "פלאנק",
+          category: "ליבה",
+          sets: 3,
+          baseReps: 40,
+          baseWeight: 0,
+        },
+      ],
+      baseDuration: 45,
+      baseCalories: 370,
+    },
+  ];
+
+  // בחר template רנדומלי
+  const template = workoutTemplates[index % workoutTemplates.length];
+
+  // יצירת וריאציה בהתאם למשתמש
+  const userExperience =
+    demoUsers.find((u) => u.id === userId)?.experience || "beginner";
+  const experienceMultiplier =
+    userExperience === "beginner"
+      ? 0.8
+      : userExperience === "advanced"
+      ? 1.3
+      : 1.0;
+
+  // יצירת התרגילים עם וריאציה מציאותית
+  const exercises = template.exercises.map((ex, idx) => {
+    const variance = 0.8 + Math.random() * 0.4; // וריאציה של ±20%
+    const progressFactor = 1 + index * 0.02; // התקדמות קלה עם הזמן
+
+    const actualSets = Math.max(2, Math.round(ex.sets * variance));
+    const actualWeight =
+      ex.baseWeight === 0
+        ? 0
+        : Math.round(
+            ex.baseWeight * experienceMultiplier * variance * progressFactor
+          );
+
+    return {
+      id: `ex_${idx}_${index}`,
+      name: ex.name,
+      category: ex.category,
+      sets: Array.from({ length: actualSets }, (_, setIdx) => {
+        const setVariance = 0.9 + Math.random() * 0.2;
+        return {
+          id: `set_${setIdx}`,
+          reps: Math.round(ex.baseReps * setVariance),
+          weight: actualWeight,
+          status: "completed" as const,
+          rest: setIdx < actualSets - 1 ? 60 + Math.random() * 30 : undefined,
+        };
+      }),
+    };
+  });
+
+  // חישוב נתונים מציאותיים
+  const totalVolume = exercises.reduce(
+    (total, ex) =>
+      total +
+      ex.sets.reduce(
+        (exTotal, set) => exTotal + (set.weight || 0) * (set.reps || 0),
+        0
+      ),
+    0
+  );
+
+  const durationVariance = 0.8 + Math.random() * 0.4;
+  const actualDuration = Math.round(template.baseDuration * durationVariance);
+  const actualCalories = Math.round(
+    template.baseCalories * experienceMultiplier * durationVariance
+  );
+
+  return {
+    id: `workout_${userId}_${index}_${date.getTime()}`,
+    name: template.name,
+    date: date.toISOString(),
+    exercises,
+    duration: actualDuration,
+    calories: actualCalories,
+    targetMuscles: template.targetMuscles,
+    completedAt: new Date(
+      date.getTime() + actualDuration * 60000
+    ).toISOString(),
+    rating: Math.floor(3 + Math.random() * 3), // דירוג 3-5
+    results: {
+      totalSets: exercises.reduce((total, ex) => total + ex.sets.length, 0),
+      completedSets: exercises.reduce((total, ex) => total + ex.sets.length, 0),
+      totalWeight: totalVolume,
+      averageRest: 75,
+    },
+    workoutType: template.name.includes("קרדיו")
+      ? ("cardio" as const)
+      : ("strength" as const),
+  };
+};
+
+// 🏋️ יצירת היסטוריה מציאותית לחודש האחרון
+const generateWorkoutHistory = (userId: string): Workout[] => {
+  const workouts: Workout[] = [];
+  const now = new Date();
+  const user = demoUsers.find((u) => u.id === userId);
+
+  // קביעת תדירות בהתאם לרמת הניסיון
+  let workoutsPerWeek = 3;
+  if (user?.experience === "beginner") workoutsPerWeek = 2;
+  if (user?.experience === "advanced") workoutsPerWeek = 5;
+
+  // יצירת 30 יום אחורה
+  for (let day = 30; day >= 0; day--) {
+    const currentDate = new Date(now);
+    currentDate.setDate(now.getDate() - day);
+
+    // סיכוי לאימון (לא כל יום)
+    const dayOfWeek = currentDate.getDay();
+    let workoutChance = 0.4; // 40% סיכוי בסיסי
+
+    // יותר סיכוי בימי חול
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) workoutChance = 0.6;
+
+    // פחות סיכוי בסופי שבוע
+    if (dayOfWeek === 0 || dayOfWeek === 6) workoutChance = 0.3;
+
+    // התאמה לפי תדירות המשתמש
+    workoutChance *= workoutsPerWeek / 3;
+
+    if (Math.random() < workoutChance) {
+      workouts.push(createRandomWorkout(currentDate, userId, workouts.length));
+    }
+  }
+
+  return workouts.sort(
+    (a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime()
+  );
+};
+
+// 🏋️ היסטוריית אימונים לכל משתמש דמו
+export const demoWorkoutHistory: { [userId: string]: Workout[] } = {
+  "demo-user-avi": generateWorkoutHistory("demo-user-avi"),
+  "demo-user-maya": generateWorkoutHistory("demo-user-maya"),
+  "demo-user-yoni": generateWorkoutHistory("demo-user-yoni"),
+  "demo-user-noa": generateWorkoutHistory("demo-user-noa"),
+};
+
+// 🏋️ תוכניות דמו (שמור על הקיימות)
 export const demoPlan_Beginner: Plan = {
   id: "demo-plan-beginner",
   name: "תוכנית מתחילים - 3 ימים",
   description: "תוכנית מושלמת למתחילים עם התמקדות ביסודות",
   creator: "Gymovo",
-  workouts: [
+  days: [
     {
-      id: "demo-workout-1",
-      name: "אימון כוח עליון - יום א׳",
+      id: "demo-day-1",
+      name: "יום א׳ - אימון עליון",
       exercises: [
         {
           id: "pushups",
           name: "שכיבות סמיכה",
-          sets: [
-            { reps: 8, weight: 0, rest: 60 },
-            { reps: 6, weight: 0, rest: 60 },
-            { reps: 5, weight: 0, rest: 90 },
-          ],
-          category: "chest",
-          instructions: "שמור על גב ישר וירד עד 90 מעלות בזרועות",
+          muscleGroup: "חזה",
+          sets: 3,
+          reps: 8,
         },
+        {
+          id: "planks",
+          name: "פלאנק",
+          muscleGroup: "ליבה",
+          sets: 3,
+          reps: 30,
+        },
+      ],
+    },
+    {
+      id: "demo-day-2",
+      name: "יום ב׳ - אימון תחתון",
+      exercises: [
         {
           id: "squats",
-          name: "סקוואטים",
-          sets: [
-            { reps: 12, weight: 0, rest: 60 },
-            { reps: 10, weight: 0, rest: 60 },
-            { reps: 8, weight: 0, rest: 90 },
-          ],
-          category: "legs",
-          instructions: "רד עד שהירכיים מקבילות לרצפה",
+          name: "סקוואט",
+          muscleGroup: "רגליים",
+          sets: 3,
+          reps: 10,
         },
         {
-          id: "plank",
-          name: "פלאנק",
-          sets: [
-            { duration: 30, rest: 60, reps: 1 },
-            { duration: 25, rest: 60, reps: 1 },
-            { duration: 20, rest: 60, reps: 1 },
-          ],
-          category: "core",
-          instructions: "שמור על קו ישר מהראש לעקבים",
+          id: "calf-raises",
+          name: "הרמות עקב",
+          muscleGroup: "שוקיים",
+          sets: 3,
+          reps: 15,
         },
       ],
-      estimatedDuration: 35,
-      difficulty: "beginner",
-      targetMuscles: ["chest", "shoulders", "core", "legs"],
-    },
-    {
-      id: "demo-workout-2",
-      name: "קרדיו וגמישות - יום ב׳",
-      exercises: [
-        {
-          id: "jumping_jacks",
-          name: "קפיצות פתח-סגור",
-          sets: [
-            { reps: 20, rest: 30, weight: 0 },
-            { reps: 15, rest: 30, weight: 0 },
-            { reps: 10, rest: 60, weight: 0 },
-          ],
-          category: "cardio",
-          instructions: "קפוץ ופתח רגליים וזרועות בו זמנית",
-        },
-        {
-          id: "lunges",
-          name: "פרפרים",
-          sets: [
-            { reps: 10, weight: 0, rest: 45 }, // לכל רגל
-            { reps: 8, weight: 0, rest: 45 },
-            { reps: 6, weight: 0, rest: 60 },
-          ],
-          category: "legs",
-          instructions: "צעד קדימה ורד עד 90 מעלות בברך",
-        },
-      ],
-      estimatedDuration: 25,
-      difficulty: "beginner",
-      targetMuscles: ["legs", "glutes", "cardio"],
-    },
-    {
-      id: "demo-workout-3",
-      name: "כוח תחתון וליבה - יום ג׳",
-      exercises: [
-        {
-          id: "wall_sits",
-          name: "ישיבה על קיר",
-          sets: [
-            { duration: 20, rest: 60, reps: 1, weight: 0 },
-            { duration: 15, rest: 60, reps: 1, weight: 0 },
-            { duration: 10, rest: 60, reps: 1, weight: 0 },
-          ],
-          category: "legs",
-          instructions: "שב עם הגב על הקיר, ירכיים ברמת הברכיים",
-        },
-        {
-          id: "mountain_climbers",
-          name: "מטפסי הרים",
-          sets: [
-            { reps: 20, rest: 45, weight: 0 },
-            { reps: 15, rest: 45, weight: 0 },
-            { reps: 10, rest: 60, weight: 0 },
-          ],
-          category: "core",
-          instructions: "החלף רגליים במהירות ממצב פלאנק",
-        },
-      ],
-      estimatedDuration: 30,
-      difficulty: "beginner",
-      targetMuscles: ["legs", "core", "cardio"],
     },
   ],
-  createdAt: "2024-11-01T00:00:00Z",
-  isActive: true,
-  tags: ["beginner", "bodyweight", "full-body"],
-  weeklyGoal: 3, // 3 אימונים בשבוע
-  userId: "demo-user-yoni",
+  rating: 4,
 };
 
-// 🏃‍♀️ תוכנית מתקדמת לדוגמה
 export const demoPlan_Advanced: Plan = {
   id: "demo-plan-advanced",
   name: "תוכנית מתקדמים - 5 ימים",
-  description: "תוכנית אינטנסיבית למתקדמים עם מיקוד בעוצמה",
+  description: "תוכנית אינטנסיבית למתאמנים מנוסים",
   creator: "Gymovo",
-  workouts: [
+  days: [
     {
-      id: "demo-workout-advanced-1",
-      name: "חזה וטריצפס - יום א׳",
+      id: "adv-day-1",
+      name: "יום א׳ - חזה וכתפיים",
       exercises: [
         {
-          id: "bench_press",
-          name: "פרפסי ספסל",
-          sets: [
-            { reps: 8, weight: 80, rest: 120 },
-            { reps: 6, weight: 85, rest: 120 },
-            { reps: 4, weight: 90, rest: 180 },
-          ],
-          category: "chest",
-          instructions: "שלוט מלא בתנועה, עצור חטף על החזה",
+          id: "bench-press",
+          name: "לחיצת חזה במוט",
+          muscleGroup: "חזה",
+          sets: 4,
+          reps: 8,
         },
         {
-          id: "incline_dumbbell_press",
-          name: "דחיפת משקולות בזווית",
-          sets: [
-            { reps: 10, weight: 32, rest: 90 },
-            { reps: 8, weight: 36, rest: 90 },
-            { reps: 6, weight: 40, rest: 120 },
-          ],
-          category: "chest",
-          instructions: "זווית 30-45 מעלות, דחוף לקשת טבעית",
+          id: "shoulder-press",
+          name: "לחיצת כתפיים",
+          muscleGroup: "כתפיים",
+          sets: 4,
+          reps: 10,
         },
       ],
-      estimatedDuration: 75,
-      difficulty: "advanced",
-      targetMuscles: ["chest", "triceps", "shoulders"],
     },
   ],
-  createdAt: "2024-09-15T00:00:00Z",
-  isActive: true,
-  tags: ["advanced", "gym", "strength"],
-  weeklyGoal: 5,
-  userId: "demo-user-maya",
+  rating: 5,
 };
 
-// 📊 היסטוריית אימונים לדוגמה
-export const demoWorkoutHistory: Workout[] = [
-  {
-    id: "demo-completed-1",
-    name: "אימון כוח עליון - יום א׳",
-    exercises: [
-      {
-        id: "pushups",
-        name: "שכיבות סמיכה",
-        sets: [
-          { reps: 8, weight: 0, rest: 60, completed: true },
-          { reps: 6, weight: 0, rest: 60, completed: true },
-          { reps: 5, weight: 0, rest: 90, completed: true },
-        ],
-        category: "chest",
-        instructions: "שמור על גב ישר",
-      },
-    ],
-    completedAt: "2024-11-15T18:30:00Z",
-    duration: 32, // דקות בפועל
-    estimatedDuration: 35,
-    difficulty: "beginner",
-    targetMuscles: ["chest", "shoulders", "core"],
-    notes: "אימון מעולה! השתפרתי בביצוע השכיבות",
-    rating: 4, // דירוג 1-5
-  },
-  {
-    id: "demo-completed-2",
-    name: "קרדיו וגמישות - יום ב׳",
-    exercises: [
-      {
-        id: "jumping_jacks",
-        name: "קפיצות פתח-סגור",
-        sets: [
-          { reps: 20, rest: 30, completed: true },
-          { reps: 15, rest: 30, completed: true },
-          { reps: 10, rest: 60, completed: true },
-        ],
-        category: "cardio",
-        instructions: "קפוץ ופתח רגליים וזרועות",
-      },
-    ],
-    completedAt: "2024-11-13T19:15:00Z",
-    duration: 28,
-    estimatedDuration: 25,
-    difficulty: "beginner",
-    targetMuscles: ["legs", "cardio"],
-    notes: "קשה אבל הרגשתי חזק!",
-    rating: 5,
-  },
-];
-
-// 🎯 פונקציות עזר לטעינת נתוני דמו
-// 🎯 פונקציות עזר לטעינת נתוני דמו
+// 🎯 פונקציות עזר מעודכנות
 export const getDemoUserById = (userId: string): User | undefined => {
   return demoUsers.find((user) => user.id === userId);
 };
@@ -271,7 +526,6 @@ export const getDemoPlanForUser = (userId: string): Plan | undefined => {
   const userProfile = getDemoUserById(userId);
   if (!userProfile) return undefined;
 
-  // החזר תוכנית בהתאם לרמת הניסיון
   switch (userProfile.experience) {
     case "beginner":
       return demoPlan_Beginner;
@@ -282,22 +536,79 @@ export const getDemoPlanForUser = (userId: string): Plan | undefined => {
   }
 };
 
+// 🏋️ פונקציה לקבלת היסטוריית אימונים למשתמש ספציפי
 export const getDemoWorkoutHistory = (userId: string): Workout[] => {
-  // החזר היסטוריה בהתאם למשתמש
-  return demoWorkoutHistory.map((workout) => ({
-    ...workout,
-    id: `${workout.id}_${userId}`,
-  }));
+  return demoWorkoutHistory[userId] || [];
+};
+
+// 📊 פונקציות סטטיסטיקה לדמו
+export const getDemoUserStats = (userId: string) => {
+  const workouts = getDemoWorkoutHistory(userId);
+
+  if (workouts.length === 0) {
+    return {
+      totalWorkouts: 0,
+      totalDuration: 0,
+      totalVolume: 0,
+      averageRating: 0,
+      streak: 0,
+      thisWeekWorkouts: 0,
+      lastWorkout: null,
+    };
+  }
+
+  const totalDuration = workouts.reduce((sum, w) => sum + (w.duration || 0), 0);
+  const totalVolume = workouts.reduce(
+    (sum, w) => sum + (w.results?.totalWeight || 0),
+    0
+  );
+  const averageRating =
+    workouts.reduce((sum, w) => sum + (w.rating || 0), 0) / workouts.length;
+
+  // חישוב streak (ימים רצופים)
+  let streak = 0;
+  const sortedWorkouts = workouts.sort(
+    (a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime()
+  );
+
+  const today = new Date();
+  for (let i = 0; i < sortedWorkouts.length; i++) {
+    const workoutDate = new Date(sortedWorkouts[i].date!);
+    const daysDiff = Math.floor(
+      (today.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysDiff <= i + 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  // אימונים השבוע
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const thisWeekWorkouts = workouts.filter(
+    (w) => new Date(w.date!) > weekAgo
+  ).length;
+
+  return {
+    totalWorkouts: workouts.length,
+    totalDuration,
+    totalVolume: Math.round(totalVolume),
+    averageRating: Math.round(averageRating * 10) / 10,
+    streak,
+    thisWeekWorkouts,
+    lastWorkout: sortedWorkouts[0] || null,
+  };
 };
 
 // 🔧 פונקציית עזר לאיפוס נתוני דמו
 export const resetDemoData = async (userId: string): Promise<boolean> => {
   try {
-    // האם זה משתמש דמו?
     const isDemoUser = demoUsers.some((user) => user.id === userId);
     if (!isDemoUser) return false;
 
-    // כאן תוכל להוסיף לוגיקה לאיפוס נתונים ספציפיים לדמו
     console.log(`🔄 Resetting demo data for user: ${userId}`);
     return true;
   } catch (error) {
@@ -306,11 +617,20 @@ export const resetDemoData = async (userId: string): Promise<boolean> => {
   }
 };
 
-// 📱 נתוני מטא לפיתוח
+// 📱 נתוני מטא מעודכנים
 export const demoMeta = {
-  version: "1.0.0",
-  lastUpdated: "2024-11-20",
+  version: "1.2.0",
+  lastUpdated: new Date().toISOString(),
   totalUsers: demoUsers.length,
   totalPlans: 2,
-  totalWorkouts: demoWorkoutHistory.length,
+  totalWorkouts: Object.values(demoWorkoutHistory).reduce(
+    (sum, workouts) => sum + workouts.length,
+    0
+  ),
+  features: [
+    "realistic-workout-history",
+    "user-progression-simulation",
+    "varied-workout-types",
+    "experience-based-difficulty",
+  ],
 };

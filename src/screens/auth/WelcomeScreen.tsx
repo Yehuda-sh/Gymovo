@@ -1,4 +1,4 @@
-// WelcomeScreen.tsx - גרסה מקצועית ברמה עולמית
+// src/screens/auth/WelcomeScreen.tsx - גרסה מלאה עם כפתורי דמו
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useEffect, useRef } from "react";
@@ -12,6 +12,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import Button from "../../components/common/Button";
@@ -62,121 +63,159 @@ const WelcomeScreen = ({ navigation }: Props) => {
           useNativeDriver: true,
         }),
       ]),
+
       // Phase 2: Title Animation
       Animated.timing(titleSlide, {
         toValue: 0,
         duration: 800,
         useNativeDriver: true,
       }),
+
       // Phase 3: Subtitle
       Animated.timing(subtitleSlide, {
         toValue: 0,
         duration: 600,
         useNativeDriver: true,
       }),
+
       // Phase 4: Buttons
       Animated.spring(buttonsSlide, {
         toValue: 0,
-        tension: 60,
+        tension: 40,
         friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // אנימציות מתמשכות
+    // אנימציה מתמשכת לגלוו
     const glowAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, {
           toValue: 1,
-          duration: 2500,
+          duration: 2000,
           useNativeDriver: true,
         }),
         Animated.timing(glowPulse, {
           toValue: 0.5,
-          duration: 2500,
+          duration: 2000,
           useNativeDriver: true,
         }),
       ])
     );
 
-    const particleAnimation = Animated.loop(
-      Animated.timing(particleFloat, {
-        toValue: 1,
-        duration: 8000,
-        useNativeDriver: true,
-      })
+    // אנימציה מתמשכת לחלקיקים צפים
+    const floatAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(particleFloat, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(particleFloat, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+      ])
     );
 
-    const timer = setTimeout(() => {
+    setTimeout(() => {
       glowAnimation.start();
-      particleAnimation.start();
+      floatAnimation.start();
     }, 2000);
 
     return () => {
-      clearTimeout(timer);
       glowAnimation.stop();
-      particleAnimation.stop();
+      floatAnimation.stop();
     };
   }, []);
 
-  const handleGuestContinue = () => {
-    becomeGuest();
+  // פונקציה לריסט נתוני דמו (רק בפיתוח)
+  const handleResetData = async () => {
+    try {
+      await clearAllData();
+      if (__DEV__ && DevSettings) {
+        DevSettings.reload();
+      }
+    } catch (error) {
+      console.error("Failed to reset data:", error);
+    }
   };
 
-  const handleDeveloperReset = async () => {
-    await clearAllData();
-    DevSettings.reload();
+  // פונקציה לכניסה כמשתמש דמו
+  const handleDemoLogin = async (demoUser: any) => {
+    try {
+      console.log(`🎭 Logging in as demo user: ${demoUser.name}`);
+      await loginAsDemoUser(demoUser);
+    } catch (error) {
+      console.error("Failed to login as demo user:", error);
+    }
   };
-
-  const logoRotateInterpolate = logoRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  const particleY = particleFloat.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -30],
-  });
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* רקע דינמי עם שכבות */}
+      {/* Background */}
       <ImageBackground
         source={require("../../../assets/images/backgrounds/welcome-bg.png")}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
-        {/* Animated background particles */}
+        <View style={styles.overlay} />
+
+        {/* Floating particles effect */}
         <Animated.View
           style={[
-            styles.particles,
+            styles.particleContainer,
             {
-              transform: [{ translateY: particleY }],
-              opacity: particleFloat,
+              transform: [
+                {
+                  translateY: particleFloat.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -30],
+                  }),
+                },
+              ],
             },
           ]}
-        />
+        >
+          {[...Array(8)].map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.particle,
+                {
+                  left: (index * width) / 8,
+                  opacity: 0.6,
+                  transform: [
+                    {
+                      scale: 0.5 + (index % 3) * 0.3,
+                    },
+                  ],
+                },
+              ]}
+            />
+          ))}
+        </Animated.View>
 
-        {/* אוברליי מקצועי עם גרדיאנט */}
-        <View style={styles.primaryOverlay} />
-        <View style={styles.secondaryOverlay} />
-
-        {/* Grid pattern עדין */}
-        <View style={styles.gridPattern} />
-
-        {/* תוכן ראשי */}
+        {/* Content */}
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Logo Section עם אפקטים מתקדמים */}
-          <View style={styles.logoSection}>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            {/* Logo with glow effect */}
             <Animated.View
               style={[
                 styles.logoContainer,
                 {
                   transform: [
                     { scale: logoScale },
-                    { rotate: logoRotateInterpolate },
+                    {
+                      rotate: logoRotate.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ["0deg", "360deg"],
+                      }),
+                    },
                   ],
                 },
               ]}
@@ -186,109 +225,138 @@ const WelcomeScreen = ({ navigation }: Props) => {
                   styles.logoGlow,
                   {
                     opacity: glowPulse,
-                    transform: [{ scale: glowPulse }],
                   },
                 ]}
               />
-              <View style={styles.logoFrame}>
-                <View style={styles.logoInnerFrame}>
-                  <Image
-                    style={styles.logo}
-                    source={require("../../../assets/images/branding/logo.png")}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
+              <Image
+                source={require("../../../assets/images/branding/logo.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </Animated.View>
-          </View>
 
-          {/* Brand Section */}
-          <View style={styles.brandSection}>
+            {/* Title */}
             <Animated.View
               style={[
                 styles.titleContainer,
-                { transform: [{ translateY: titleSlide }] },
+                {
+                  transform: [{ translateY: titleSlide }],
+                },
               ]}
             >
-              <Text style={styles.brandTitle}>GYMOVO</Text>
-              <View style={styles.brandUnderline} />
+              <Text style={styles.title}>GYMOVO</Text>
+              <View style={styles.accentLine} />
             </Animated.View>
 
+            {/* Subtitle */}
             <Animated.View
               style={[
-                styles.taglineContainer,
-                { transform: [{ translateY: subtitleSlide }] },
+                styles.subtitleContainer,
+                {
+                  transform: [{ translateY: subtitleSlide }],
+                },
               ]}
             >
-              <Text style={styles.tagline}>TRAIN • TRACK • TRIUMPH</Text>
-              <Text style={styles.subtitle}>
-                האפליקציה המקצועית לאימונים מתקדמים
-              </Text>
+              <Text style={styles.subtitle}>המסע שלך לכושר מושלם</Text>
               <Text style={styles.description}>
-                טכנולוגיה מתקדמת למעקב ושיפור ביצועים
+                אפליקציה מתקדמת לניהול אימונים אישיים
               </Text>
             </Animated.View>
           </View>
 
-          {/* Spacer */}
           <View style={styles.spacer} />
 
-          {/* Action Buttons */}
+          {/* Actions Section */}
           <Animated.View
             style={[
               styles.actionsSection,
-              { transform: [{ translateY: buttonsSlide }] },
+              {
+                transform: [{ translateY: buttonsSlide }],
+              },
             ]}
           >
             <View style={styles.primaryActions}>
               <Button
-                title="התחבר"
-                onPress={() => navigation.navigate("Login")}
-                variant="primary"
+                title="הירשמו"
+                onPress={() => navigation.navigate("Signup")}
                 style={styles.primaryButton}
               />
               <Button
-                title="הירשם"
-                onPress={() => navigation.navigate("Signup")}
-                variant="secondary"
+                title="התחברו"
+                onPress={() => navigation.navigate("Login")}
+                variant="outline"
                 style={styles.secondaryButton}
               />
             </View>
 
             <Button
-              title="המשך כאורח"
-              onPress={handleGuestContinue}
+              title="המשיכו כאורח"
+              onPress={becomeGuest}
               variant="outline"
               style={styles.guestButton}
             />
 
-            {/* Developer Panel */}
+            {/* 🎭 כפתורי דמו למפתחים */}
             {__DEV__ && (
               <View style={styles.devPanel}>
                 <View style={styles.devHeader}>
                   <View style={styles.devIndicator} />
-                  <Text style={styles.devTitle}>DEVELOPER MODE</Text>
+                  <Text style={styles.devTitle}>DEV MODE</Text>
                   <View style={styles.devIndicator} />
                 </View>
+
+                <Text style={styles.demoSectionTitle}>🎭 משתמשי דמו</Text>
                 <View style={styles.devActions}>
-                  {demoUsers.map((demoUser, index) => (
-                    <Button
+                  {demoUsers.map((demoUser) => (
+                    <TouchableOpacity
                       key={demoUser.id}
-                      title={(demoUser.name || "User")
-                        .split(" ")[0]
-                        .toUpperCase()}
-                      onPress={() => loginAsDemoUser(demoUser)}
-                      variant="success"
-                      style={styles.devButton}
-                    />
+                      style={[
+                        styles.devButton,
+                        {
+                          backgroundColor:
+                            demoUser.experience === "beginner"
+                              ? "rgba(34, 197, 94, 0.2)"
+                              : demoUser.experience === "intermediate"
+                              ? "rgba(251, 191, 36, 0.2)"
+                              : "rgba(239, 68, 68, 0.2)",
+                          borderColor:
+                            demoUser.experience === "beginner"
+                              ? "#22c55e"
+                              : demoUser.experience === "intermediate"
+                              ? "#fbbf24"
+                              : "#ef4444",
+                          borderWidth: 1,
+                        },
+                      ]}
+                      onPress={() => handleDemoLogin(demoUser)}
+                    >
+                      <Text style={styles.demoButtonText}>{demoUser.name}</Text>
+                      <Text style={styles.demoButtonSubtext}>
+                        {demoUser.experience === "beginner"
+                          ? "מתחיל"
+                          : demoUser.experience === "intermediate"
+                          ? "בינוני"
+                          : "מתקדם"}
+                      </Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
-                <Button
-                  title="SYSTEM RESET"
-                  onPress={handleDeveloperReset}
-                  variant="danger"
-                  style={styles.resetButton}
-                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.resetButton,
+                    {
+                      backgroundColor: "rgba(239, 68, 68, 0.2)",
+                      borderColor: "#ef4444",
+                      borderWidth: 1,
+                    },
+                  ]}
+                  onPress={handleResetData}
+                >
+                  <Text style={[styles.demoButtonText, { color: "#ef4444" }]}>
+                    🗑️ איפוס נתונים
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </Animated.View>
@@ -308,136 +376,97 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  particles: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 255, 136, 0.02)",
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
-  primaryOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
+  particleContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
-  secondaryOverlay: {
+  particle: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 20, 40, 0.6)",
-  },
-  gridPattern: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.05,
-    // ניתן להוסיף תמונת grid או ליצור עם borders
+    width: 4,
+    height: 4,
+    backgroundColor: "#00ff88",
+    borderRadius: 2,
+    shadowColor: "#00ff88",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 80,
-    paddingBottom: 50,
-  },
-  logoSection: {
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 60,
+    paddingHorizontal: 32,
+    paddingVertical: 60,
+    zIndex: 2,
+  },
+  headerSection: {
+    alignItems: "center",
+    width: "100%",
   },
   logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
+    position: "relative",
+    marginBottom: 40,
   },
   logoGlow: {
     position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(0, 255, 136, 0.2)",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#00ff88",
+    opacity: 0.3,
     shadowColor: "#00ff88",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 30,
-    elevation: 20,
-  },
-  logoFrame: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    padding: 8,
-    borderWidth: 2,
-    borderColor: "rgba(0, 255, 136, 0.6)",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  logoInnerFrame: {
-    flex: 1,
-    borderRadius: 72,
-    backgroundColor: "rgba(0, 255, 136, 0.1)",
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 255, 136, 0.3)",
+    elevation: 10,
   },
   logo: {
-    width: "100%",
-    height: "100%",
-  },
-  brandSection: {
-    alignItems: "center",
-    marginBottom: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    shadowColor: "#00ff88",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 8,
   },
   titleContainer: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
-  brandTitle: {
-    fontSize: 48,
+  title: {
+    fontSize: 42,
     fontWeight: "900",
     color: "#ffffff",
     textAlign: "center",
-    letterSpacing: 8,
+    letterSpacing: 4,
     fontFamily: Platform.OS === "ios" ? "Futura" : "sans-serif-condensed",
-    textShadowColor: "rgba(0, 255, 136, 0.5)",
+    textShadowColor: "#00ff88",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 15,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  brandUnderline: {
-    width: 160,
+  accentLine: {
+    width: 80,
     height: 4,
     backgroundColor: "#00ff88",
     shadowColor: "#00ff88",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
+    shadowOpacity: 0.8,
     shadowRadius: 8,
     elevation: 5,
   },
-  taglineContainer: {
+  subtitleContainer: {
     alignItems: "center",
-  },
-  tagline: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#00ff88",
-    textAlign: "center",
-    letterSpacing: 4,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    textTransform: "uppercase",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "600",
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
@@ -491,13 +520,15 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     marginBottom: 20,
   },
+
+  // 🎭 Dev Panel Styles
   devPanel: {
-    marginTop: 30,
+    marginTop: 20,
     padding: 20,
-    backgroundColor: "rgba(255, 107, 53, 0.1)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 107, 53, 0.3)",
+    borderColor: "rgba(255, 107, 53, 0.4)",
   },
   devHeader: {
     flexDirection: "row",
@@ -518,22 +549,40 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
-  devActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+  demoSectionTitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
     marginBottom: 12,
+    textAlign: "center",
+  },
+  devActions: {
     gap: 8,
+    marginBottom: 12,
   },
   devButton: {
-    flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    marginVertical: 0,
+    alignItems: "center",
+  },
+  demoButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  demoButtonSubtext: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 12,
+    marginTop: 2,
+    textAlign: "center",
   },
   resetButton: {
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    marginVertical: 0,
+    alignItems: "center",
   },
 });
 
