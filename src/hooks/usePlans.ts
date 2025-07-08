@@ -1,106 +1,96 @@
-// src/hooks/usePlans.ts - 🔧 hook משופר עם טיפול בשגיאות
+// src/hooks/usePlans.ts
 
-import { useQuery } from "@tanstack/react-query";
-import { demoPlans } from "../constants/demoPlans";
-import { getPlansByUserId } from "../data/storage";
-import { fetchPublicPlansWithFallback } from "../services/wgerApi";
-import { UserState, useUserStore } from "../stores/userStore";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { getPlansByUserId, savePlan, deletePlan } from "../data/storage";
+import { fetchPublicPlans } from "../services/wgerApi";
+import { getDemoPlanForUser } from "../constants/demoUsers";
+import { useUserStore } from "../stores/userStore";
 import { Plan } from "../types/plan";
 
+/**
+ * Hook לניהול תוכניות אימון
+ * כולל טעינה, שמירה ומחיקה של תוכניות
+ */
 export const usePlans = () => {
-  const userId = useUserStore((state: UserState) => state.user?.id);
+  const user = useUserStore((state) => state.user);
+  const queryClient = useQueryClient();
+  const [plans, setPlans] = useState<Plan[]>([]);
 
-  // שליפת תוכניות ציבוריות עם fallback
+  // שליפת תוכניות המשתמש
   const {
-    data: publicPlans = [],
-    isLoading: isLoadingPublic,
-    error: publicError,
-    refetch: refetchPublic,
+    data: userPlans,
+    isLoading,
+    isError,
+    refetch,
   } = useQuery({
-    queryKey: ["public-plans"],
-    queryFn: fetchPublicPlansWithFallback,
-    staleTime: 1000 * 60 * 60, // 1 שעה
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
-
-  // שליפת תוכניות אישיות
-  const {
-    data: userPlans = [],
-    isLoading: isLoadingUser,
-    error: userError,
-    refetch: refetchUser,
-  } = useQuery({
-    queryKey: ["user-plans", userId],
+    queryKey: ["plans", user?.id],
     queryFn: async () => {
-      if (!userId) return [];
-      try {
-        return await getPlansByUserId(userId);
-      } catch (error) {
-        console.warn("שגיאה בטעינת תוכניות משתמש:", error);
-        return [];
+      if (!user?.id) return [];
+
+      const storedPlans = await getPlansByUserId(user.id);
+
+      // הוספת תוכנית דמו אם קיימת
+      const demoPlan = getDemoPlanForUser(user.id);
+      if (demoPlan) {
+        const allPlans = [...storedPlans];
+        const exists = allPlans.some((p) => p.id === demoPlan.id);
+        if (!exists) {
+          allPlans.push(demoPlan);
+        }
+        return allPlans;
       }
+
+      return storedPlans;
     },
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 30, // 30 דקות
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // 5 דקות
   });
 
-  // איחוד התוכניות ומניעת כפילויות
-  const combinedPlans: Plan[] = [
-    ...(demoPlans || []),
-    ...(userPlans || []),
-    ...(publicPlans || []),
-  ];
+  // שליפת תוכניות ציבוריות
+  const { data: publicPlans } = useQuery({
+    queryKey: ["public-plans"],
+    queryFn: fetchPublicPlans,
+    staleTime: 1000 * 60 * 30, // 30 דקות
+    retry: 2,
+  });
 
-  // מניעת כפילויות על בסיס ID או שם
-  const uniquePlans = Array.from(
-    new Map(combinedPlans.map((plan) => [plan.id || plan.name, plan])).values()
-  );
+  // עדכון state כשהנתונים משתנים
+  useEffect(() => {
+    const allPlans = [...(userPlans || []), ...(publicPlans || [])];
+    setPlans(allPlans);
+  }, [userPlans, publicPlans]);
 
-  // פונקציית refresh מאוחדת
-  const refetchAll = () => {
-    console.log("🔄 Refreshing all plans...");
-    refetchPublic();
-    if (userId) {
-      refetchUser();
-    }
-  };
+  // Mutation לשמירת תוכנית
+  const createPlanMutation = useMutation({
+    mutationFn: async (plan: Plan) => {
+      if (!user?.id) throw new Error("משתמש לא מחובר");
+      return await savePlan(user.id, plan);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plans", user?.id] });
+    },
+  });
 
-  // בדיקה אם יש שגיאות
-  const hasErrors = publicError || userError;
-  const isLoading = isLoadingPublic || isLoadingUser;
-
-  // טיפול בשגיאות ציבוריות
-  if (publicError) {
-    console.log("🔄 Failed to load public plans, using demo:", publicError);
-  }
-
-  // סטטיסטיקות
-  const stats = {
-    total: uniquePlans.length,
-    demo: demoPlans?.length || 0,
-    user: userPlans?.length || 0,
-    public: publicPlans?.length || 0,
-    hasErrors: !!hasErrors,
-  };
-
-  console.log("📊 Plans Stats:", stats);
+  // Mutation למחיקת תוכנית
+  const deletePlanMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      if (!user?.id) throw new Error("משתמש לא מחובר");
+      return await deletePlan(user.id, planId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plans", user?.id] });
+    },
+  });
 
   return {
-    plans: uniquePlans,
+    plans,
     isLoading,
-    hasErrors,
-    stats,
-    refetch: refetchAll,
-
-    // פונקציות נפרדות
-    refetchPublic,
-    refetchUser,
-
-    // שגיאות מפורטות
-    errors: {
-      public: publicError,
-      user: userError,
-    },
+    isError,
+    refetch,
+    createPlan: createPlanMutation.mutate,
+    deletePlan: deletePlanMutation.mutate,
+    isCreating: createPlanMutation.isPending,
+    isDeleting: deletePlanMutation.isPending,
   };
 };
