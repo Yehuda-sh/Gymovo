@@ -86,7 +86,7 @@ const AppTabs = () => {
           tabBarButton: (props) => (
             <CustomTabBarButton
               {...props}
-              onPress={() => navigation.navigate("SelectPlan")}
+              onPress={() => navigation.navigate("StartWorkout")} // שינוי כאן!
             />
           ),
         }}

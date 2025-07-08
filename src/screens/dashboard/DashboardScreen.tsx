@@ -72,65 +72,35 @@ const GuestBanner = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const slideAnim = useRef(new Animated.Value(-100)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      ),
-    ]).start();
-  }, [pulseAnim, slideAnim]); // ✅ Fixed: Added missing dependencies
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 20,
+      friction: 7,
+    }).start();
+  }, [slideAnim]); // ✅ Fixed: Added missing dependency
 
   return (
     <Animated.View
-      style={[
-        styles.guestBanner,
-        {
-          transform: [{ translateY: slideAnim }, { scale: pulseAnim }],
-        },
-      ]}
+      style={[styles.guestBanner, { transform: [{ translateY: slideAnim }] }]}
     >
       <ImageBackground
-        source={require("../../../assets/images/backgrounds/gym-bg.jpg")}
-        style={styles.guestBg}
-        resizeMode="cover"
+        source={require("../../assets/images/guest-banner-bg.png")}
+        style={styles.guestBannerBg}
+        imageStyle={styles.guestBannerImage}
       >
-        <View style={styles.guestOverlay} />
-        <View style={styles.guestContent}>
-          <Text style={styles.guestTitle}>🏋️ ברוכים הבאים ל-Gymovo!</Text>
-          <Text style={styles.guestSubtitle}>
-            התחילו את המסע שלכם לכושר מושלם
+        <View style={styles.guestBannerContent}>
+          <Text style={styles.guestBannerTitle}>הצטרף ל-Gymovo</Text>
+          <Text style={styles.guestBannerText}>
+            שמור את ההתקדמות שלך וקבל תוכניות מותאמות אישית
           </Text>
-          <View style={styles.guestActions}>
-            <Button
-              title="צרו חשבון חדש"
-              onPress={() => navigation.navigate("Signup")}
-              style={styles.primaryButton}
-            />
-            <Button
-              title="התחברו"
-              onPress={() => navigation.navigate("Login")}
-              variant="outline"
-              style={styles.secondaryButton}
-            />
-          </View>
+          <Button
+            title="הרשם עכשיו"
+            onPress={() => navigation.navigate("Signup")}
+            style={styles.guestBannerButton}
+          />
         </View>
       </ImageBackground>
     </Animated.View>
@@ -139,84 +109,34 @@ const GuestBanner = () => {
 
 // Quick Stats Component
 const QuickStats = ({ workouts }: { workouts: Workout[] }) => {
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [scaleAnim, slideAnim]); // ✅ Fixed: Added missing dependencies
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1200,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]); // ✅ Fixed: Added missing dependency
 
-  // ✅ Fixed: Added proper TypeScript types
-  const weeklyStats = useMemo(() => {
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    const weeklyWorkouts = workouts.filter((workout: Workout) => {
-      const workoutDate = workout.completedAt || workout.date;
-      return workoutDate && new Date(workoutDate) >= weekAgo;
-    });
-
-    const totalWeight = weeklyWorkouts.reduce((sum: number, w: Workout) => {
-      return (
-        sum +
-        (w.exercises?.reduce((exSum: number, ex: any) => {
-          return (
-            exSum +
-            (ex.sets?.reduce((setSum: number, set: any) => {
-              return setSum + (set.weight || 0) * (set.reps || 0);
-            }, 0) || 0)
-          );
-        }, 0) || 0)
-      );
-    }, 0);
-
-    const totalDuration = weeklyWorkouts.reduce(
-      (sum: number, w: Workout) => sum + (w.duration || 0),
-      0
-    );
-
-    return {
-      workouts: weeklyWorkouts.length,
-      weight: Math.round(totalWeight),
-      duration: Math.round(totalDuration),
-    };
-  }, [workouts]);
+  const totalWorkouts = workouts.length;
+  const currentStreak = calculateStreak(workouts);
 
   return (
-    <Animated.View
-      style={[
-        styles.quickStats,
-        {
-          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-        },
-      ]}
-    >
-      <Text style={styles.quickStatsTitle}>השבוע שלכם</Text>
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{weeklyStats.workouts}</Text>
-          <Text style={styles.statLabel}>אימונים</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{weeklyStats.weight}kg</Text>
-          <Text style={styles.statLabel}>משקל הורם</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{weeklyStats.duration}m</Text>
-          <Text style={styles.statLabel}>דקות</Text>
-        </View>
+    <Animated.View style={[styles.statsContainer, { opacity: fadeAnim }]}>
+      <View style={styles.statCard}>
+        <Text style={styles.statNumber}>{totalWorkouts}</Text>
+        <Text style={styles.statLabel}>אימונים</Text>
+      </View>
+      <View style={styles.statCard}>
+        <Text style={styles.statNumber}>{currentStreak}</Text>
+        <Text style={styles.statLabel}>ימי רצף</Text>
+      </View>
+      <View style={styles.statCard}>
+        <Text style={styles.statNumber}>
+          {workouts[0]?.exercises?.length || 0}
+        </Text>
+        <Text style={styles.statLabel}>תרגילים אחרונים</Text>
       </View>
     </Animated.View>
   );
@@ -225,63 +145,35 @@ const QuickStats = ({ workouts }: { workouts: Workout[] }) => {
 // Recent Activity Component
 const RecentActivity = ({ workouts }: { workouts: Workout[] }) => {
   const slideAnim = useRef(new Animated.Value(50)).current;
-  const glowAnim = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 0.7,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0.3,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ),
-    ]).start();
-  }, [glowAnim, slideAnim]); // ✅ Fixed: Added missing dependencies
-
   const recentWorkouts = workouts.slice(0, 3);
 
-  if (recentWorkouts.length === 0) {
-    return (
-      <Animated.View
-        style={[
-          styles.recentActivity,
-          { transform: [{ translateY: slideAnim }] },
-        ]}
-      >
-        <Text style={styles.recentTitle}>אימונים אחרונים</Text>
-        <Text style={styles.emptyState}>עדיין לא החלטתם לאמן? 🏃‍♂️</Text>
-      </Animated.View>
-    );
-  }
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 800,
+      delay: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [slideAnim]); // ✅ Fixed: Added missing dependency
+
+  if (recentWorkouts.length === 0) return null;
 
   return (
     <Animated.View
       style={[
-        styles.recentActivity,
+        styles.recentContainer,
         { transform: [{ translateY: slideAnim }] },
       ]}
     >
-      <Animated.View style={[styles.recentGlow, { opacity: glowAnim }]} />
-      <Text style={styles.recentTitle}>אימונים אחרונים</Text>
+      <Text style={styles.sectionTitle}>פעילות אחרונה</Text>
       {recentWorkouts.map((workout, index) => (
-        <View key={workout.id} style={styles.recentItem}>
-          <View style={styles.recentInfo}>
-            <Text style={styles.recentWorkoutName}>{workout.name}</Text>
-            <Text style={styles.recentWorkoutDate}>
-              {/* ✅ Fixed: Added proper null check for date */}
+        <View key={index} style={styles.recentItem}>
+          <View style={styles.recentContent}>
+            <Ionicons name="barbell-outline" size={24} color={colors.primary} />
+            <Text style={styles.recentName} numberOfLines={1}>
+              {workout.name}
+            </Text>
+            <Text style={styles.recentDate}>
               {workout.completedAt
                 ? new Date(workout.completedAt).toLocaleDateString("he-IL")
                 : "תאריך לא זמין"}
@@ -355,7 +247,7 @@ const NextWorkout = () => {
         </View>
         <TouchableOpacity
           style={styles.nextWorkoutButton}
-          onPress={() => navigation.navigate("SelectPlan")}
+          onPress={() => navigation.navigate("StartWorkout")} // ✅ Fixed: Changed from SelectPlan to StartWorkout
         >
           <Ionicons name="play" size={24} color="#000000" />
         </TouchableOpacity>
@@ -380,10 +272,11 @@ const DashboardScreen = () => {
     []
   );
 
-  // Animation refs
+  // --- Animations ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const titleSlide = useRef(new Animated.Value(-50)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
+  // --- Effects ---
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -391,86 +284,50 @@ const DashboardScreen = () => {
         duration: 1000,
         useNativeDriver: true,
       }),
-      Animated.spring(titleSlide, {
+      Animated.timing(slideAnim, {
         toValue: 0,
-        tension: 50,
-        friction: 8,
+        duration: 800,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, titleSlide]); // ✅ Fixed: Added missing dependencies
+  }, [fadeAnim, slideAnim]); // ✅ Fixed: Added missing dependencies
 
-  // Calendar marking
+  // --- Computed Values ---
   const markedDates = useMemo(() => {
-    const marks: { [key: string]: any } = {};
-
-    workoutHistory.forEach((workout: Workout) => {
-      const date = workout.completedAt || workout.date;
-      if (date) {
-        const dateStr = new Date(date).toISOString().split("T")[0];
-        marks[dateStr] = {
+    const dates: any = {};
+    workoutHistory.forEach((workout) => {
+      if (workout.completedAt) {
+        const date = new Date(workout.completedAt).toISOString().split("T")[0];
+        dates[date] = {
           marked: true,
           dotColor: colors.primary,
-          selectedColor: colors.primary,
         };
       }
     });
-
-    return marks;
+    return dates;
   }, [workoutHistory]);
 
-  const handleDatePress = (day: { dateString: string }) => {
-    const dayWorkouts = workoutHistory.filter((workout: Workout) => {
-      const date = workout.completedAt || workout.date;
-      return (
-        date && new Date(date).toISOString().split("T")[0] === day.dateString
-      );
+  // --- Handlers ---
+  const handleDatePress = (day: any) => {
+    const workoutsOnDate = workoutHistory.filter((workout) => {
+      if (!workout.completedAt) return false;
+      const workoutDate = new Date(workout.completedAt)
+        .toISOString()
+        .split("T")[0];
+      return workoutDate === day.dateString;
     });
 
-    if (dayWorkouts.length > 0) {
-      setSelectedDateWorkouts(dayWorkouts);
+    if (workoutsOnDate.length > 0) {
+      setSelectedDateWorkouts(workoutsOnDate);
       setModalVisible(true);
     }
   };
 
-  // Guest user experience
-  if (status === "guest") {
-    return (
-      <View style={styles.container}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor={colors.background}
-        />
-        <GuestBanner />
-        <ScrollView style={styles.guestInfo}>
-          <Text style={styles.guestInfoTitle}>למה Gymovo?</Text>
-          <View style={styles.featureList}>
-            <View style={styles.featureItem}>
-              <Ionicons name="fitness" size={24} color={colors.primary} />
-              <Text style={styles.featureText}>
-                תוכניות אימון מותאמות אישית
-              </Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="analytics" size={24} color={colors.primary} />
-              <Text style={styles.featureText}>מעקב מתקדם אחר התקדמות</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="trophy" size={24} color={colors.primary} />
-              <Text style={styles.featureText}>הישגים ואתגרים יומיומיים</Text>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // Loading state
+  // --- Render ---
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>טוען נתונים...</Text>
       </View>
     );
   }
@@ -480,14 +337,17 @@ const DashboardScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       <Animated.ScrollView
-        style={[styles.scrollView, { opacity: fadeAnim }]}
         showsVerticalScrollIndicator={false}
+        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
-        {/* Header */}
-        <Animated.View
-          style={[styles.header, { transform: [{ translateY: titleSlide }] }]}
-        >
-          <Text style={styles.greeting}>שלום, {user?.name || "מתאמן"}! 👋</Text>
+        {/* Guest Banner for non-registered users */}
+        {status === "guest" && <GuestBanner />}
+
+        {/* Header Section */}
+        <Animated.View style={styles.header}>
+          <Text style={styles.headerTitle}>
+            שלום, {user?.name || "אורח"} 👋
+          </Text>
           <Text style={styles.headerSubtitle}>מוכנים לאימון היום?</Text>
         </Animated.View>
 
@@ -528,7 +388,7 @@ const DashboardScreen = () => {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate("SelectPlan")}
+            onPress={() => navigation.navigate("StartWorkout")} // ✅ Fixed: Changed from SelectPlan to StartWorkout
           >
             <Ionicons name="add-circle" size={24} color={colors.primary} />
             <Text style={styles.actionText}>אימון חדש</Text>
@@ -585,216 +445,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centered: {
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: colors.background,
   },
-  loadingText: {
-    marginTop: 10,
-    color: colors.textSecondary,
-    fontSize: 16,
-  },
-  scrollView: {
-    flex: 1,
-  },
 
-  // Guest Banner Styles
-  guestBanner: {
-    height: height * 0.4,
-    marginBottom: 20,
-  },
-  guestBg: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  guestOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  guestContent: {
-    alignItems: "center",
-    padding: 20,
-  },
-  guestTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  guestSubtitle: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.9)",
-    textAlign: "center",
-    marginBottom: 30,
-  },
-  guestActions: {
-    width: "100%",
-    gap: 15,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-  },
-  secondaryButton: {
-    borderColor: colors.primary,
-  },
-  guestInfo: {
-    flex: 1,
-    padding: 20,
-  },
-  guestInfoTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  featureList: {
-    gap: 20,
-  },
-  featureItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 15,
-  },
-  featureText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-
-  // Header Styles
+  // Header
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 20,
   },
-  greeting: {
-    fontSize: 28,
+  headerTitle: {
+    fontSize: 32,
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 5,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: colors.textSecondary,
   },
 
-  // Quick Stats Styles
-  quickStats: {
-    margin: 20,
-    padding: 20,
-    backgroundColor: colors.surface,
-    borderRadius: 15,
-    elevation: 3,
+  // Guest Banner
+  guestBanner: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
-  quickStatsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 15,
-    textAlign: "center",
+  guestBannerBg: {
+    width: "100%",
+    padding: 20,
   },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+  guestBannerImage: {
+    borderRadius: 16,
   },
-  statItem: {
+  guestBannerContent: {
     alignItems: "center",
   },
-  statValue: {
+  guestBannerTitle: {
     fontSize: 24,
     fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 8,
+  },
+  guestBannerText: {
+    fontSize: 16,
+    color: "#fff",
+    opacity: 0.9,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  guestBannerButton: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+
+  // Stats
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: "bold",
     color: colors.primary,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 5,
-  },
-
-  // Recent Activity Styles
-  recentActivity: {
-    margin: 20,
-    marginTop: 0,
-    padding: 20,
-    backgroundColor: colors.surface,
-    borderRadius: 15,
-    position: "relative",
-    overflow: "hidden",
-  },
-  recentGlow: {
-    position: "absolute",
-    top: -50,
-    left: -50,
-    right: -50,
-    bottom: -50,
-    backgroundColor: colors.primary,
-    opacity: 0.05,
-  },
-  recentTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 15,
-  },
-  emptyState: {
-    textAlign: "center",
-    color: colors.textSecondary,
-    fontStyle: "italic",
-  },
-  recentItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  recentInfo: {
-    flex: 1,
-  },
-  recentWorkoutName: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: colors.text,
-  },
-  recentWorkoutDate: {
     fontSize: 14,
     color: colors.textSecondary,
   },
-  recentMeta: {
-    alignItems: "flex-end",
-  },
-  recentDuration: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: "600",
-  },
 
-  // Next Workout Styles
+  // Next Workout
   nextWorkoutCard: {
-    margin: 20,
-    marginTop: 0,
-    borderRadius: 15,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
     overflow: "hidden",
-    position: "relative",
     backgroundColor: colors.primary,
+    elevation: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   nextWorkoutGlow: {
     position: "absolute",
-    top: -20,
-    left: -20,
-    right: -20,
-    bottom: -20,
-    backgroundColor: colors.primaryLight,
-    opacity: 0.3,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.primary,
   },
   nextWorkoutContent: {
     flexDirection: "row",
@@ -805,83 +568,119 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   nextWorkoutTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.background,
-    marginBottom: 5,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    marginBottom: 4,
   },
   nextWorkoutDesc: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    color: colors.background,
+    color: "#fff",
     marginBottom: 8,
   },
   nextWorkoutMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 6,
   },
   nextWorkoutTime: {
     fontSize: 14,
-    color: "rgba(0,0,0,0.7)",
+    color: "rgba(255,255,255,0.8)",
   },
   nextWorkoutButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.background,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 16,
   },
 
-  // Calendar Styles
-  calendarContainer: {
-    margin: 20,
-    marginTop: 0,
+  // Recent Activity
+  recentContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 16,
+  },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  recentContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  recentName: {
+    flex: 1,
+    fontSize: 16,
     fontWeight: "600",
     color: colors.text,
-    marginBottom: 15,
+  },
+  recentDate: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  recentMeta: {
+    marginLeft: 12,
+  },
+  recentDuration: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  // Calendar
+  calendarContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   calendar: {
-    backgroundColor: colors.surface,
-    borderRadius: 15,
+    borderRadius: 16,
     elevation: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
   },
 
-  // Quick Actions Styles
+  // Quick Actions
   quickActions: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    margin: 20,
-    marginTop: 0,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
   },
   actionButton: {
-    alignItems: "center",
-    padding: 15,
+    flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 15,
-    minWidth: 80,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   actionText: {
-    marginTop: 8,
-    fontSize: 12,
+    fontSize: 14,
     color: colors.text,
-    textAlign: "center",
+    marginTop: 8,
+    fontWeight: "500",
   },
 
-  // Modal Styles
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -890,28 +689,29 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: colors.surface,
-    margin: 20,
-    padding: 20,
-    borderRadius: 15,
-    width: width * 0.9,
+    borderRadius: 16,
+    padding: 24,
+    width: width * 0.85,
+    maxHeight: height * 0.6,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "bold",
     color: colors.text,
-    marginBottom: 15,
+    marginBottom: 16,
     textAlign: "center",
   },
   modalWorkout: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   modalWorkoutName: {
     fontSize: 16,
     color: colors.text,
+    flex: 1,
   },
   modalWorkoutDuration: {
     fontSize: 14,
@@ -921,9 +721,45 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
+  // Misc
   bottomPadding: {
     height: 100,
   },
 });
+
+// Helper function
+function calculateStreak(workouts: Workout[]): number {
+  if (workouts.length === 0) return 0;
+
+  const sortedWorkouts = [...workouts].sort((a, b) => {
+    const dateA = new Date(a.completedAt || 0).getTime();
+    const dateB = new Date(b.completedAt || 0).getTime();
+    return dateB - dateA;
+  });
+
+  let streak = 0;
+  let currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+
+  for (const workout of sortedWorkouts) {
+    if (!workout.completedAt) continue;
+
+    const workoutDate = new Date(workout.completedAt);
+    workoutDate.setHours(0, 0, 0, 0);
+
+    const daysDiff = Math.floor(
+      (currentDate.getTime() - workoutDate.getTime()) / (24 * 60 * 60 * 1000)
+    );
+
+    if (daysDiff <= 1) {
+      streak++;
+      currentDate = workoutDate;
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
 
 export default DashboardScreen;
