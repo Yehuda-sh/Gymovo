@@ -108,6 +108,62 @@ export const fetchPublicPlans = async (): Promise<Plan[]> => {
   }
 };
 
+// 🆕 פונקציה חדשה: fetchPublicPlansWithFallback
+export const fetchPublicPlansWithFallback = async (): Promise<Plan[]> => {
+  try {
+    const plans = await fetchPublicPlans();
+    if (plans.length > 0) {
+      return plans;
+    }
+
+    // אם אין תוכניות מה-API, החזר תוכניות דמו
+    console.log("⚠️ No plans from API, returning demo plans");
+    return getLocalDemoPlans();
+  } catch (error) {
+    console.error("❌ Error fetching plans, returning demo plans:", error);
+    return getLocalDemoPlans();
+  }
+};
+
+// תוכניות דמו מקומיות
+const getLocalDemoPlans = (): Plan[] => {
+  return [
+    {
+      ...generatePlanDefaults("local"),
+      id: "demo-plan-1",
+      name: "תוכנית למתחילים - 3 ימים",
+      description: "תוכנית מושלמת למתחילים שרוצים להתחיל להתאמן בצורה מסודרת",
+      creator: "Gymovo Team",
+      difficulty: "beginner",
+      days: [],
+      targetMuscleGroups: ["Full Body"],
+      durationWeeks: 8,
+    },
+    {
+      ...generatePlanDefaults("local"),
+      id: "demo-plan-2",
+      name: "תוכנית פיצול - Push/Pull/Legs",
+      description: "תוכנית PPL קלאסית לבניית מסת שריר",
+      creator: "Gymovo Team",
+      difficulty: "intermediate",
+      days: [],
+      targetMuscleGroups: ["Full Body"],
+      durationWeeks: 12,
+    },
+    {
+      ...generatePlanDefaults("local"),
+      id: "demo-plan-3",
+      name: "תוכנית כוח 5x5",
+      description: "תוכנית לבניית כוח בסיסי עם תרגילים מורכבים",
+      creator: "Gymovo Team",
+      difficulty: "intermediate",
+      days: [],
+      targetMuscleGroups: ["Full Body"],
+      durationWeeks: 16,
+    },
+  ];
+};
+
 // תיקון 5: fetchAllExercises משופר
 export const fetchAllExercises = async (): Promise<Exercise[]> => {
   console.log("🏋️ Fetching all exercises...");
@@ -203,12 +259,12 @@ const getMuscleGroup = (muscleId: number): string => {
     5: "lats",
     6: "abs",
     7: "calves",
-    8: "glutes",
+    8: "gluteus",
     9: "traps",
     10: "quadriceps",
     11: "hamstrings",
     12: "back",
-    13: "delts",
+    13: "deltoids",
     14: "forearms",
     15: "obliques",
   };
@@ -285,7 +341,7 @@ const getFallbackExercises = (): Exercise[] => [
     description: "תרגיל מרכזי לרגליים וישבן",
     category: "Legs",
     equipment: ["Bodyweight"],
-    targetMuscleGroups: ["quadriceps", "hamstrings", "glutes"],
+    targetMuscleGroups: ["quadriceps", "hamstrings", "gluteus"],
     instructions: [
       "עמוד עם רגליים ברוחב הכתפיים. רד למטה תוך כיפוף הברכיים עד 90 מעלות וחזור למעלה.",
     ],
