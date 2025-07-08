@@ -1,280 +1,73 @@
-// 👤 ProfileScreen מתקדם עם מערכת שאלון חכמה - יכול להמשיך מאיפה שעצר
-// src/screens/profile/ProfileScreen.tsx
+// src/screens/profile/ProfileScreen.tsx - ✅ מסך פרופיל מתקדם עם מערכת שאלון חכמה
 
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Dialog from "../../components/common/Dialog";
-import { QuizAnswers } from "../../services/planGenerator";
+
+// Components & Services
+import { Toast } from "../../components/common/Toast";
+import { clearAllData } from "../../data/storage";
+import {
+  clearQuizProgress,
+  loadQuizProgress,
+  QuizProgress,
+  saveQuizProgress,
+} from "../../services/quizProgressService";
+
+// Stores & Types
 import { UserState, useUserStore } from "../../stores/userStore";
+import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
+import { QuizAnswers } from "../../services/planGenerator";
 
 const { width } = Dimensions.get("window");
 
-// 🎨 ערכת צבעים עבור פרופיל
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// 🎨 צבעים מותאמים לפרופיל
 const profileColors = {
-  background: "#0a0a0a",
-  cardBg: "#1a1a1a",
-  accent: "#00ff88",
-  secondary: "#ffaa00",
-  danger: "#ff4444",
-  text: "#ffffff",
-  subtext: "#cccccc",
-  border: "#333333",
-};
-
-// 📊 מערכת ניהול מצב השאלון
-interface QuizProgress {
-  isCompleted: boolean;
-  currentQuestionId?: string;
-  answers: Partial<QuizAnswers>;
-  completedAt?: string;
-  lastUpdated: string;
-}
-
-// 💾 פונקציות שמירה וטעינה של מצב השאלון (זמני - בזיכרון)
-const quizProgressStorage: { [userId: string]: QuizProgress } = {};
-
-const saveQuizProgress = async (userId: string, progress: QuizProgress) => {
-  try {
-    quizProgressStorage[userId] = progress;
-    console.log("✅ Quiz progress saved:", progress);
-  } catch (error) {
-    console.error("Failed to save quiz progress:", error);
-  }
-};
-
-const loadQuizProgress = async (
-  userId: string
-): Promise<QuizProgress | null> => {
-  try {
-    const progress = quizProgressStorage[userId] || null;
-    console.log("📖 Quiz progress loaded:", progress);
-    return progress;
-  } catch (error) {
-    console.error("Failed to load quiz progress:", error);
-    return null;
-  }
-};
-
-// 🧠 רכיב מצב השאלון החכם
-const QuizStatusCard = ({
-  userId,
-  onLoadProgressRef,
-}: {
-  userId: string;
-  onLoadProgressRef?: React.MutableRefObject<(() => void) | null>;
-}) => {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [quizProgress, setQuizProgress] = useState<QuizProgress | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-
-  const loadProgress = useCallback(async () => {
-    setIsLoading(true);
-    const progress = await loadQuizProgress(userId);
-    setQuizProgress(progress);
-    setIsLoading(false);
-
-    // אנימציית כניסה
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [userId, fadeAnim, slideAnim]);
-
-  useEffect(() => {
-    loadProgress();
-  }, [loadProgress]);
-
-  // חשיפת פונקציית הרענון לרכיב האב
-  useEffect(() => {
-    if (onLoadProgressRef) {
-      onLoadProgressRef.current = loadProgress;
-    }
-  }, [loadProgress, onLoadProgressRef]);
-
-  const handleQuizAction = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    if (!quizProgress) {
-      // התחל שאלון חדש - נווט למסך הרשמה במקום ישירות לשאלון
-      Alert.alert(
-        "שאלון אישי",
-        "כדי ליצור תוכנית מותאמת אישית, נצטרך לענות על כמה שאלות קצרות.",
-        [
-          { text: "ביטול", style: "cancel" },
-          { text: "בואו נתחיל!", onPress: () => startNewQuiz() },
-        ]
-      );
-    } else if (!quizProgress.isCompleted) {
-      // המשך מאיפה שעצר
-      Alert.alert(
-        "המשך שאלון",
-        "נמצא שאלון שלא הושלם. האם תרצה להמשיך מאיפה שעצרת?",
-        [
-          { text: "התחל מחדש", onPress: () => startNewQuiz() },
-          { text: "המשך", onPress: () => continueQuiz() },
-          { text: "ביטול", style: "cancel" },
-        ]
-      );
-    }
-  }, [quizProgress, navigation]);
-
-  const startNewQuiz = useCallback(() => {
-    // במקום לנווט לשאלון ישירות, ניצור שאלון מקומי או ננווט לדף מיוחד
-    Alert.alert(
-      "בקרוב!",
-      "מערכת השאלון האישי תהיה זמינה בקרוב. אתה יכול ליצור תוכנית אימון ידנית בינתיים.",
-      [
-        { text: "אוקיי", style: "default" },
-        {
-          text: "צור תוכנית",
-          onPress: () => navigation.navigate("Main", { screen: "Plans" }),
-        },
-      ]
-    );
-  }, [navigation]);
-
-  const continueQuiz = useCallback(() => {
-    // זה גם יעבוד רק כשיהיה לנו מסך שאלון מלא
-    Alert.alert("בקרוב!", "אפשרות המשכת שאלון תהיה זמינה בקרוב.", [
-      { text: "אוקיי", style: "default" },
-    ]);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <View style={styles.quizCard}>
-        <View style={styles.loadingContainer}>
-          <Ionicons
-            name="hourglass-outline"
-            size={24}
-            color={profileColors.accent}
-          />
-          <Text style={styles.loadingText}>טוען מצב שאלון...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <Animated.View
-      style={[
-        styles.quizCard,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {!quizProgress ? (
-        // לא עשה שאלון כלל
-        <View style={styles.quizContent}>
-          <View style={styles.quizIcon}>
-            <Ionicons
-              name="clipboard-outline"
-              size={32}
-              color={profileColors.accent}
-            />
-          </View>
-          <Text style={styles.quizTitle}>השלם את הפרופיל שלך</Text>
-          <Text style={styles.quizDescription}>
-            ענה על שאלון קצר כדי לקבל תוכנית אימון מותאמת אישית
-          </Text>
-          <TouchableOpacity
-            style={styles.quizButton}
-            onPress={handleQuizAction}
-          >
-            <Text style={styles.quizButtonText}>התחל שאלון 🎯</Text>
-            <Ionicons name="arrow-forward" size={16} color="#000" />
-          </TouchableOpacity>
-        </View>
-      ) : !quizProgress.isCompleted ? (
-        // התחיל אבל לא סיים
-        <View style={styles.quizContent}>
-          <View
-            style={[
-              styles.quizIcon,
-              { backgroundColor: profileColors.secondary + "20" },
-            ]}
-          >
-            <Ionicons
-              name="pause-circle-outline"
-              size={32}
-              color={profileColors.secondary}
-            />
-          </View>
-          <Text style={styles.quizTitle}>שאלון בתהליך</Text>
-          <Text style={styles.quizDescription}>
-            יש לך שאלון שלא הושלם. תוכל להמשיך מאיפה שעצרת
-          </Text>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${
-                      (Object.keys(quizProgress.answers).length / 12) * 100
-                    }%`,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {Object.keys(quizProgress.answers).length}/12 שאלות
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.quizButton}
-            onPress={handleQuizAction}
-          >
-            <Text style={styles.quizButtonText}>המשך שאלון 🔄</Text>
-            <Ionicons name="play" size={16} color="#000" />
-          </TouchableOpacity>
-        </View>
-      ) : (
-        // השלם בהצלחה - הצג תוצאות
-        <QuizResultsView
-          answers={quizProgress.answers}
-          completedAt={quizProgress.completedAt}
-        />
-      )}
-    </Animated.View>
-  );
+  background: colors.background,
+  cardBg: colors.surface,
+  accent: colors.primary,
+  secondary: colors.warning,
+  danger: colors.error,
+  text: colors.text,
+  subtext: colors.textSecondary,
+  border: colors.border,
+  success: colors.success,
 };
 
 // 📋 רכיב הצגת תוצאות השאלון
 const QuizResultsView = ({
   answers,
   completedAt,
+  onViewPlans,
+  onRetakeQuiz,
 }: {
   answers: Partial<QuizAnswers>;
   completedAt?: string;
+  onViewPlans: () => void;
+  onRetakeQuiz: () => void;
 }) => {
   const getGoalText = (goal?: string) => {
     const goals = {
@@ -296,15 +89,15 @@ const QuizResultsView = ({
   };
 
   const getEquipmentText = (equipment?: string[]) => {
-    if (!equipment) return "לא צוין";
-    const equipmentMap = {
-      gym: "חדר כושר 🏋️",
-      home_equipment: "ציוד ביתי 🏠",
-      no_equipment: "משקל גוף 🤸",
+    if (!equipment || equipment.length === 0) return "לא צוין";
+    const equipmentMap: Record<string, string> = {
+      gym: "חדר כושר",
+      home: "בית",
+      dumbbells: "משקולות",
+      bands: "גומיות",
+      bodyweight: "משקל גוף",
     };
-    return equipment
-      .map((eq) => equipmentMap[eq as keyof typeof equipmentMap])
-      .join(", ");
+    return equipment.map((e) => equipmentMap[e] || e).join(", ");
   };
 
   return (
@@ -313,16 +106,16 @@ const QuizResultsView = ({
         <View
           style={[
             styles.quizIcon,
-            { backgroundColor: profileColors.accent + "20" },
+            { backgroundColor: profileColors.success + "20" },
           ]}
         >
           <Ionicons
             name="checkmark-circle"
             size={32}
-            color={profileColors.accent}
+            color={profileColors.success}
           />
         </View>
-        <Text style={styles.resultsTitle}>הפרופיל הושלם! ✅</Text>
+        <Text style={styles.resultsTitle}>השאלון הושלם בהצלחה! 🎉</Text>
         {completedAt && (
           <Text style={styles.completedDate}>
             הושלם ב-{new Date(completedAt).toLocaleDateString("he-IL")}
@@ -331,233 +124,458 @@ const QuizResultsView = ({
       </View>
 
       <View style={styles.answersList}>
-        <AnswerItem
-          icon="target"
-          label="מטרה"
-          value={getGoalText(answers.goal)}
-          color={profileColors.accent}
-        />
-        <AnswerItem
-          icon="school"
-          label="רמת ניסיון"
-          value={getExperienceText(answers.experience)}
-          color={profileColors.secondary}
-        />
-        <AnswerItem
-          icon="fitness"
-          label="ציוד"
-          value={getEquipmentText(answers.whereToTrain)}
-          color="#8b5cf6"
-        />
-        <AnswerItem
-          icon="calendar"
-          label="ימי אימון"
-          value={`${answers.days || 0} ימים בשבוע`}
-          color="#f59e0b"
-        />
-        {answers.injuries && !answers.injuries.includes("none") && (
-          <AnswerItem
-            icon="shield-checkmark"
-            label="התחשבות בפציעות"
-            value="כן ✓"
-            color={profileColors.danger}
-          />
+        {/* מטרה */}
+        {answers.goal && (
+          <View style={styles.answerItem}>
+            <View
+              style={[
+                styles.answerIcon,
+                { backgroundColor: profileColors.accent + "20" },
+              ]}
+            >
+              <Ionicons name="fitness" size={18} color={profileColors.accent} />
+            </View>
+            <View style={styles.answerContent}>
+              <Text style={styles.answerLabel}>המטרה שלך</Text>
+              <Text style={styles.answerValue}>
+                {getGoalText(answers.goal)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ניסיון */}
+        {answers.experience && (
+          <View style={styles.answerItem}>
+            <View
+              style={[
+                styles.answerIcon,
+                { backgroundColor: profileColors.secondary + "20" },
+              ]}
+            >
+              <Ionicons
+                name="trending-up"
+                size={18}
+                color={profileColors.secondary}
+              />
+            </View>
+            <View style={styles.answerContent}>
+              <Text style={styles.answerLabel}>רמת ניסיון</Text>
+              <Text style={styles.answerValue}>
+                {getExperienceText(answers.experience)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ציוד */}
+        {answers.equipment && (
+          <View style={styles.answerItem}>
+            <View style={[styles.answerIcon, { backgroundColor: "#9333ea20" }]}>
+              <Ionicons name="barbell" size={18} color="#9333ea" />
+            </View>
+            <View style={styles.answerContent}>
+              <Text style={styles.answerLabel}>ציוד זמין</Text>
+              <Text style={styles.answerValue}>
+                {getEquipmentText(answers.equipment)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ימי אימון */}
+        {answers.workoutDays && (
+          <View style={styles.answerItem}>
+            <View style={[styles.answerIcon, { backgroundColor: "#3b82f620" }]}>
+              <Ionicons name="calendar" size={18} color="#3b82f6" />
+            </View>
+            <View style={styles.answerContent}>
+              <Text style={styles.answerLabel}>ימי אימון בשבוע</Text>
+              <Text style={styles.answerValue}>{answers.workoutDays} ימים</Text>
+            </View>
+          </View>
         )}
       </View>
 
       <View style={styles.resultsActions}>
-        <TouchableOpacity style={styles.viewPlansButton}>
+        <TouchableOpacity style={styles.viewPlansButton} onPress={onViewPlans}>
+          <Ionicons name="list" size={20} color={profileColors.accent} />
           <Text style={styles.viewPlansText}>צפה בתוכניות שנוצרו</Text>
-          <Ionicons name="library" size={16} color={profileColors.accent} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.retakeButton} onPress={onRetakeQuiz}>
+          <Text style={styles.retakeText}>מלא שאלון מחדש</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-// 📝 רכיב פריט תשובה
-const AnswerItem = ({
-  icon,
-  label,
-  value,
-  color,
+// 🧠 רכיב מצב השאלון
+const QuizStatusCard = ({
+  userId,
+  onResumeQuiz,
+  onStartNewQuiz,
 }: {
-  icon: string;
-  label: string;
-  value: string;
-  color: string;
-}) => (
-  <View style={styles.answerItem}>
-    <View style={[styles.answerIcon, { backgroundColor: color + "20" }]}>
-      <Ionicons name={icon as any} size={20} color={color} />
-    </View>
-    <View style={styles.answerContent}>
-      <Text style={styles.answerLabel}>{label}</Text>
-      <Text style={styles.answerValue}>{value}</Text>
-    </View>
-  </View>
-);
-
-// 👤 המסך הראשי
-const ProfileScreen = () => {
-  const user = useUserStore((state: UserState) => state.user);
-  const logout = useUserStore((state: UserState) => state.logout);
-  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  userId: string;
+  onResumeQuiz: (progress: QuizProgress) => void;
+  onStartNewQuiz: () => void;
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [quizProgress, setQuizProgress] = useState<QuizProgress | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const loadProgressRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    loadProgress();
+  }, [userId]);
 
-  const refreshQuizStatus = useCallback(() => {
-    if (loadProgressRef.current) {
-      loadProgressRef.current();
+  const loadProgress = async () => {
+    try {
+      setIsLoading(true);
+      const progress = await loadQuizProgress(userId);
+      setQuizProgress(progress);
+
+      // אנימציית כניסה
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    } catch (error) {
+      console.error("Failed to load quiz progress:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleViewPlans = () => {
+    Toast.show("עבור למסך התוכניות שלי", "info");
+  };
+
+  const handleRetakeQuiz = () => {
+    Alert.alert(
+      "מילוי שאלון מחדש",
+      "האם אתה בטוח שברצונך למלא את השאלון מחדש? התוכניות הקיימות לא יימחקו.",
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "המשך",
+          onPress: async () => {
+            await clearQuizProgress(userId);
+            setQuizProgress(null);
+            onStartNewQuiz();
+          },
+        },
+      ]
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.quizCard}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={profileColors.accent} />
+          <Text style={styles.loadingText}>בודק מצב שאלון...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <Animated.View style={[styles.quizCard, { opacity: fadeAnim }]}>
+      {!quizProgress ? (
+        // לא התחיל שאלון
+        <View style={styles.quizContent}>
+          <View style={styles.quizIcon}>
+            <Ionicons
+              name="clipboard-outline"
+              size={32}
+              color={profileColors.accent}
+            />
+          </View>
+          <Text style={styles.quizTitle}>בנה תוכנית אימונים אישית</Text>
+          <Text style={styles.quizDescription}>
+            ענה על מספר שאלות קצרות ונבנה עבורך תוכנית אימונים מותאמת אישית
+          </Text>
+          <TouchableOpacity style={styles.quizButton} onPress={onStartNewQuiz}>
+            <Text style={styles.quizButtonText}>התחל שאלון</Text>
+            <Ionicons name="arrow-forward" size={16} color="#000" />
+          </TouchableOpacity>
+        </View>
+      ) : !quizProgress.isCompleted ? (
+        // יש שאלון בתהליך
+        <View style={styles.quizContent}>
+          <View
+            style={[
+              styles.quizIcon,
+              { backgroundColor: profileColors.secondary + "20" },
+            ]}
+          >
+            <Ionicons
+              name="pause-circle"
+              size={32}
+              color={profileColors.secondary}
+            />
+          </View>
+          <Text style={styles.quizTitle}>שאלון בתהליך</Text>
+          <Text style={styles.quizDescription}>
+            יש לך שאלון שלא הושלם. תוכל להמשיך מאיפה שעצרת
+          </Text>
+
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${
+                      (Object.keys(quizProgress.answers).length / 12) * 100
+                    }%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {Object.keys(quizProgress.answers).length}/12 שאלות
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.quizButton,
+              { backgroundColor: profileColors.secondary },
+            ]}
+            onPress={() => onResumeQuiz(quizProgress)}
+          >
+            <Text style={styles.quizButtonText}>המשך שאלון</Text>
+            <Ionicons name="play" size={16} color="#000" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        // השלים שאלון
+        <QuizResultsView
+          answers={quizProgress.answers}
+          completedAt={quizProgress.completedAt}
+          onViewPlans={handleViewPlans}
+          onRetakeQuiz={handleRetakeQuiz}
+        />
+      )}
+    </Animated.View>
+  );
+};
+
+// 🏠 מסך פרופיל ראשי
+const ProfileScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const user = useUserStore((state) => state.user);
+  const logout = useUserStore((state) => state.logout);
+
+  // State
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    // אנימציית כניסה
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
-  const handleDeleteAccount = useCallback(() => {
-    console.log(`Deleting account for user: ${user?.id}`);
-    setDeleteModalVisible(false);
-    logout();
-    Alert.alert("החשבון נמחק בהצלחה");
-  }, [user?.id, logout]);
+  // Handlers
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
+  }, []);
 
-  const getInitials = useCallback((name?: string) => {
-    if (!name) return "G";
-    return name
+  const handleStartQuiz = () => {
+    if (!user) return;
+
+    navigation.navigate("Quiz", {
+      signupData: {
+        email: user.email,
+        password: "",
+        age: user.age || 25,
+        name: user.name,
+      },
+    });
+  };
+
+  const handleResumeQuiz = (progress: QuizProgress) => {
+    if (!user) return;
+
+    navigation.navigate("Quiz", {
+      signupData: {
+        email: user.email,
+        password: "",
+        age: user.age || 25,
+        name: user.name,
+      },
+      resumeFrom: progress.currentQuestionId,
+      existingAnswers: progress.answers,
+    });
+  };
+
+  const handleLogout = () => {
+    Alert.alert("יציאה מהחשבון", "האם אתה בטוח שברצונך לצאת?", [
+      { text: "ביטול", style: "cancel" },
+      {
+        text: "יציאה",
+        style: "destructive",
+        onPress: () => {
+          logout();
+          navigation.navigate("Welcome");
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "מחיקת חשבון",
+      "פעולה זו תמחק את כל הנתונים שלך ולא ניתן לבטל אותה. האם אתה בטוח?",
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "מחק חשבון",
+          style: "destructive",
+          onPress: async () => {
+            if (user?.id) {
+              await clearAllData();
+              logout();
+              navigation.navigate("Welcome");
+              Toast.show("החשבון נמחק בהצלחה", "success");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const getInitials = useMemo(() => {
+    if (!user?.name) return "G";
+    return user.name
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
-  }, []);
+      .toUpperCase()
+      .slice(0, 2);
+  }, [user?.name]);
 
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>שגיאה: לא נמצא משתמש</Text>
+        <Text style={styles.errorText}>לא נמצא משתמש מחובר</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* רקע גרדיאנט */}
-      <View style={styles.backgroundGradient} />
-
       <ScrollView
-        style={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[profileColors.accent]}
+            tintColor={profileColors.accent}
+          />
+        }
       >
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Header פרופיל */}
-          <View style={styles.profileHeader}>
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.header}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
+                <Text style={styles.avatarText}>{getInitials}</Text>
               </View>
-              <View style={styles.avatarGlow} />
+              {user.isGuest && (
+                <View style={styles.guestBadge}>
+                  <Ionicons name="person-outline" size={16} color="#fff" />
+                </View>
+              )}
             </View>
-            <Text style={styles.name}>{user.name || "משתמש אורח"}</Text>
-            <Text style={styles.email}>{user.email}</Text>
 
-            {user.age && (
-              <View style={styles.userStats}>
+            <Text style={styles.userName}>{user.name || "משתמש"}</Text>
+            <Text style={styles.userEmail}>{user.email}</Text>
+
+            {user.stats && (
+              <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <Ionicons
-                    name="person"
-                    size={16}
-                    color={profileColors.accent}
-                  />
-                  <Text style={styles.statText}>גיל {user.age}</Text>
+                  <Text style={styles.statValue}>
+                    {user.stats.workoutsCount || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>אימונים</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>
+                    {user.stats.streakDays || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>ימי רצף</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>
+                    {Math.round((user.stats.totalWeightLifted || 0) / 1000)}K
+                  </Text>
+                  <Text style={styles.statLabel}>קג כולל</Text>
                 </View>
               </View>
             )}
           </View>
 
-          {/* מצב השאלון */}
-          <QuizStatusCard
-            userId={user.id}
-            onLoadProgressRef={loadProgressRef}
-          />
-
-          {/* כפתורי דמו למפתחים */}
-          {__DEV__ && (
-            <View style={styles.devSection}>
-              <Text style={styles.devTitle}>🔧 Developer Tools</Text>
-              <View style={styles.devButtons}>
-                <TouchableOpacity
-                  style={styles.devButton}
-                  onPress={() => {
-                    // סימולציה של שאלון שלא הושלם
-                    quizProgressStorage[user.id] = {
-                      isCompleted: false,
-                      currentQuestionId: "experience",
-                      answers: { goal: "hypertrophy", whereToTrain: ["gym"] },
-                      lastUpdated: new Date().toISOString(),
-                    };
-                    refreshQuizStatus();
-                  }}
-                >
-                  <Text style={styles.devButtonText}>דמה שאלון חלקי</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.devButton}
-                  onPress={() => {
-                    // סימולציה של שאלון מושלם
-                    quizProgressStorage[user.id] = {
-                      isCompleted: true,
-                      answers: {
-                        goal: "hypertrophy",
-                        whereToTrain: ["gym"],
-                        experience: "intermediate",
-                        days: 4,
-                        injuries: ["none"],
-                      },
-                      completedAt: new Date().toISOString(),
-                      lastUpdated: new Date().toISOString(),
-                    };
-                    refreshQuizStatus();
-                  }}
-                >
-                  <Text style={styles.devButtonText}>דמה שאלון מושלם</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.devButton}
-                  onPress={() => {
-                    // מחיקת כל ההתקדמות
-                    delete quizProgressStorage[user.id];
-                    refreshQuizStatus();
-                  }}
-                >
-                  <Text style={styles.devButtonText}>אפס שאלון</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          {/* Quiz Status */}
+          {!user.isGuest && (
+            <QuizStatusCard
+              userId={user.id}
+              onResumeQuiz={handleResumeQuiz}
+              onStartNewQuiz={handleStartQuiz}
+            />
           )}
 
-          {/* פעולות פרופיל */}
-          <View style={styles.actionsSection}>
-            <Text style={styles.sectionTitle}>הגדרות</Text>
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>פעולות מהירות</Text>
 
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("Settings")}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons
-                  name="person-outline"
+                  name="settings-outline"
                   size={24}
-                  color={profileColors.accent}
+                  color={profileColors.text}
                 />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>ערוך פרופיל</Text>
-                <Text style={styles.actionSubtitle}>עדכן פרטים אישיים</Text>
+                <Text style={styles.actionTitle}>הגדרות</Text>
+                <Text style={styles.actionSubtitle}>התאמה אישית ועדיפויות</Text>
               </View>
               <Ionicons
                 name="chevron-forward"
@@ -566,19 +584,20 @@ const ProfileScreen = () => {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => Toast.show("מדריכי אימון - בקרוב", "info")}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons
-                  name="notifications-outline"
+                  name="book-outline"
                   size={24}
-                  color={profileColors.secondary}
+                  color={profileColors.text}
                 />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>התראות</Text>
-                <Text style={styles.actionSubtitle}>
-                  הגדרות הודעות ותזכורות
-                </Text>
+                <Text style={styles.actionTitle}>מדריכי אימון</Text>
+                <Text style={styles.actionSubtitle}>טיפים וטכניקות</Text>
               </View>
               <Ionicons
                 name="chevron-forward"
@@ -587,13 +606,20 @@ const ProfileScreen = () => {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => Toast.show("תמיכה - בקרוב", "info")}
+            >
               <View style={styles.actionIcon}>
-                <Ionicons name="shield-outline" size={24} color="#8b5cf6" />
+                <Ionicons
+                  name="help-circle-outline"
+                  size={24}
+                  color={profileColors.text}
+                />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>פרטיות ובטיחות</Text>
-                <Text style={styles.actionSubtitle}>ניהול נתונים ופרטיות</Text>
+                <Text style={styles.actionTitle}>תמיכה</Text>
+                <Text style={styles.actionSubtitle}>שאלות נפוצות ועזרה</Text>
               </View>
               <Ionicons
                 name="chevron-forward"
@@ -603,90 +629,112 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* כפתורי פעולה ראשיים */}
-          <View style={styles.mainActions}>
+          {/* Account Actions */}
+          <View style={styles.accountSection}>
             <TouchableOpacity
-              style={[styles.mainActionButton, styles.logoutButton]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                logout();
-              }}
+              style={styles.logoutButton}
+              onPress={handleLogout}
             >
               <Ionicons name="log-out-outline" size={20} color="#fff" />
-              <Text style={styles.mainActionText}>התנתק</Text>
+              <Text style={styles.logoutText}>יציאה מהחשבון</Text>
             </TouchableOpacity>
+
+            {!user.isGuest && (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDeleteAccount}
+              >
+                <Text style={styles.deleteText}>מחיקת חשבון</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* אזור סכנה */}
-          <View style={styles.dangerZone}>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                setDeleteModalVisible(true);
-              }}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={18}
-                color={profileColors.danger}
-              />
-              <Text style={styles.deleteButtonText}>מחק חשבון</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Dev Tools */}
+          {__DEV__ && (
+            <View style={styles.devSection}>
+              <Text style={styles.devTitle}>🛠️ כלי פיתוח</Text>
+
+              <TouchableOpacity
+                style={styles.devButton}
+                onPress={async () => {
+                  if (user?.id) {
+                    await clearQuizProgress(user.id);
+                    Toast.show("התקדמות השאלון נמחקה", "success");
+                  }
+                }}
+              >
+                <Text style={styles.devButtonText}>מחק התקדמות שאלון</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.devButton}
+                onPress={async () => {
+                  if (user?.id) {
+                    // סימולציה של שאלון חלקי
+                    const partialProgress: QuizProgress = {
+                      isCompleted: false,
+                      currentQuestionId: "experience",
+                      questionIndex: 4,
+                      answers: {
+                        goal: "hypertrophy",
+                        experience: "intermediate",
+                        equipment: ["gym"],
+                        workoutDays: 4,
+                      },
+                      lastUpdated: new Date().toISOString(),
+                    };
+                    await saveQuizProgress(user.id, partialProgress);
+                    Toast.show("נוצר שאלון חלקי לבדיקה", "success");
+                  }
+                }}
+              >
+                <Text style={styles.devButtonText}>צור שאלון חלקי (בדיקה)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.devButton}
+                onPress={async () => {
+                  await clearAllData();
+                  Toast.show("כל הנתונים נמחקו", "success");
+                }}
+              >
+                <Text style={styles.devButtonText}>מחק את כל הנתונים</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
       </ScrollView>
-
-      {/* דיאלוג מחיקה */}
-      <Dialog
-        visible={isDeleteModalVisible}
-        title="אישור מחיקת חשבון"
-        message="האם אתה בטוח שברצונך למחוק את החשבון? כל הנתונים יימחקו לצמיתות."
-        onClose={() => setDeleteModalVisible(false)}
-        onConfirm={handleDeleteAccount}
-        confirmLabel="כן, מחק"
-        cancelLabel="לא, בטל"
-      />
     </View>
   );
 };
 
-// 🎨 סטיילים מתקדמים
+// 🎨 Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: profileColors.background,
   },
-  backgroundGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: profileColors.background,
-  },
-  scrollContainer: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 60,
     paddingBottom: 100,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 20,
+    paddingTop: 60,
   },
   errorText: {
-    color: profileColors.text,
     fontSize: 16,
+    color: profileColors.danger,
     textAlign: "center",
-    margin: 20,
+    marginTop: 50,
   },
 
-  // Profile Header
-  profileHeader: {
+  // Header
+  header: {
     alignItems: "center",
-    marginBottom: 32,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
   avatarContainer: {
     position: "relative",
@@ -699,60 +747,73 @@ const styles = StyleSheet.create({
     backgroundColor: profileColors.accent,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 1,
-  },
-  avatarGlow: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: profileColors.accent + "20",
-    top: -10,
-    left: -10,
   },
   avatarText: {
-    color: "#000",
     fontSize: 36,
     fontWeight: "bold",
+    color: "#000",
   },
-  name: {
+  guestBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: profileColors.secondary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: profileColors.background,
+  },
+  userName: {
     fontSize: 24,
     fontWeight: "bold",
     color: profileColors.text,
-    textAlign: "center",
     marginBottom: 4,
   },
-  email: {
+  userEmail: {
     fontSize: 16,
     color: profileColors.subtext,
-    textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  userStats: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  statItem: {
+  statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
     backgroundColor: profileColors.cardBg,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: profileColors.border,
   },
-  statText: {
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "bold",
     color: profileColors.text,
-    fontSize: 14,
-    fontWeight: "600",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: profileColors.subtext,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: profileColors.border,
   },
 
   // Quiz Card
   quizCard: {
     backgroundColor: profileColors.cardBg,
-    borderRadius: 16,
-    padding: 20,
+    marginHorizontal: 20,
     marginBottom: 24,
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: profileColors.border,
   },
@@ -829,7 +890,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // Quiz Results
+  // Results
   resultsContainer: {
     alignItems: "center",
   },
@@ -881,6 +942,7 @@ const styles = StyleSheet.create({
   },
   resultsActions: {
     width: "100%",
+    gap: 8,
   },
   viewPlansButton: {
     flexDirection: "row",
@@ -893,30 +955,40 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     gap: 8,
+    marginBottom: 8,
   },
   viewPlansText: {
     color: profileColors.accent,
     fontSize: 14,
     fontWeight: "600",
   },
+  retakeButton: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  retakeText: {
+    color: profileColors.subtext,
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
 
-  // Actions Section
-  actionsSection: {
-    marginBottom: 24,
+  // Sections
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: profileColors.text,
     marginBottom: 16,
-    textAlign: "right",
   },
   actionCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: profileColors.cardBg,
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: profileColors.border,
@@ -925,7 +997,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: profileColors.accent + "10",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -938,81 +1010,72 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: profileColors.text,
     marginBottom: 2,
-    textAlign: "right",
   },
   actionSubtitle: {
     fontSize: 13,
     color: profileColors.subtext,
-    textAlign: "right",
   },
 
-  // Main Actions
-  mainActions: {
-    marginBottom: 32,
+  // Account Section
+  accountSection: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 40,
   },
-  mainActionButton: {
+  logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: profileColors.secondary,
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
+    marginBottom: 12,
   },
-  logoutButton: {
-    backgroundColor: profileColors.secondary,
-  },
-  mainActionText: {
+  logoutText: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
     color: "#fff",
   },
-
-  // Danger Zone
-  dangerZone: {
-    alignItems: "center",
-  },
   deleteButton: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     paddingVertical: 12,
-    paddingHorizontal: 20,
   },
-  deleteButtonText: {
+  deleteText: {
     fontSize: 14,
     color: profileColors.danger,
     fontWeight: "600",
+    textDecorationLine: "underline",
   },
 
-  // Developer Section
+  // Dev Section
   devSection: {
-    marginBottom: 24,
+    marginHorizontal: 20,
+    marginBottom: 40,
     padding: 16,
-    backgroundColor: "rgba(255, 107, 53, 0.1)",
+    backgroundColor: "rgba(255, 165, 0, 0.1)",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255, 107, 53, 0.3)",
+    borderColor: "rgba(255, 165, 0, 0.3)",
   },
   devTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#ff6b35",
+    color: "#FFA500",
     textAlign: "center",
     marginBottom: 12,
   },
-  devButtons: {
-    gap: 8,
-  },
   devButton: {
-    backgroundColor: "rgba(255, 107, 53, 0.2)",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    backgroundColor: "rgba(255, 165, 0, 0.2)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
     alignItems: "center",
   },
   devButtonText: {
-    color: "#ff6b35",
-    fontSize: 12,
+    color: "#FFA500",
+    fontSize: 14,
     fontWeight: "600",
   },
 });

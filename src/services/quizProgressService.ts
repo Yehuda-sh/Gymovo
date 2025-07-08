@@ -1,5 +1,4 @@
-// 💾 שירות שמירת התקדמות שאלון - AsyncStorage
-// src/services/quizProgressService.ts
+// src/services/quizProgressService.ts - ✅ שירות ניהול התקדמות שאלון
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QuizAnswers } from "./planGenerator";
@@ -11,7 +10,7 @@ export interface QuizProgress {
   answers: Partial<QuizAnswers>;
   completedAt?: string;
   lastUpdated: string;
-  questionIndex?: number; // לעקיבה נוחה יותר
+  questionIndex?: number;
 }
 
 // 🔑 מפתחות אחסון
