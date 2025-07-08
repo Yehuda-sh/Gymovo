@@ -307,6 +307,15 @@ const AppStack = () => {
 
       {/* מסכי אימון - רק המסכים שקיימים */}
       <Stack.Screen
+        name="ActiveWorkout"
+        component={ActiveWorkoutScreen}
+        options={{
+          title: "אימון פעיל",
+          headerShown: false, // המסך מטפל בheader בעצמו
+        }}
+      />
+
+      <Stack.Screen
         name="WorkoutSummary"
         component={WorkoutSummaryScreen}
         options={{
