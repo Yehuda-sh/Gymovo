@@ -1,359 +1,120 @@
-// src/components/common/ErrorBoundary.tsx - ✅ רכיב מקיף לטיפול בשגיאות עם כל הפיצ'רים
-
-import { Ionicons } from "@expo/vector-icons";
-import * as Updates from "expo-updates";
-import React, { Component, ErrorInfo, ReactNode } from "react";
+// src/components/ErrorBoundary.tsx
+import React, { Component, ReactNode } from "react";
 import {
-  Alert,
-  Dimensions,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../theme/colors";
-import Button from "./Button";
-
-const { width } = Dimensions.get("window");
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  showDetails?: boolean;
-  enableReload?: boolean;
-  customMessage?: string;
-  customTitle?: string;
-  allowRetry?: boolean;
-  maxRetries?: number;
+  onReset?: () => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: ErrorInfo | null;
-  showErrorDetails: boolean;
-  isRetrying: boolean;
-  errorCount: number;
-  retryCount: number;
+  errorInfo: React.ErrorInfo | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
       hasError: false,
       error: null,
       errorInfo: null,
-      showErrorDetails: false,
-      isRetrying: false,
-      errorCount: 0,
-      retryCount: 0,
     };
   }
 
-  static defaultProps = {
-    showDetails: true,
-    enableReload: true,
-    allowRetry: true,
-    maxRetries: 3,
-  };
-
-  static getDerivedStateFromError(error: Error): Partial<State> {
+  static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
       error,
+      errorInfo: null,
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // לוג לקונסול בסביבת פיתוח
-    if (__DEV__) {
-      console.error("🚨 ErrorBoundary caught an error:", error, errorInfo);
-      console.error("Component Stack:", errorInfo.componentStack);
-    }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // כאן תוכל להוסיף לוגינג לשירות חיצוני כמו Sentry
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
 
-    // קריאה ל-callback אם קיים
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo);
-    }
-
-    // שמירת מידע על השגיאה
     this.setState({
+      error,
       errorInfo,
-      errorCount: this.state.errorCount + 1,
     });
 
-    // לוג לשירות monitoring בסביבת production
-    if (!__DEV__) {
-      this.logErrorToService(error, errorInfo);
-    }
+    // אם יש לך שירות אנליטיקס:
+    // analytics.logError(error, errorInfo);
   }
-
-  logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
-    // כאן אפשר להוסיף שליחה ל-Sentry, Bugsnag וכו'
-    try {
-      const errorData = {
-        message: error.toString(),
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
-        platform: Platform.OS,
-        version: Platform.Version,
-      };
-
-      // console.log("Would send to error service:", errorData);
-      // Sentry.captureException(error, { extra: errorData });
-    } catch (e) {
-      console.error("Failed to log error to service:", e);
-    }
-  };
 
   handleReset = () => {
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
-      showErrorDetails: false,
-      isRetrying: false,
-      retryCount: 0,
     });
-  };
 
-  handleRetry = () => {
-    const { maxRetries = 3 } = this.props;
-
-    if (this.state.retryCount >= maxRetries) {
-      Alert.alert(
-        "מגבלת נסיונות",
-        `ניסינו ${maxRetries} פעמים ללא הצלחה. אנא נסה לסגור ולפתוח את האפליקציה מחדש.`,
-        [{ text: "אישור" }]
-      );
-      return;
+    if (this.props.onReset) {
+      this.props.onReset();
     }
-
-    this.setState(
-      {
-        retryCount: this.state.retryCount + 1,
-        isRetrying: true,
-      },
-      () => {
-        setTimeout(() => {
-          this.handleReset();
-        }, 500);
-      }
-    );
-  };
-
-  handleReload = async () => {
-    this.setState({ isRetrying: true });
-
-    try {
-      // בדוק אם יש עדכונים זמינים
-      if (this.props.enableReload) {
-        try {
-          const update = await Updates.checkForUpdateAsync();
-          if (update.isAvailable) {
-            await Updates.fetchUpdateAsync();
-            await Updates.reloadAsync();
-          } else {
-            // אין עדכון - פשוט נסה לאפס
-            setTimeout(() => {
-              this.handleReset();
-            }, 1000);
-          }
-        } catch {
-          // אם Updates לא זמין (למשל ב-Expo Go), פשוט אפס
-          setTimeout(() => {
-            this.handleReset();
-          }, 1000);
-        }
-      } else {
-        setTimeout(() => {
-          this.handleReset();
-        }, 1000);
-      }
-    } catch (e) {
-      Alert.alert(
-        "שגיאה",
-        "לא הצלחנו לרענן את האפליקציה. אנא נסה לסגור ולפתוח מחדש.",
-        [{ text: "אישור" }]
-      );
-      this.setState({ isRetrying: false });
-    }
-  };
-
-  toggleErrorDetails = () => {
-    this.setState((prevState) => ({
-      showErrorDetails: !prevState.showErrorDetails,
-    }));
-  };
-
-  copyErrorToClipboard = () => {
-    const { error, errorInfo } = this.state;
-    if (!error) return;
-
-    const errorText = `
-Error: ${error.toString()}
-Stack: ${error.stack}
-Component Stack: ${errorInfo?.componentStack || "N/A"}
-Time: ${new Date().toISOString()}
-Platform: ${Platform.OS} ${Platform.Version}
-    `.trim();
-
-    // React Native doesn't have built-in clipboard API
-    // You would need to install @react-native-clipboard/clipboard
-    Alert.alert("העתקה", "פרטי השגיאה הוכנו להעתקה");
-  };
-
-  renderErrorDetails = () => {
-    const { error, errorInfo } = this.state;
-    if (!error || !errorInfo) return null;
-
-    return (
-      <ScrollView style={styles.errorDetailsContainer}>
-        <View style={styles.errorDetailsHeader}>
-          <Text style={styles.errorDetailsTitle}>פרטי השגיאה:</Text>
-          <TouchableOpacity
-            onPress={this.copyErrorToClipboard}
-            style={styles.copyButton}
-          >
-            <Ionicons name="copy-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.errorSection}>
-          <Text style={styles.errorSectionTitle}>הודעת שגיאה:</Text>
-          <Text style={styles.errorMessage}>{error.toString()}</Text>
-        </View>
-
-        {error.stack && (
-          <View style={styles.errorSection}>
-            <Text style={styles.errorSectionTitle}>Stack Trace:</Text>
-            <Text style={styles.errorStack}>{error.stack}</Text>
-          </View>
-        )}
-
-        <View style={styles.errorSection}>
-          <Text style={styles.errorSectionTitle}>Component Stack:</Text>
-          <Text style={styles.errorStack}>{errorInfo.componentStack}</Text>
-        </View>
-
-        <View style={styles.errorMetadata}>
-          <Text style={styles.errorMetadataText}>
-            זמן: {new Date().toLocaleString("he-IL")}
-          </Text>
-          <Text style={styles.errorMetadataText}>
-            פלטפורמה: {Platform.OS} {Platform.Version}
-          </Text>
-          <Text style={styles.errorMetadataText}>
-            ניסיונות: {this.state.retryCount}/{this.props.maxRetries || 3}
-          </Text>
-        </View>
-      </ScrollView>
-    );
   };
 
   render() {
     if (this.state.hasError) {
-      // אם יש fallback מותאם אישית
       if (this.props.fallback) {
         return <>{this.props.fallback}</>;
       }
 
-      const {
-        customTitle,
-        customMessage,
-        allowRetry,
-        maxRetries = 3,
-      } = this.props;
-      const { retryCount } = this.state;
-
-      // ממשק ברירת מחדל
       return (
         <View style={styles.container}>
-          <View style={styles.content}>
-            {/* אייקון שגיאה עם אנימציה */}
-            <View style={styles.iconContainer}>
-              <View style={styles.iconBackground}>
-                <Ionicons name="alert-circle" size={80} color={colors.error} />
-              </View>
-            </View>
+          <ScrollView contentContainerStyle={styles.content}>
+            <Ionicons name="warning-outline" size={64} color={colors.error} />
 
-            {/* כותרת */}
-            <Text style={styles.title}>
-              {customTitle || "אופס! משהו השתבש"}
+            <Text style={styles.title}>אופס! משהו השתבש</Text>
+            <Text style={styles.message}>
+              התרחשה שגיאה בלתי צפויה. אנחנו מצטערים על אי הנוחות.
             </Text>
 
-            {/* תיאור */}
-            <Text style={styles.description}>
-              {customMessage ||
-                "נתקלנו בבעיה לא צפויה. אנחנו מצטערים על אי הנוחות."}
-            </Text>
-
-            {/* מידע על ניסיונות חוזרים */}
-            {retryCount > 0 && (
-              <Text style={styles.retryInfo}>
-                ניסיון {retryCount} מתוך {maxRetries}
-              </Text>
-            )}
-
-            {/* כפתורי פעולה */}
-            <View style={styles.buttonsContainer}>
-              {allowRetry && retryCount < (this.props.maxRetries || 3) && (
-                <Button
-                  title={this.state.isRetrying ? "מנסה שוב..." : "נסה שוב"}
-                  onPress={this.handleRetry}
-                  variant="primary"
-                  disabled={this.state.isRetrying}
-                  style={styles.retryButton}
-                />
-              )}
-
-              <Button
-                title="רענן אפליקציה"
-                onPress={this.handleReload}
-                variant="secondary"
-                disabled={this.state.isRetrying}
-                style={styles.reloadButton}
-              />
-
-              {this.props.showDetails !== false && (
-                <TouchableOpacity
-                  style={styles.detailsButton}
-                  onPress={this.toggleErrorDetails}
-                >
-                  <Text style={styles.detailsText}>
-                    {this.state.showErrorDetails ? "הסתר" : "הצג"} פרטים טכניים
-                  </Text>
-                  <Ionicons
-                    name={
-                      this.state.showErrorDetails
-                        ? "chevron-up"
-                        : "chevron-down"
-                    }
-                    size={16}
-                    color={colors.primary}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* פרטי שגיאה */}
-            {this.state.showErrorDetails && this.renderErrorDetails()}
-
-            {/* הודעה למפתחים */}
-            {__DEV__ && (
-              <View style={styles.devInfo}>
-                <Ionicons name="construct" size={16} color="#FF8C00" />
-                <Text style={styles.devInfoText}>
-                  מצב פיתוח: שגיאה #{this.state.errorCount}
+            {__DEV__ && this.state.error && (
+              <View style={styles.errorDetails}>
+                <Text style={styles.errorTitle}>
+                  פרטי השגיאה (Development):
                 </Text>
+                <Text style={styles.errorText}>
+                  {this.state.error.toString()}
+                </Text>
+                {this.state.errorInfo && (
+                  <Text style={styles.stackTrace}>
+                    {this.state.errorInfo.componentStack}
+                  </Text>
+                )}
               </View>
             )}
-          </View>
+
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={this.handleReset}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.resetButtonText}>נסה שוב</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.homeButton}
+              onPress={() => {
+                // כאן תוכל להוסיף ניווט למסך הבית
+                this.handleReset();
+              }}
+            >
+              <Text style={styles.homeButtonText}>חזור למסך הבית</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       );
     }
@@ -366,178 +127,80 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-  content: {
-    maxWidth: 400,
-    width: "100%",
-    alignItems: "center",
-  },
-  iconContainer: {
-    marginBottom: 24,
-  },
-  iconBackground: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: `${colors.error}15`,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   title: {
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "bold",
     color: colors.text,
-    marginBottom: 12,
+    marginTop: 20,
+    marginBottom: 10,
     textAlign: "center",
   },
-  description: {
+  message: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 30,
     lineHeight: 24,
-    paddingHorizontal: 20,
   },
-  retryInfo: {
-    fontSize: 14,
-    color: colors.warning,
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  buttonsContainer: {
-    width: "100%",
-    gap: 12,
-    marginTop: 16,
-  },
-  retryButton: {
-    width: "100%",
-  },
-  reloadButton: {
-    width: "100%",
-  },
-  detailsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 4,
-    alignSelf: "center",
-  },
-  detailsText: {
-    color: colors.primary,
-    fontSize: 14,
-  },
-  errorDetailsContainer: {
-    marginTop: 20,
-    padding: 16,
+  errorDetails: {
     backgroundColor: colors.surface,
+    padding: 15,
     borderRadius: 8,
-    maxHeight: 300,
-    width: "100%",
+    marginBottom: 20,
+    maxWidth: "100%",
   },
-  errorDetailsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  errorDetailsTitle: {
+  errorTitle: {
     fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  copyButton: {
-    padding: 4,
-  },
-  errorSection: {
-    marginBottom: 16,
-  },
-  errorSectionTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  errorMessage: {
-    fontSize: 12,
+    fontWeight: "bold",
     color: colors.error,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    marginBottom: 5,
   },
-  errorStack: {
+  errorText: {
+    fontSize: 12,
+    color: colors.text,
+    fontFamily: "monospace",
+  },
+  stackTrace: {
     fontSize: 10,
     color: colors.textSecondary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    lineHeight: 14,
+    fontFamily: "monospace",
+    marginTop: 10,
   },
-  errorMetadata: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 12,
-    marginTop: 12,
+  resetButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 15,
   },
-  errorMetadataText: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginBottom: 2,
+  resetButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
-  devInfo: {
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "rgba(255, 165, 0, 0.1)",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255, 165, 0, 0.3)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  homeButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
-  devInfoText: {
-    fontSize: 12,
-    color: "#FF8C00",
+  homeButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
 });
 
-// Hook לשימוש קל יותר
-export const useErrorBoundary = () => {
-  const [error, setError] = React.useState<Error | null>(null);
-
-  const resetError = React.useCallback(() => {
-    setError(null);
-  }, []);
-
-  const captureError = React.useCallback((error: Error) => {
-    setError(error);
-  }, []);
-
-  React.useEffect(() => {
-    if (error) {
-      throw error;
-    }
-  }, [error]);
-
-  return { captureError, resetError };
-};
-
-// HOC לעטיפת רכיבים
-export const withErrorBoundary = <P extends object>(
-  Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, "children">
-) => {
-  const WrappedComponent = (props: P) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-
-  WrappedComponent.displayName = `withErrorBoundary(${
-    Component.displayName || Component.name
-  })`;
-
-  return WrappedComponent;
-};
-
 export default ErrorBoundary;
+
+// Hook לשימוש ב-Error Boundary
+export const useErrorHandler = () => {
+  return (error: Error) => {
+    throw error;
+  };
+};

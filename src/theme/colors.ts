@@ -1,4 +1,4 @@
-// src/theme/colors.ts - גרסה מתוקנת עם danger
+// src/theme/colors.ts - קובץ צבעים מלא ומתוקן
 
 export const colors = {
   // צבעים ראשיים
@@ -35,8 +35,8 @@ export const colors = {
   warningDark: "#e68900",
   error: "#ff3366", // אדום חזק
   errorDark: "#cc0033",
-  danger: "#ff3366", // 🆕 alias ל-error עבור SettingsItem
-  dangerDark: "#cc0033", // 🆕 alias ל-errorDark
+  danger: "#ff3366", // alias ל-error
+  dangerDark: "#cc0033", // alias ל-errorDark
   info: "#007aff",
   infoDark: "#0051d5",
 
@@ -47,7 +47,7 @@ export const colors = {
   borderError: "#ff3366",
   borderSuccess: "#00ff88",
   borderWarning: "#ffab00",
-  borderDanger: "#ff3366", // 🆕 alias
+  borderDanger: "#ff3366", // alias
 
   // אפקטים וצללים
   shadow: "rgba(0, 0, 0, 0.5)",
@@ -56,8 +56,8 @@ export const colors = {
   overlayLight: "rgba(0, 0, 0, 0.6)",
 
   // צבעים נוספים לרכיבים
-  skeleton: "#e1e9ee",
-  skeletonHighlight: "#f5f7fa",
+  skeleton: "#E1E4E8", // צבע לאנימציות טעינה
+  skeletonHighlight: "#F5F7FA",
 
   // מצבי disabled
   disabled: "#666666",
@@ -80,7 +80,7 @@ export const colors = {
     accent: ["#ff6b35", "#ff8c42"],
     energy: ["#00ff88", "#007aff"],
     error: ["#ff3366", "#cc0033"],
-    danger: ["#ff3366", "#cc0033"], // 🆕 alias
+    danger: ["#ff3366", "#cc0033"], // alias
     warning: ["#ffab00", "#e68900"],
     success: ["#00ff88", "#00cc6a"],
   },
@@ -153,7 +153,7 @@ export const getGoalColor = (goal: string): string => {
   return colors.goals[goal as keyof typeof colors.goals] || colors.primary;
 };
 
-// 🆕 פונקציה לקבלת צבע סטטוס
+// פונקציה לקבלת צבע סטטוס
 export const getStatusColor = (
   status: "success" | "warning" | "error" | "danger" | "info"
 ): string => {
@@ -184,7 +184,7 @@ export const withOpacity = (color: string, opacity: number): string => {
   return color;
 };
 
-// 🆕 צבעי danger מוכנים לשימוש
+// צבעי danger מוכנים לשימוש
 export const dangerColors = {
   main: colors.danger,
   background: withOpacity(colors.danger, 0.05),
