@@ -1,4 +1,4 @@
-// src/screens/workouts/WorkoutSummaryScreen.tsx - ✅ Fixed TypeScript Errors
+// src/screens/workouts/WorkoutSummaryScreen.tsx - ✅ Fixed with userId
 
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Share,
 } from "react-native";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
@@ -64,7 +65,6 @@ const EffortRating = ({
 );
 
 const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
-  // ✅ Fixed: Use workoutData instead of workout and handle both Workout and ActiveWorkout types
   const { workoutData } = route.params;
   const workout = workoutData as Workout | ActiveWorkout;
 
@@ -113,20 +113,15 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
     );
   }, [workout.exercises]);
 
-  // ✅ Fixed: Handle both ActiveWorkout and Workout types properly
   const workoutDuration = useMemo(() => {
-    // Check if it's an ActiveWorkout with startedAt
     if (isActiveWorkout(workout) && workout.startedAt && workout.completedAt) {
       const start = new Date(workout.startedAt);
       const end = new Date(workout.completedAt);
-      return Math.round((end.getTime() - start.getTime()) / (1000 * 60)); // in minutes
+      return Math.round((end.getTime() - start.getTime()) / (1000 * 60));
     }
-
-    // Fall back to duration field or 0
     return workout.duration || 0;
   }, [workout]);
 
-  // ✅ Fixed: Calculate start time safely
   const workoutStartTime = useMemo(() => {
     if (isActiveWorkout(workout) && workout.startedAt) {
       return new Date(workout.startedAt).toLocaleTimeString("he-IL", {
@@ -144,11 +139,11 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
       return;
     }
 
-    // Create completed workout - remove ActiveWorkout specific fields
-    const completedWorkout: Workout = {
+    // ✅ תיקון: הוספת userId לאובייקט updatedWorkout
+    const updatedWorkout: Workout = {
       id: workout.id,
       name: workout.name,
-      date: workout.date,
+      date: workout.date || new Date().toISOString(),
       exercises: workout.exercises,
       notes: notes,
       rating: rating,
@@ -161,138 +156,157 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
       workoutType: workout.workoutType,
       planId: workout.planId,
       templateId: workout.templateId,
-      createdAt: workout.createdAt,
+      createdAt: workout.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isTemplate: workout.isTemplate,
       goals: workout.goals,
-      results: workout.results,
+      results: workout.results || {
+        totalSets: totalSets,
+        completedSets: completedSets,
+        totalWeight: totalVolume,
+      },
+      // ✅ הוספת userId - השדה החסר
+      userId: userId,
     };
 
-    const success = await saveWorkoutToHistory(userId, completedWorkout);
-    if (success) {
-      Toast.show("האימון נשמר בהצלחה!", "success");
-      navigation.popToTop();
-    } else {
+    try {
+      const success = await saveWorkoutToHistory(userId, updatedWorkout);
+      if (success) {
+        Toast.show("האימון נשמר בהצלחה!", "success");
+        navigation.popToTop();
+      } else {
+        Toast.show("שגיאה בשמירת האימון", "error");
+      }
+    } catch (error) {
       Toast.show("שגיאה בשמירת האימון", "error");
+      console.error("Error saving workout:", error);
     }
   };
 
-  const handleShareWorkout = () => {
-    // ✅ Fixed: Remove unused variable warning by using the shareText
-    const shareText = `סיימתי אימון מעולה!
-📊 ${completedSets}/${totalSets} סטים
+  const handleShareWorkout = async () => {
+    const shareText = `סיימתי אימון מעולה! 💪
+
+🏋️ ${workout.name}
 ⏱️ ${workoutDuration} דקות
-💪 ${totalVolume.toLocaleString()}ק"ג נפח כולל
-⭐ ${rating}/5
+💯 ${completedSets}/${totalSets} סטים
+🎯 ${totalVolume.toFixed(0)} ק״ג נפח כולל
+⭐ דירוג: ${rating}/5
 
-#Gymovo #אימון #כושר`;
+#Gymovo #כושר #אימון`;
 
-    // Share the workout (you can implement actual sharing later)
-    console.log("Sharing workout:", shareText);
-    Toast.show("תכונת שיתוף תבוא בעדכון הבא!", "info");
+    try {
+      await Share.share({
+        message: shareText,
+        title: "שיתוף אימון",
+      });
+    } catch (error) {
+      console.error("Error sharing workout:", error);
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-forward" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>סיכום אימון</Text>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={handleShareWorkout}
-        >
-          <Ionicons name="share-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <Text style={styles.title}>סיכום אימון</Text>
+        <Text style={styles.workoutName}>{workout.name}</Text>
+        {workoutStartTime && (
+          <Text style={styles.dateTime}>
+            {new Date(workout.date || "").toLocaleDateString("he-IL")} •{" "}
+            {workoutStartTime}
+          </Text>
+        )}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Workout Info */}
-        <View style={styles.workoutNameContainer}>
-          <Text style={styles.workoutName}>{workout.name}</Text>
-          <Text style={styles.workoutDate}>
-            {new Date(workout.date || new Date()).toLocaleDateString("he-IL")}
-            {workoutStartTime && ` • ${workoutStartTime}`}
-          </Text>
-        </View>
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <StatCard
+          label="משך זמן"
+          value={`${workoutDuration} דק׳`}
+          icon="time-outline"
+        />
+        <StatCard
+          label="סטים"
+          value={`${completedSets}/${totalSets}`}
+          icon="list-outline"
+        />
+        <StatCard
+          label="נפח כולל"
+          value={`${totalVolume.toFixed(0)} ק״ג`}
+          icon="barbell-outline"
+        />
+      </View>
 
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <StatCard
-            label="זמן"
-            value={`${workoutDuration} דק'`}
-            icon="time-outline"
-          />
-          <StatCard
-            label="סטים"
-            value={`${completedSets}/${totalSets}`}
-            icon="fitness-outline"
-          />
-          <StatCard
-            label="נפח כולל"
-            value={`${totalVolume.toLocaleString()}ק"ג`}
-            icon="barbell-outline"
-          />
-        </View>
-
-        {/* Exercises Breakdown */}
-        <View style={styles.exercisesSection}>
-          <Text style={styles.sectionTitle}>פירוט תרגילים</Text>
-          {workout.exercises.map((exercise, index) => (
-            <View key={index} style={styles.exerciseBlock}>
-              <Text style={styles.exerciseName}>{exercise.name}</Text>
-              {exercise.sets.map((set, setIndex) => (
-                <View key={setIndex} style={styles.setRow}>
-                  <Text style={styles.setText}>סט {setIndex + 1}:</Text>
-                  <Text style={[styles.setText, styles.bold]}>
-                    {set.weight ? `${set.weight}ק"ג × ` : ""}
-                    {set.reps ? `${set.reps} חזרות` : ""}
-                    {set.duration ? ` • ${set.duration}"` : ""}
+      {/* Exercise Details */}
+      <View style={styles.exerciseSection}>
+        <Text style={styles.sectionTitle}>פירוט תרגילים</Text>
+        {workout.exercises.map((exercise) => (
+          <View key={exercise.id} style={styles.exerciseCard}>
+            <Text style={styles.exerciseName}>{exercise.name}</Text>
+            {exercise.sets.map((set, index) => (
+              <View key={set.id} style={styles.setRow}>
+                <Text style={styles.setText}>
+                  סט {index + 1}:{" "}
+                  <Text style={styles.bold}>
+                    {set.weight}ק״ג × {set.reps} חזרות
                   </Text>
-                </View>
-              ))}
-            </View>
-          ))}
-        </View>
+                </Text>
+                {set.status === "skipped" && (
+                  <Text style={[styles.setText, { color: colors.warning }]}>
+                    (דולג)
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
 
-        {/* Feedback Section */}
-        <View style={styles.feedbackSection}>
-          <Text style={styles.sectionTitle}>איך היה האימון?</Text>
-          <EffortRating rating={rating} onRate={setRating} />
+      {/* Feedback Section */}
+      <View style={styles.feedbackSection}>
+        <Text style={styles.sectionTitle}>איך היה האימון?</Text>
+        <EffortRating rating={rating} onRate={setRating} />
 
-          <Input
-            label="הערות"
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="איך היה האימון? הערות להבא..."
-            multiline
-            style={styles.notesInput}
-          />
-        </View>
+        <Input
+          label="הערות"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="איך הרגשת? מה היה טוב? מה אפשר לשפר?"
+          multiline
+          style={styles.notesInput}
+        />
+      </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          <Button
-            title="שמור וסיים"
-            onPress={handleFinishAndSave}
-            style={styles.saveButton}
-          />
-          <Button
-            title="חזור לבית"
-            variant="outline"
-            onPress={() => navigation.popToTop()}
-            style={styles.homeButton}
-          />
-        </View>
+      {/* Actions */}
+      <View style={styles.actionsContainer}>
+        <Button
+          title="שמור אימון"
+          onPress={handleFinishAndSave}
+          style={styles.saveButton}
+          disabled={!userId}
+        />
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </View>
+        <TouchableOpacity onPress={handleShareWorkout}>
+          <View style={styles.shareButton}>
+            <Ionicons
+              name="share-social-outline"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.shareButtonText}>שתף אימון</Text>
+          </View>
+        </TouchableOpacity>
+
+        <Button
+          title="חזור לבית"
+          onPress={() => navigation.popToTop()}
+          variant="outline"
+          style={styles.homeButton}
+        />
+      </View>
+
+      <View style={styles.bottomPadding} />
+    </ScrollView>
   );
 };
 
@@ -301,57 +315,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
-  // Header
   header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    paddingVertical: 20,
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    textAlign: "center",
-    flex: 1,
-  },
-
-  // Workout Info
-  workoutNameContainer: {
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: colors.surface,
-  },
-  workoutName: {
+  title: {
     fontSize: 24,
     fontWeight: "bold",
     color: colors.text,
-    textAlign: "center",
     marginBottom: 8,
   },
-  workoutDate: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: "center",
+  workoutName: {
+    fontSize: 18,
+    color: colors.primary,
+    marginBottom: 4,
   },
-
-  // Stats
+  dateTime: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
   statsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
     padding: 20,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   statCard: {
     alignItems: "center",
@@ -367,37 +356,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 4,
-    textAlign: "center",
   },
-
-  // Sections
-  exercisesSection: {
-    padding: 20,
+  exerciseSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 16,
-    textAlign: "right",
-  },
-  exerciseBlock: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  exerciseName: {
     fontSize: 18,
     fontWeight: "600",
     color: colors.text,
     marginBottom: 12,
-    textAlign: "right",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 8,
+  },
+  exerciseCard: {
+    backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
   },
   setRow: {
     flexDirection: "row",
@@ -407,13 +389,10 @@ const styles = StyleSheet.create({
   setText: {
     fontSize: 14,
     color: colors.text,
-    textAlign: "right",
   },
   bold: {
     fontWeight: "bold",
   },
-
-  // Feedback
   feedbackSection: {
     backgroundColor: colors.surface,
     marginHorizontal: 20,
@@ -428,13 +407,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     marginTop: 8,
+    marginBottom: 16,
   },
   notesInput: {
     minHeight: 80,
     textAlignVertical: "top",
   },
-
-  // Actions
   actionsContainer: {
     padding: 20,
     gap: 12,
@@ -442,10 +420,25 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: colors.primary,
   },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 8,
+    gap: 8,
+  },
+  shareButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
   homeButton: {
     borderColor: colors.primary,
   },
-
   bottomPadding: {
     height: 20,
   },

@@ -10,9 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { WorkoutStats } from "../../hooks/useWorkoutHistory";
 import { colors } from "../../theme/colors";
-import { Workout } from "../../types/workout";
+import { Workout, WorkoutStats } from "../../types/workout"; // תיקון: import מהמקום הנכון
 
 const { width } = Dimensions.get("window");
 
@@ -90,219 +89,102 @@ const StatCard = ({
   label: string;
   color?: string;
   subtitle?: string;
-}) => {
-  const cardColor = color || colors.primary || "#007AFF";
-
-  return (
-    <View
-      style={[
-        styles.statCard,
-        { backgroundColor: colors.surface || "#FFFFFF" },
-      ]}
-    >
-      <View
-        style={[
-          styles.statIconContainer,
-          { backgroundColor: cardColor + "15" },
-        ]}
-      >
-        <Ionicons name={icon as any} size={24} color={cardColor} />
-      </View>
-      <View style={styles.statContent}>
-        <Text style={[styles.statValue, { color: colors.text || "#000" }]}>
-          {value}
-        </Text>
-        <Text
-          style={[styles.statLabel, { color: colors.textSecondary || "#666" }]}
-        >
-          {label}
-        </Text>
-        {subtitle && (
-          <Text
-            style={[
-              styles.statSubtitle,
-              { color: colors.textSecondary || "#999" },
-            ]}
-          >
-            {subtitle}
-          </Text>
-        )}
-      </View>
+}) => (
+  <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+    <View style={styles.statIconContainer}>
+      <Ionicons name={icon as any} size={24} color={color || colors.primary} />
     </View>
-  );
-};
-
-// 📊 Favorite Exercises Component
-const FavoriteExercises = ({ exercises }: { exercises: string[] }) => {
-  return (
-    <View
-      style={[
-        styles.favoritesCard,
-        { backgroundColor: colors.surface || "#FFFFFF" },
-      ]}
-    >
-      <Text style={[styles.cardTitle, { color: colors.text || "#000" }]}>
-        <Ionicons name="heart" size={16} color="#FF3B30" /> התרגילים הפופולריים
+    <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+      {label}
+    </Text>
+    {subtitle && (
+      <Text style={[styles.statSubtitle, { color: colors.textSecondary }]}>
+        {subtitle}
       </Text>
+    )}
+  </View>
+);
 
-      {exercises.length === 0 ? (
-        <Text
-          style={[styles.emptyText, { color: colors.textSecondary || "#999" }]}
-        >
-          עדיין אין מספיק נתונים
-        </Text>
-      ) : (
-        <View style={styles.exercisesList}>
-          {exercises.slice(0, 5).map((exercise, index) => (
-            <View key={exercise} style={styles.exerciseItem}>
-              <View style={styles.exerciseRank}>
-                <Text style={[styles.exerciseRankText, { color: "#FFFFFF" }]}>
-                  {index + 1}
-                </Text>
-              </View>
-              <Text
-                style={[styles.exerciseName, { color: colors.text || "#000" }]}
-              >
-                {exercise}
-              </Text>
-              <View
-                style={[
-                  styles.exerciseBar,
-                  { backgroundColor: colors.border || "#E5E5E7" },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.exerciseBarFill,
-                    {
-                      backgroundColor: colors.primary || "#007AFF",
-                      width: `${100 - index * 15}%`,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-};
-
-// 📈 Simple Week Progress Component (without chart library)
-const WeekProgressChart = ({ workouts }: { workouts: Workout[] }) => {
-  const weekData = useMemo(() => {
-    const days = ["ב", "ג", "ד", "ה", "ו", "ש", "א"];
-    const today = new Date();
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay());
-
-    const weekWorkouts = days.map((day, index) => {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + index);
-
-      const dayWorkouts = workouts.filter((workout) => {
-        const workoutDate = new Date(workout.completedAt || workout.date || 0);
-        return workoutDate.toDateString() === date.toDateString();
-      });
-
-      return {
-        day,
-        count: dayWorkouts.length,
-        volume: dayWorkouts.reduce((sum, w) => {
-          return (
-            sum +
-            w.exercises.reduce((exSum, ex) => {
-              return (
-                exSum +
-                ex.sets.reduce((setSum, set) => {
-                  return setSum + (set.weight || 0) * (set.reps || 0);
-                }, 0)
-              );
-            }, 0)
-          );
-        }, 0),
-      };
-    });
-
-    return weekWorkouts;
-  }, [workouts]);
-
-  const maxCount = Math.max(...weekData.map((d) => d.count), 1);
-
-  return (
-    <View
-      style={[
-        styles.chartCard,
-        { backgroundColor: colors.surface || "#FFFFFF" },
-      ]}
-    >
-      <Text style={[styles.cardTitle, { color: colors.text || "#000" }]}>
-        <Ionicons
-          name="bar-chart"
-          size={16}
-          color={colors.primary || "#007AFF"}
-        />{" "}
-        השבוע שלי
-      </Text>
-
-      <View style={styles.simpleChart}>
-        {weekData.map((data, index) => (
-          <View key={index} style={styles.chartColumn}>
-            <View
-              style={[
-                styles.chartBar,
-                {
-                  height: `${(data.count / maxCount) * 100}%`,
-                  backgroundColor:
-                    data.count > 0 ? colors.primary || "#007AFF" : "#E5E5E7",
-                },
-              ]}
-            />
-            <Text
-              style={[
-                styles.chartLabel,
-                { color: colors.textSecondary || "#666" },
-              ]}
-            >
-              {data.day}
-            </Text>
-            <Text style={[styles.chartValue, { color: colors.text || "#000" }]}>
-              {data.count}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-// 🎯 Main Dashboard Component
+// 📊 Main Dashboard Component
 const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
   stats,
   workouts = [],
   period = "week",
   onPeriodChange,
 }) => {
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${Math.round(minutes)} דק'`;
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    return `${hours}:${mins.toString().padStart(2, "0")} שע'`;
+  // Calculate trends
+  const trends = useMemo(() => {
+    if (!workouts || workouts.length < 2) {
+      return {
+        volume: { trend: "stable" as const, value: "0%" },
+        frequency: { trend: "stable" as const, value: "0%" },
+        duration: { trend: "stable" as const, value: "0%" },
+      };
+    }
+
+    // Simple trend calculation (compare last week to previous)
+    const thisWeek = workouts.filter((w) => {
+      const date = new Date(w.completedAt || w.date || "");
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return date > weekAgo;
+    });
+
+    const lastWeek = workouts.filter((w) => {
+      const date = new Date(w.completedAt || w.date || "");
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      return date <= weekAgo && date > twoWeeksAgo;
+    });
+
+    const volumeTrend =
+      thisWeek.length > lastWeek.length
+        ? ("up" as const)
+        : thisWeek.length < lastWeek.length
+        ? ("down" as const)
+        : ("stable" as const);
+
+    const volumeChange = lastWeek.length
+      ? Math.round(
+          ((thisWeek.length - lastWeek.length) / lastWeek.length) * 100
+        )
+      : 0;
+
+    return {
+      volume: {
+        trend: volumeTrend,
+        value: `${volumeChange > 0 ? "+" : ""}${volumeChange}%`,
+      },
+      frequency: { trend: "stable" as const, value: "0%" },
+      duration: { trend: "stable" as const, value: "0%" },
+    };
+  }, [workouts]);
+
+  // Format stats values
+  const formatWeight = (weight: number) => {
+    if (weight >= 1000) {
+      return `${(weight / 1000).toFixed(1)}T`; // Tons
+    }
+    return `${weight}kg`;
   };
 
-  const formatVolume = (kg: number) => {
-    if (kg > 1000) return `${(kg / 1000).toFixed(1)}k ק"ג`;
-    return `${Math.round(kg)} ק"ג`;
+  const formatDuration = (minutes: number) => {
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}:${mins.toString().padStart(2, "0")}`;
+    }
+    return `${minutes} דק׳`;
   };
 
   return (
     <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: colors.background || "#F5F5F5" },
-      ]}
+      style={styles.container}
       showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.contentContainer}
     >
       {/* Period Selector */}
       {onPeriodChange && (
@@ -312,25 +194,14 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
               key={p}
               style={[
                 styles.periodButton,
-                {
-                  backgroundColor:
-                    period === p
-                      ? colors.primary || "#007AFF"
-                      : colors.surface || "#F2F2F7",
-                  borderColor:
-                    period === p
-                      ? colors.primary || "#007AFF"
-                      : colors.border || "#E5E5E7",
-                },
+                period === p && styles.periodButtonActive,
               ]}
               onPress={() => onPeriodChange(p)}
             >
               <Text
                 style={[
                   styles.periodButtonText,
-                  {
-                    color: period === p ? "#FFFFFF" : colors.text || "#000",
-                  },
+                  period === p && styles.periodButtonTextActive,
                 ]}
               >
                 {p === "week" ? "שבוע" : p === "month" ? "חודש" : "שנה"}
@@ -340,384 +211,297 @@ const WorkoutStatsDashboard: React.FC<WorkoutStatsDashboardProps> = ({
         </View>
       )}
 
-      {/* Progress Trends */}
-      <View style={styles.trendsContainer}>
-        <ProgressTrendCard
-          trend={stats.progressTrend}
-          value={stats.currentStreak.toString()}
-          label="רצף אימונים"
-        />
-        <ProgressTrendCard
-          trend={
-            stats.weeklyWorkouts > 3
-              ? "up"
-              : stats.weeklyWorkouts < 2
-              ? "down"
-              : "stable"
-          }
-          value={stats.weeklyWorkouts.toString()}
-          label="השבוע"
-        />
-        <ProgressTrendCard
-          trend="stable"
-          value={stats.averageRating.toFixed(1)}
-          label="ממוצע דירוג"
-        />
-      </View>
-
       {/* Main Stats Grid */}
       <View style={styles.statsGrid}>
         <StatCard
-          icon="barbell"
+          icon="barbell-outline"
           value={stats.totalWorkouts}
-          label="סך אימונים"
-          color={colors.primary || "#007AFF"}
-          subtitle="מתחילת השימוש"
+          label="אימונים"
+          color={colors.primary}
         />
         <StatCard
-          icon="trending-up"
-          value={formatVolume(stats.totalVolume)}
-          label="נפח כולל"
-          color="#34C759"
-          subtitle={`${formatVolume(stats.weeklyVolume)} השבוע`}
+          icon="time-outline"
+          value={formatDuration(stats.totalDuration)}
+          label="זמן כולל"
+          color={colors.success}
         />
         <StatCard
-          icon="time"
-          value={formatDuration(stats.averageDuration)}
-          label="זמן ממוצע"
-          color="#FF9500"
-          subtitle={`${formatDuration(stats.totalDuration)} סה"כ`}
+          icon="trending-up-outline"
+          value={formatWeight(stats.totalWeight)}
+          label="משקל כולל"
+          color={colors.warning}
         />
         <StatCard
-          icon="calendar"
-          value={stats.monthlyWorkouts}
-          label="החודש"
-          color="#5856D6"
-          subtitle="אימונים"
+          icon="star-outline"
+          value={stats.averageRating.toFixed(1)}
+          label="דירוג ממוצע"
+          color={colors.accent || colors.primary}
         />
       </View>
 
-      {/* Weekly Progress Chart */}
-      {workouts.length > 0 && <WeekProgressChart workouts={workouts} />}
+      {/* Trends Section */}
+      <View style={styles.trendsSection}>
+        <Text style={styles.sectionTitle}>מגמות</Text>
+        <View style={styles.trendsGrid}>
+          <ProgressTrendCard
+            trend={trends.volume.trend}
+            value={trends.volume.value}
+            label="נפח אימונים"
+          />
+          <ProgressTrendCard
+            trend={trends.frequency.trend}
+            value={trends.frequency.value}
+            label="תדירות"
+          />
+          <ProgressTrendCard
+            trend={trends.duration.trend}
+            value={trends.duration.value}
+            label="משך אימון"
+          />
+        </View>
+      </View>
 
-      {/* Favorite Exercises */}
-      <FavoriteExercises exercises={stats.favoriteExercises} />
-
-      {/* Achievement Badges */}
-      <View
-        style={[
-          styles.achievementsCard,
-          { backgroundColor: colors.surface || "#FFFFFF" },
-        ]}
-      >
-        <Text style={[styles.cardTitle, { color: colors.text || "#000" }]}>
-          <Ionicons name="trophy" size={16} color="#FF9500" /> הישגים השבוע
-        </Text>
-
-        <View style={styles.achievementsList}>
-          {stats.currentStreak >= 7 && (
-            <View
-              style={[
-                styles.achievementBadge,
-                { backgroundColor: "#34C759" + "15" },
-              ]}
-            >
-              <Ionicons name="flame" size={20} color="#34C759" />
-              <Text style={[styles.achievementText, { color: "#34C759" }]}>
-                רצף שבועי!
-              </Text>
-            </View>
-          )}
-
-          {stats.weeklyVolume > 1000 && (
-            <View
-              style={[
-                styles.achievementBadge,
-                { backgroundColor: (colors.primary || "#007AFF") + "15" },
-              ]}
-            >
-              <Ionicons
-                name="fitness"
-                size={20}
-                color={colors.primary || "#007AFF"}
-              />
-              <Text
-                style={[
-                  styles.achievementText,
-                  { color: colors.primary || "#007AFF" },
-                ]}
-              >
-                נפח גבוה!
-              </Text>
-            </View>
-          )}
-
-          {stats.weeklyWorkouts >= 5 && (
-            <View
-              style={[
-                styles.achievementBadge,
-                { backgroundColor: "#FF9500" + "15" },
-              ]}
-            >
-              <Ionicons name="medal" size={20} color="#FF9500" />
-              <Text style={[styles.achievementText, { color: "#FF9500" }]}>
-                מחויב לספורט!
-              </Text>
-            </View>
-          )}
-
-          {stats.averageRating >= 4.5 && (
-            <View
-              style={[
-                styles.achievementBadge,
-                { backgroundColor: "#FF3B30" + "15" },
-              ]}
-            >
-              <Ionicons name="star" size={20} color="#FF3B30" />
-              <Text style={[styles.achievementText, { color: "#FF3B30" }]}>
-                איכות גבוהה!
-              </Text>
-            </View>
-          )}
+      {/* Additional Stats */}
+      <View style={styles.additionalStats}>
+        <View style={styles.statRow}>
+          <Text style={styles.statRowLabel}>רצף נוכחי</Text>
+          <View style={styles.statRowValue}>
+            <Ionicons name="flame" size={20} color={colors.warning} />
+            <Text style={styles.statRowValueText}>{stats.streakDays} ימים</Text>
+          </View>
         </View>
 
-        {stats.currentStreak < 7 &&
-          stats.weeklyVolume <= 1000 &&
-          stats.weeklyWorkouts < 5 &&
-          stats.averageRating < 4.5 && (
-            <Text
-              style={[
-                styles.emptyAchievements,
-                { color: colors.textSecondary || "#999" },
-              ]}
-            >
-              המשך להתאמן כדי לזכות בהישגים! 💪
-            </Text>
-          )}
+        <View style={styles.statRow}>
+          <Text style={styles.statRowLabel}>אימונים השבוע</Text>
+          <Text style={styles.statRowValueText}>{stats.weeklyWorkouts}</Text>
+        </View>
+
+        <View style={[styles.statRow, styles.statRowLast]}>
+          <Text style={styles.statRowLabel}>אימונים החודש</Text>
+          <Text style={styles.statRowValueText}>{stats.monthlyWorkouts}</Text>
+        </View>
       </View>
+
+      {/* Favorite Exercises */}
+      {stats.favoriteExercises && stats.favoriteExercises.length > 0 && (
+        <View style={styles.favoritesSection}>
+          <Text style={styles.sectionTitle}>תרגילים פופולריים</Text>
+          {stats.favoriteExercises.slice(0, 3).map((exercise, index) => (
+            <View key={index} style={styles.favoriteItem}>
+              <Text style={styles.favoriteExerciseName}>{exercise.name}</Text>
+              <Text style={styles.favoriteExerciseCount}>
+                {exercise.count} פעמים
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Muscle Group Distribution */}
+      {stats.muscleGroupDistribution &&
+        stats.muscleGroupDistribution.length > 0 && (
+          <View style={styles.distributionSection}>
+            <Text style={styles.sectionTitle}>התפלגות קבוצות שרירים</Text>
+            {stats.muscleGroupDistribution.map((group, index) => (
+              <View key={index} style={styles.distributionItem}>
+                <Text style={styles.distributionLabel}>{group.muscle}</Text>
+                <View style={styles.distributionBar}>
+                  <View
+                    style={[
+                      styles.distributionBarFill,
+                      { width: `${group.percentage}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.distributionPercentage}>
+                  {group.percentage}%
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
     </ScrollView>
   );
 };
 
-// 🎨 Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  contentContainer: {
     padding: 16,
   },
   periodSelector: {
     flexDirection: "row",
-    marginBottom: 20,
+    backgroundColor: colors.surface,
     borderRadius: 12,
-    overflow: "hidden",
+    padding: 4,
+    marginBottom: 16,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     alignItems: "center",
-    borderWidth: 1,
+  },
+  periodButtonActive: {
+    backgroundColor: colors.primary,
   },
   periodButtonText: {
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
-  trendsContainer: {
-    flexDirection: "row",
-    marginBottom: 20,
-    gap: 12,
-  },
-  trendCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  trendHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  trendValue: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  trendLabel: {
-    fontSize: 12,
-    textAlign: "center",
+  periodButtonTextActive: {
+    color: "#FFFFFF",
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   statCard: {
-    width: (width - 52) / 2,
+    flex: 1,
+    minWidth: (width - 48) / 2,
     padding: 16,
     borderRadius: 12,
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  statContent: {
-    alignItems: "flex-start",
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "bold",
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 2,
+    fontSize: 12,
   },
   statSubtitle: {
-    fontSize: 12,
+    fontSize: 10,
+    marginTop: 2,
   },
-  chartCard: {
-    padding: 16,
-    marginBottom: 20,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  trendsSection: {
+    marginBottom: 24,
   },
-  cardTitle: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 12,
+  },
+  trendsGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  trendCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  trendHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
+  trendValue: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 16,
-    textAlign: "right",
   },
-  simpleChart: {
+  trendLabel: {
+    fontSize: 12,
+  },
+  additionalStats: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  statRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
-    height: 120,
-    paddingHorizontal: 10,
-  },
-  chartColumn: {
-    flex: 1,
     alignItems: "center",
-    height: "100%",
-    justifyContent: "flex-end",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  chartBar: {
-    width: 20,
-    minHeight: 4,
-    borderRadius: 2,
+  statRowLast: {
+    borderBottomWidth: 0,
+  },
+  statRowLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  statRowValue: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statRowValueText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  favoritesSection: {
+    marginBottom: 24,
+  },
+  favoriteItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 8,
   },
-  chartLabel: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  chartValue: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  favoritesCard: {
-    padding: 16,
-    marginBottom: 20,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  exercisesList: {
-    gap: 12,
-  },
-  exerciseItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  exerciseRank: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#007AFF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  exerciseRankText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  exerciseName: {
-    flex: 1,
+  favoriteExerciseName: {
     fontSize: 14,
-    fontWeight: "500",
-    textAlign: "right",
+    color: colors.text,
   },
-  exerciseBar: {
-    width: 60,
-    height: 4,
-    borderRadius: 2,
+  favoriteExerciseCount: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  distributionSection: {
+    marginBottom: 24,
+  },
+  distributionItem: {
+    marginBottom: 12,
+  },
+  distributionLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  distributionBar: {
+    height: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 4,
     overflow: "hidden",
+    marginBottom: 4,
   },
-  exerciseBarFill: {
+  distributionBarFill: {
     height: "100%",
-    borderRadius: 2,
+    backgroundColor: colors.primary,
+    borderRadius: 4,
   },
-  emptyText: {
-    textAlign: "center",
-    fontSize: 14,
-    fontStyle: "italic",
-    paddingVertical: 20,
-  },
-  achievementsCard: {
-    padding: 16,
-    marginBottom: 20,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  achievementsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  achievementBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  achievementText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  emptyAchievements: {
-    textAlign: "center",
-    fontSize: 14,
-    fontStyle: "italic",
-    paddingVertical: 20,
+  distributionPercentage: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    position: "absolute",
+    right: 0,
+    top: 20,
   },
 });
 
