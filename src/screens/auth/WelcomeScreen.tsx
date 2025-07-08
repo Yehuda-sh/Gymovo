@@ -1,6 +1,5 @@
-// src/screens/auth/WelcomeScreen.tsx - מסך פתיחה מנוקה ומסודר
+// src/screens/auth/WelcomeScreen.tsx - מסך פתיחה מתוקן
 
-// Removed unused import of Ionicons
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useCallback, useEffect, useRef } from "react";
 import {
@@ -18,6 +17,14 @@ import { clearAllData } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { RootStackParamList } from "../../types/navigation";
 import { demoUsers } from "../../constants/demoUsers";
+import { User } from "../../types/user";
+
+// הוספת טיפוס מורחב למשתמשי דמו
+interface DemoUserData extends User {
+  color?: string;
+  level: "beginner" | "intermediate" | "advanced";
+  goal: "build_muscle" | "lose_weight" | "get_stronger" | "general_fitness";
+}
 
 const { height } = Dimensions.get("window");
 
@@ -84,15 +91,23 @@ const WelcomeScreen = ({ navigation }: Props) => {
 
   // 👤 התחברות כמשתמש דמו
   const handleDemoLogin = useCallback(
-    async (userId: string) => {
-      const demoUser = demoUsers.find((u) => u.id === userId);
-      if (demoUser) {
-        await loginAsDemoUser(userId);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Main" }],
-        });
-      }
+    async (demoUser: DemoUserData) => {
+      // המרה ל-User בסיסי לפני שליחה ל-store
+      const userForStore: User = {
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.name,
+        age: demoUser.age,
+        isGuest: demoUser.isGuest,
+        createdAt: demoUser.createdAt,
+        stats: demoUser.stats,
+      };
+
+      await loginAsDemoUser(userForStore);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main" }],
+      });
     },
     [loginAsDemoUser, navigation]
   );
@@ -156,27 +171,23 @@ const WelcomeScreen = ({ navigation }: Props) => {
             ]}
           >
             <Text style={styles.title}>Gymovo</Text>
+            <View style={styles.accentLine} />
           </Animated.View>
 
           <Animated.View
-            style={[
-              styles.subtitleContainer,
-              {
-                transform: [{ translateY: subtitleSlide }],
-                opacity: fadeAnim,
-              },
-            ]}
+            style={{
+              transform: [{ translateY: subtitleSlide }],
+              opacity: fadeAnim,
+            }}
           >
-            <Text style={styles.subtitle}>האפליקציה החכמה לאימונים</Text>
+            <Text style={styles.subtitle}>התוכנית האישית שלך לחדר הכושר</Text>
           </Animated.View>
         </View>
 
-        <View style={styles.spacer} />
-
-        {/* כפתורים ראשיים */}
+        {/* כפתורי כניסה */}
         <Animated.View
           style={[
-            styles.actionsSection,
+            styles.buttonsSection,
             {
               transform: [{ translateY: buttonsSlide }],
               opacity: fadeAnim,
@@ -194,19 +205,19 @@ const WelcomeScreen = ({ navigation }: Props) => {
             <Button
               title="יש לי חשבון"
               onPress={() => navigation.navigate("Login")}
-              variant="outline"
+              variant="secondary"
               style={styles.secondaryButton}
-            />
-
-            <Button
-              title="כניסה כאורח"
-              onPress={handleGuestLogin}
-              variant="outline"
-              style={styles.guestButton}
             />
           </View>
 
-          {/* פאנל למפתחים - רק ב-DEV */}
+          <Button
+            title="כניסה כאורח"
+            onPress={handleGuestLogin}
+            variant="outline"
+            style={styles.guestButton}
+          />
+
+          {/* פאנל מפתחים - רק ב-DEV mode */}
           {__DEV__ && (
             <View style={styles.devPanel}>
               <View style={styles.devHeader}>
@@ -216,31 +227,28 @@ const WelcomeScreen = ({ navigation }: Props) => {
 
               <Text style={styles.demoSectionTitle}>משתמשי דמו</Text>
               <View style={styles.devActions}>
-                {demoUsers.map((user) => (
+                {(demoUsers as DemoUserData[]).map((user) => (
                   <TouchableOpacity
                     key={user.id}
                     style={[
                       styles.devButton,
-                      {
-                        backgroundColor:
-                          user.id === "demo_1"
-                            ? "rgba(34, 197, 94, 0.2)"
-                            : user.id === "demo_2"
-                            ? "rgba(59, 130, 246, 0.2)"
-                            : "rgba(168, 85, 247, 0.2)",
-                      },
+                      { backgroundColor: user.color || "#1F2937" },
                     ]}
                     onPress={() => handleDemoLogin(user)}
                   >
                     <Text style={styles.demoButtonText}>{user.name}</Text>
-                    <Text style={styles.demoButtonSubtext}>{user.email}</Text>
+                    <Text style={styles.demoButtonSubtext}>
+                      {user.email} • {user.age} שנים
+                    </Text>
                     <Text style={styles.demoButtonDetails}>
-                      {user.id.includes("beginner")
-                        ? "מתחיל"
-                        : user.id.includes("intermediate")
-                        ? "בינוני"
-                        : "מתקדם"}{" "}
-                      • סיים כמה אימונים
+                      {user.level === "beginner" && "מתחיל"}
+                      {user.level === "intermediate" && "ביניים"}
+                      {user.level === "advanced" && "מתקדם"}
+                      {" • "}
+                      {user.goal === "build_muscle" && "בניית שריר"}
+                      {user.goal === "lose_weight" && "ירידה במשקל"}
+                      {user.goal === "get_stronger" && "חיזוק"}
+                      {user.goal === "general_fitness" && "כושר כללי"}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -265,81 +273,83 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
-  // רקע וגרדיאנטים
   backgroundGradient: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    height: height * 0.6,
+    width: "100%",
+    height: height * 0.5,
   },
   gradientTop: {
     top: 0,
-    backgroundColor: "rgba(59, 130, 246, 0.15)",
+    backgroundColor: "#0a0a0a",
+    opacity: 0.8,
   },
   gradientBottom: {
     bottom: 0,
-    backgroundColor: "rgba(0, 255, 136, 0.1)",
-    transform: [{ scaleY: -1 }],
+    backgroundColor: "#1a1a1a",
+    opacity: 0.6,
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
   },
-  // לוגו וכותרות
   logoSection: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: height * 0.1,
   },
   logoContainer: {
-    position: "relative",
-    marginBottom: 30,
+    marginBottom: 32,
+    alignItems: "center",
   },
   logoGlow: {
     position: "absolute",
     width: 120,
     height: 120,
-    borderRadius: 60,
     backgroundColor: "#3B82F6",
+    borderRadius: 60,
+    opacity: 0.2,
     top: -10,
-    left: -10,
-    opacity: 0.3,
   },
   logo: {
-    fontSize: 100,
+    fontSize: 64,
     textAlign: "center",
   },
   titleContainer: {
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 16,
   },
   title: {
     fontSize: 48,
     fontWeight: "800",
     color: "#FFFFFF",
-    textAlign: "center",
-    letterSpacing: 2,
-    textShadowColor: "rgba(59, 130, 246, 0.5)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    marginBottom: 8,
+    letterSpacing: -1,
+    fontFamily: Platform.select({
+      ios: "Avenir-Heavy",
+      android: "sans-serif-condensed",
+    }),
   },
-  subtitleContainer: {
-    alignItems: "center",
+  accentLine: {
+    width: 60,
+    height: 4,
+    backgroundColor: "#3B82F6",
+    borderRadius: 2,
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 4,
   },
   subtitle: {
     fontSize: 18,
-    color: "#94A3B8",
+    color: "rgba(255, 255, 255, 0.8)",
     textAlign: "center",
-    fontWeight: "500",
-    letterSpacing: 0.5,
+    fontWeight: "400",
   },
-  spacer: {
-    flex: 1,
-  },
-  // כפתורים
-  actionsSection: {
-    gap: 16,
+  buttonsSection: {
+    paddingTop: 32,
   },
   primaryActions: {
     gap: 12,
@@ -367,7 +377,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: "rgba(100, 116, 139, 0.1)",
   },
-  // פאנל מפתחים
   devPanel: {
     marginTop: 20,
     padding: 16,
