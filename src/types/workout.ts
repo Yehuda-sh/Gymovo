@@ -43,7 +43,7 @@ export interface WorkoutExercise {
 export interface Workout {
   id: string;
   name: string;
-  date?: string;
+  date?: Date; // או string - תלוי במימוש שלך
   planId?: string;
   planDayId?: string;
   templateId?: string;
@@ -66,8 +66,11 @@ export interface Workout {
   totalSets?: number;
   totalReps?: number;
   totalWeight?: number; // בק"ג
+  totalVolume?: number; // נפח כולל
   targetMuscles?: string[];
   completedSets?: number;
+  completedExercises?: number;
+  totalExercises?: number;
 
   // מטא דאטה
   userId: string;
@@ -142,13 +145,14 @@ export interface WorkoutStats {
 export interface WorkoutHistoryFilters {
   dateFrom?: string;
   dateTo?: string;
-  dateRange?: { start: string; end: string }; // alternative format
+  dateRange?: "week" | "month" | "3months" | "all";
   rating?: number;
   minRating?: number;
   difficulty?: "beginner" | "intermediate" | "advanced";
   minDuration?: number;
   maxDuration?: number;
   exerciseName?: string;
+  exerciseType?: string;
   muscles?: string[];
   targetMuscles?: string[];
   mood?: Workout["mood"];

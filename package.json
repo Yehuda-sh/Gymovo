@@ -45,6 +45,7 @@
     "expo-updates": "^0.28.16",
     "expo-web-browser": "~14.2.0",
     "immer": "^10.1.1",
+    "moti": "^0.30.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-error-boundary": "^6.0.0",
