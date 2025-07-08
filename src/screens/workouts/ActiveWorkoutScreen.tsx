@@ -1,5 +1,4 @@
-// src/screens/workouts/ActiveWorkoutScreen.tsx - ✅ Fixed TypeScript Errors
-
+// src/screens/workouts/ActiveWorkoutScreen.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -20,8 +19,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Button from "../../components/common/Button";
+import { Toast } from "../../components/common/Toast";
 import { useWorkoutStore } from "../../stores/workoutStore";
 import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
@@ -38,15 +40,16 @@ const workoutColors = {
   subtext: colors.textSecondary,
   accent: colors.accent,
   border: colors.border,
-  success: colors.success, // ✅ Added missing success color
+  success: colors.success,
 
   // צבעים לסטטוסי סטים
   pending: colors.warning,
   completed: colors.success,
   active: colors.primary,
+  skipped: colors.error,
 
   // צבעים לכרטיסים
-  cardBg: colors.cardBackground,
+  cardBg: colors.cardBackground || colors.surface,
   inputBg: "rgba(255,255,255,0.1)",
 };
 
@@ -54,46 +57,49 @@ const workoutColors = {
 const ActiveExerciseCard = ({
   exercise,
   isActive,
+  onSetUpdate,
+  onSetComplete,
 }: {
   exercise: WorkoutExercise;
   isActive: boolean;
+  onSetUpdate: (
+    setId: string,
+    values: { weight?: number; reps?: number }
+  ) => void;
+  onSetComplete: (setId: string) => void;
 }) => {
-  const { updateSet, toggleSetCompleted } = useWorkoutStore();
   const slideAnim = useRef(new Animated.Value(isActive ? 0 : 300)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: isActive ? 0 : 300,
-      tension: 50,
-      friction: 8,
       useNativeDriver: true,
+      tension: 40,
+      friction: 8,
     }).start();
   }, [isActive, slideAnim]);
 
-  const handleSetComplete = useCallback(
-    (setId: string) => {
-      // אנימציית הצלחה
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
+  const handleSetComplete = (setId: string) => {
+    // אנימציה של השלמת סט
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-      // רטט
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // רטט
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      toggleSetCompleted(exercise.id, setId);
-    },
-    [exercise.id, scaleAnim, toggleSetCompleted]
-  );
+    onSetComplete(setId);
+  };
 
   if (!isActive) return null;
 
@@ -107,31 +113,23 @@ const ActiveExerciseCard = ({
       ]}
     >
       <View style={styles.exerciseHeader}>
-        {/* ✅ Fixed: Added null check for exercise.exercise */}
-        <Text style={styles.exerciseName}>
-          {exercise.exercise?.name || exercise.name}
-        </Text>
+        <Text style={styles.exerciseName}>{exercise.name}</Text>
         <View style={styles.setsProgress}>
           <Text style={styles.setsProgressText}>
-            {exercise.sets.filter((s) => s.status === "completed").length}/
+            {exercise.sets.filter((s) => s.status === "completed").length} /{" "}
             {exercise.sets.length} סטים
           </Text>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {exercise.sets.map((set, setIndex) => (
+        {exercise.sets.map((set, index) => (
           <SetCard
-            key={set.id || `set_${setIndex}`}
+            key={set.id}
             set={set}
-            setIndex={setIndex}
-            onWeightChange={(weight) =>
-              updateSet(exercise.id, set.id || `set_${setIndex}`, { weight })
-            }
-            onRepsChange={(reps) =>
-              updateSet(exercise.id, set.id || `set_${setIndex}`, { reps })
-            }
-            onComplete={() => handleSetComplete(set.id || `set_${setIndex}`)}
+            setNumber={index + 1}
+            onUpdate={(values) => onSetUpdate(set.id, values)}
+            onComplete={() => handleSetComplete(set.id)}
           />
         ))}
       </ScrollView>
@@ -139,72 +137,103 @@ const ActiveExerciseCard = ({
   );
 };
 
-// 🎯 רכיב כרטיס סט בודד
+// 💪 רכיב כרטיס סט
 const SetCard = ({
   set,
-  setIndex,
-  onWeightChange,
-  onRepsChange,
+  setNumber,
+  onUpdate,
   onComplete,
 }: {
   set: WorkoutSet;
-  setIndex: number;
-  onWeightChange: (weight: number) => void;
-  onRepsChange: (reps: number) => void;
+  setNumber: number;
+  onUpdate: (values: { weight?: number; reps?: number }) => void;
   onComplete: () => void;
 }) => {
-  const glowAnim = useRef(new Animated.Value(0)).current;
+  const [weight, setWeight] = useState(set.weight?.toString() || "");
+  const [reps, setReps] = useState(set.reps?.toString() || "");
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const getSetColor = useCallback(() => {
+  const isCompleted = set.status === "completed";
+
+  const getBorderColor = () => {
     switch (set.status) {
       case "completed":
         return workoutColors.completed;
+      case "active":
+        return workoutColors.active;
+      case "skipped":
+        return workoutColors.skipped;
       default:
-        return workoutColors.pending;
+        return workoutColors.border;
     }
-  }, [set.status]);
+  };
 
-  useEffect(() => {
-    if (set.status === "completed") {
-      // אנימציית זוהר בסיום
-      Animated.timing(glowAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+  const handleComplete = () => {
+    const weightNum = parseFloat(weight) || 0;
+    const repsNum = parseInt(reps) || 0;
+
+    if (weightNum === 0 || repsNum === 0) {
+      Toast.error("אנא הכנס משקל וחזרות");
+      return;
     }
-  }, [set.status, glowAnim]);
+
+    onUpdate({ weight: weightNum, reps: repsNum });
+    onComplete();
+
+    // אנימציה
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.05,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   return (
     <Animated.View
       style={[
         styles.setCard,
         {
-          borderColor: getSetColor(),
-          opacity: set.status === "completed" ? 0.8 : 1,
+          borderColor: getBorderColor(),
+          transform: [{ scale: scaleAnim }],
+          opacity: isCompleted ? 0.7 : 1,
         },
       ]}
     >
       <View style={styles.setHeader}>
-        <Text style={[styles.setNumber, { color: getSetColor() }]}>
-          סט {setIndex + 1}
+        <Text style={[styles.setNumber, isCompleted && styles.completedText]}>
+          סט {setNumber}
         </Text>
+        {isCompleted && (
+          <Ionicons
+            name="checkmark-circle"
+            size={24}
+            color={workoutColors.completed}
+          />
+        )}
       </View>
 
       <View style={styles.setInputs}>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>משקל (קג)</Text>
+          <Text style={styles.inputLabel}>משקל (ק"ג)</Text>
           <TextInput
-            style={[styles.setInput, { borderColor: getSetColor() }]}
-            value={set.weight?.toString() || "0"} // ✅ Fixed: Added fallback
-            onChangeText={(text) => {
-              const weight = parseFloat(text) || 0;
-              onWeightChange(weight);
-            }}
+            style={[
+              styles.setInput,
+              isCompleted && styles.completedInput,
+              { borderColor: getBorderColor() },
+            ]}
+            value={weight}
+            onChangeText={setWeight}
             keyboardType="numeric"
             placeholder="0"
             placeholderTextColor={workoutColors.subtext}
-            editable={set.status !== "completed"}
+            editable={!isCompleted}
           />
         </View>
 
@@ -213,66 +242,65 @@ const SetCard = ({
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>חזרות</Text>
           <TextInput
-            style={[styles.setInput, { borderColor: getSetColor() }]}
-            value={set.reps?.toString() || "0"} // ✅ Fixed: Added fallback
-            onChangeText={(text) => {
-              const reps = parseInt(text) || 0;
-              onRepsChange(reps);
-            }}
+            style={[
+              styles.setInput,
+              isCompleted && styles.completedInput,
+              { borderColor: getBorderColor() },
+            ]}
+            value={reps}
+            onChangeText={setReps}
             keyboardType="numeric"
             placeholder="0"
             placeholderTextColor={workoutColors.subtext}
-            editable={set.status !== "completed"}
+            editable={!isCompleted}
           />
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.completeButton,
-          {
-            backgroundColor:
-              set.status === "completed"
-                ? workoutColors.completed
-                : workoutColors.pending,
-          },
-        ]}
-        onPress={onComplete}
-        disabled={set.status === "completed"}
-      >
-        <Text
+      {!isCompleted && (
+        <TouchableOpacity
           style={[
-            styles.completeButtonText,
-            { color: set.status === "completed" ? "#000" : workoutColors.text },
+            styles.completeButton,
+            {
+              backgroundColor:
+                weight && reps ? workoutColors.primary : workoutColors.border,
+            },
           ]}
+          onPress={handleComplete}
+          disabled={!weight || !reps}
         >
-          {set.status === "completed" ? "הושלם ✓" : "סיימתי סט"}
-        </Text>
-      </TouchableOpacity>
+          <Text style={styles.completeButtonText}>
+            {weight && reps ? "סיים סט" : "הכנס נתונים"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 };
 
-// 📊 רכיב סטטיסטיקות בזמן אמת
-const LiveStats = ({ workout }: { workout: any }) => {
+// 📊 רכיב סטטיסטיקות אימון
+const WorkoutStats = ({ workout }: { workout: any }) => {
   const stats = useMemo(() => {
-    const completedSets =
-      workout?.exercises?.flatMap((ex: WorkoutExercise) =>
-        ex.sets.filter((set) => set.status === "completed")
-      ) || [];
+    if (!workout)
+      return { totalVolume: 0, completedSets: 0, totalSets: 0, progress: 0 };
 
-    const totalSets =
-      workout?.exercises?.reduce(
-        (sum: number, ex: WorkoutExercise) => sum + ex.sets.length,
-        0
-      ) || 0;
+    const completedSets = workout.exercises.flatMap((ex: WorkoutExercise) =>
+      ex.sets.filter((s) => s.status === "completed")
+    );
+
+    const totalSets = workout.exercises.reduce(
+      (sum: number, ex: WorkoutExercise) => sum + ex.sets.length,
+      0
+    );
+
+    const totalVolume = completedSets.reduce(
+      (sum: number, set: WorkoutSet) =>
+        sum + (set.weight || 0) * (set.reps || 0),
+      0
+    );
 
     return {
-      totalVolume: completedSets.reduce(
-        (sum: number, set: WorkoutSet) =>
-          sum + (set.weight || 0) * (set.reps || 0), // ✅ Fixed: Added fallbacks
-        0
-      ),
+      totalVolume,
       completedSets: completedSets.length,
       totalSets,
       progress: totalSets > 0 ? (completedSets.length / totalSets) * 100 : 0,
@@ -305,6 +333,8 @@ const ActiveWorkoutScreen = () => {
   const {
     activeWorkout,
     currentExerciseIndex,
+    updateSet,
+    toggleSetCompleted,
     goToNextExercise,
     goToPrevExercise,
     finishWorkout,
@@ -312,11 +342,25 @@ const ActiveWorkoutScreen = () => {
 
   const [workoutStartTime] = useState(new Date().toISOString());
 
-  // ✅ Fixed: Removed unused variables to fix ESLint warnings
-  // const [isResting, setIsResting] = useState(false);
-  // const [restTimeLeft, setRestTimeLeft] = useState(0);
-
   const currentExercise = activeWorkout?.exercises[currentExerciseIndex];
+
+  const handleSetUpdate = useCallback(
+    (setId: string, values: { weight?: number; reps?: number }) => {
+      if (currentExercise) {
+        updateSet(currentExercise.id, setId, values);
+      }
+    },
+    [currentExercise, updateSet]
+  );
+
+  const handleSetComplete = useCallback(
+    (setId: string) => {
+      if (currentExercise) {
+        toggleSetCompleted(currentExercise.id, setId);
+      }
+    },
+    [currentExercise, toggleSetCompleted]
+  );
 
   const handleNextExercise = () => {
     const hasNext = goToNextExercise();
@@ -326,11 +370,11 @@ const ActiveWorkoutScreen = () => {
         {
           text: "סיים אימון",
           style: "default",
-          onPress: () => {
-            finishWorkout();
+          onPress: async () => {
+            const finishedWorkout = await finishWorkout();
             navigation.navigate("WorkoutSummary", {
               workoutData: {
-                ...activeWorkout,
+                ...finishedWorkout,
                 startedAt: workoutStartTime,
                 completedAt: new Date().toISOString(),
               },
@@ -347,15 +391,18 @@ const ActiveWorkoutScreen = () => {
 
   const handleFinishWorkout = () => {
     Alert.alert("סיום אימון", "האם אתה בטוח שברצונך לסיים את האימון?", [
-      { text: "המשך אימון", style: "cancel" },
       {
-        text: "סיים",
+        text: "ביטול",
+        style: "cancel",
+      },
+      {
+        text: "סיים אימון",
         style: "destructive",
-        onPress: () => {
-          finishWorkout();
+        onPress: async () => {
+          const finishedWorkout = await finishWorkout();
           navigation.navigate("WorkoutSummary", {
             workoutData: {
-              ...activeWorkout,
+              ...finishedWorkout,
               startedAt: workoutStartTime,
               completedAt: new Date().toISOString(),
             },
@@ -367,53 +414,56 @@ const ActiveWorkoutScreen = () => {
 
   if (!activeWorkout || !currentExercise) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={styles.container}>
         <Text style={styles.errorText}>לא נמצא אימון פעיל</Text>
         <Button
-          title="חזור לבחירת תוכנית"
-          onPress={() => navigation.navigate("SelectPlan")}
+          title="חזור למסך הבית"
+          onPress={() => navigation.navigate("Main")}
         />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.headerButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={workoutColors.text} />
+        <TouchableOpacity onPress={handleFinishWorkout}>
+          <Ionicons name="close" size={28} color={workoutColors.text} />
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>{activeWorkout.name}</Text>
-
-        <TouchableOpacity
-          onPress={handleFinishWorkout}
-          style={styles.headerButton}
-        >
-          <Ionicons name="checkmark" size={24} color={workoutColors.success} />
+        <Text style={styles.workoutTitle}>{activeWorkout.name}</Text>
+        <TouchableOpacity>
+          <Ionicons name="timer-outline" size={28} color={workoutColors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* סטטיסטיקות */}
-      <LiveStats workout={activeWorkout} />
+      {/* Stats */}
+      <WorkoutStats workout={activeWorkout} />
 
-      {/* תרגיל נוכחי */}
+      {/* Exercise Cards */}
       <View style={styles.exerciseContainer}>
-        <ActiveExerciseCard exercise={currentExercise} isActive={true} />
+        {activeWorkout.exercises.map((exercise, index) => (
+          <ActiveExerciseCard
+            key={exercise.id}
+            exercise={exercise}
+            isActive={index === currentExerciseIndex}
+            onSetUpdate={handleSetUpdate}
+            onSetComplete={handleSetComplete}
+          />
+        ))}
       </View>
 
-      {/* ניווט בין תרגילים */}
+      {/* Navigation */}
       <View style={styles.navigationContainer}>
         <Button
           title="תרגיל קודם"
-          variant="outline"
           onPress={handlePrevExercise}
           disabled={currentExerciseIndex === 0}
           style={styles.navButton}
+          variant="outline"
         />
 
         <Text style={styles.exerciseCounter}>
@@ -421,33 +471,23 @@ const ActiveWorkoutScreen = () => {
         </Text>
 
         <Button
-          title="תרגיל הבא"
+          title={
+            currentExerciseIndex === activeWorkout.exercises.length - 1
+              ? "סיים אימון"
+              : "תרגיל הבא"
+          }
           onPress={handleNextExercise}
           style={styles.navButton}
         />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
-// 🎨 סטיילים מעוצבים
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: workoutColors.background,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: workoutColors.background,
-  },
-  errorText: {
-    fontSize: 18,
-    color: workoutColors.text,
-    marginBottom: 20,
-    textAlign: "center",
   },
 
   // Header
@@ -456,20 +496,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    paddingTop: 50,
+    paddingTop: Platform.OS === "ios" ? 50 : 16,
     backgroundColor: workoutColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: workoutColors.border,
   },
-  headerButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
+  workoutTitle: {
+    fontSize: 18,
     fontWeight: "bold",
     color: workoutColors.text,
+  },
+
+  // Error
+  errorText: {
+    fontSize: 18,
+    color: workoutColors.text,
     textAlign: "center",
-    flex: 1,
+    marginVertical: 20,
   },
 
   // Stats
@@ -487,20 +530,22 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: workoutColors.subtext,
-    marginTop: 4,
+    marginBottom: 4,
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "bold",
     color: workoutColors.text,
-    marginTop: 2,
   },
 
-  // Exercise Card
+  // Exercise Container
   exerciseContainer: {
     flex: 1,
     paddingHorizontal: 16,
+    paddingVertical: 16,
   },
+
+  // Exercise Card
   exerciseCard: {
     backgroundColor: workoutColors.cardBg,
     borderRadius: 16,
@@ -515,21 +560,21 @@ const styles = StyleSheet.create({
     borderBottomColor: workoutColors.border,
   },
   exerciseName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     color: workoutColors.text,
     textAlign: "center",
     marginBottom: 8,
   },
   setsProgress: {
-    backgroundColor: workoutColors.pending,
-    paddingHorizontal: 12,
+    backgroundColor: `${workoutColors.primary}20`,
+    paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
   },
   setsProgressText: {
     fontSize: 14,
-    color: workoutColors.accent,
+    color: workoutColors.primary,
     fontWeight: "600",
   },
 
@@ -540,9 +585,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
   setHeader: {
     flexDirection: "row",
@@ -553,6 +595,10 @@ const styles = StyleSheet.create({
   setNumber: {
     fontSize: 16,
     fontWeight: "bold",
+    color: workoutColors.text,
+  },
+  completedText: {
+    color: workoutColors.completed,
   },
   setInputs: {
     flexDirection: "row",
@@ -569,10 +615,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: workoutColors.subtext,
     marginBottom: 8,
-    textAlign: "center",
   },
   setInput: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: workoutColors.inputBg,
     borderWidth: 2,
     borderRadius: 8,
     padding: 12,
@@ -582,6 +627,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     minWidth: 80,
   },
+  completedInput: {
+    opacity: 0.6,
+  },
   inputSeparator: {
     fontSize: 20,
     fontWeight: "bold",
@@ -589,13 +637,14 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   completeButton: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 8,
     alignItems: "center",
   },
   completeButtonText: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#fff",
   },
 
   // Navigation
