@@ -463,10 +463,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 5,
+    textAlign: "center", // ✅ מרכז את הכותרת
   },
   headerSubtitle: {
     fontSize: 18,
     color: colors.textSecondary,
+    textAlign: "center", // ✅ מרכז את תת הכותרת
   },
 
   // Guest Banner
@@ -532,10 +534,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.primary,
     marginBottom: 4,
+    textAlign: "center", // ✅ מרכז
   },
   statLabel: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: "center", // ✅ מרכז
   },
 
   // Next Workout
@@ -566,17 +570,20 @@ const styles = StyleSheet.create({
   },
   nextWorkoutInfo: {
     flex: 1,
+    alignItems: "center", // ✅ מרכז את התוכן
   },
   nextWorkoutTitle: {
     fontSize: 14,
     color: "rgba(255,255,255,0.8)",
     marginBottom: 4,
+    textAlign: "center", // ✅ מרכז
   },
   nextWorkoutDesc: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#fff",
     marginBottom: 8,
+    textAlign: "center", // ✅ מרכז
   },
   nextWorkoutMeta: {
     flexDirection: "row",
@@ -586,6 +593,7 @@ const styles = StyleSheet.create({
   nextWorkoutTime: {
     fontSize: 14,
     color: "rgba(255,255,255,0.8)",
+    textAlign: "center", // ✅ מרכז
   },
   nextWorkoutButton: {
     width: 56,
@@ -607,6 +615,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 16,
+    textAlign: "center", // ✅ מרכז את הכותרת
   },
   recentItem: {
     flexDirection: "row",
@@ -629,10 +638,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
+    textAlign: "center", // ✅ מרכז
   },
   recentDate: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: "center", // ✅ מרכז
   },
   recentMeta: {
     marginLeft: 12,
@@ -641,6 +652,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.primary,
+    textAlign: "center", // ✅ מרכז
   },
 
   // Calendar
@@ -678,6 +690,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: 8,
     fontWeight: "500",
+    textAlign: "center", // ✅ מרכז
   },
 
   // Modal
@@ -699,7 +712,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 16,
-    textAlign: "center",
+    textAlign: "center", // ✅ מרכז
   },
   modalWorkout: {
     flexDirection: "row",
@@ -712,10 +725,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     flex: 1,
+    textAlign: "center", // ✅ מרכז
   },
   modalWorkoutDuration: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: "center", // ✅ מרכז
   },
   modalCloseButton: {
     marginTop: 20,
