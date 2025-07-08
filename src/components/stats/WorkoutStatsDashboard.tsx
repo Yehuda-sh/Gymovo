@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { colors } from "../../theme/colors";
-import { Workout, WorkoutStats } from "../../types/workout"; // תיקון: import מהמקום הנכון
+import { Workout, WorkoutStats } from "../../types/workout";
 
 const { width } = Dimensions.get("window");
 
