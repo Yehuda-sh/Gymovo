@@ -1,4 +1,4 @@
-// src/screens/history/HistoryScreen.tsx - ✅ תיקון סופי ללא שגיאות
+// src/screens/history/HistoryScreen.tsx
 
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";

@@ -1,12 +1,11 @@
-// src/screens/auth/WelcomeScreen.tsx - ✅ מעודכן לשימוש בקובץ demoUsers המרכזי
+// src/screens/auth/WelcomeScreen.tsx - מסך פתיחה מנוקה ומסודר
 
+// Removed unused import of Ionicons
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useCallback, useEffect, useRef } from "react";
 import {
   Animated,
-  DevSettings,
   Dimensions,
-  ImageBackground,
   Platform,
   StatusBar,
   StyleSheet,
@@ -18,10 +17,9 @@ import Button from "../../components/common/Button";
 import { clearAllData } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { RootStackParamList } from "../../types/navigation";
-import { User } from "../../types/user";
-import { demoUsers, getDemoUserById } from "../../constants/demoUsers"; // ✅ ייבוא מהקובץ המרכזי
+import { demoUsers } from "../../constants/demoUsers";
 
-const { width } = Dimensions.get("window");
+const { height } = Dimensions.get("window");
 
 type Props = NativeStackScreenProps<RootStackParamList, "Welcome">;
 
@@ -31,347 +29,233 @@ const WelcomeScreen = ({ navigation }: Props) => {
     (state: UserState) => state.loginAsDemoUser
   );
 
-  // אנימציות מתקדמות ומקצועיות
+  // אנימציות בשימוש בלבד
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.2)).current;
-  const logoRotate = useRef(new Animated.Value(0)).current;
-  const glowPulse = useRef(new Animated.Value(0.5)).current;
   const titleSlide = useRef(new Animated.Value(50)).current;
   const subtitleSlide = useRef(new Animated.Value(30)).current;
   const buttonsSlide = useRef(new Animated.Value(100)).current;
-  const particleFloat = useRef(new Animated.Value(0)).current;
 
   // 🎬 הפעלת אנימציות
   const startAnimations = useCallback(() => {
     // אנימציה ראשית
     Animated.parallel([
+      // Fade in כללי
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
         useNativeDriver: true,
       }),
+      // לוגו
       Animated.spring(logoScale, {
         toValue: 1,
         tension: 50,
         friction: 7,
         useNativeDriver: true,
       }),
-      Animated.timing(logoRotate, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      }),
+      // כותרת
       Animated.timing(titleSlide, {
         toValue: 0,
-        duration: 1200,
+        duration: 800,
+        delay: 200,
         useNativeDriver: true,
       }),
+      // תת כותרת
       Animated.timing(subtitleSlide, {
         toValue: 0,
-        duration: 1400,
+        duration: 800,
+        delay: 400,
         useNativeDriver: true,
       }),
+      // כפתורים
       Animated.timing(buttonsSlide, {
         toValue: 0,
-        duration: 1600,
+        duration: 800,
+        delay: 600,
         useNativeDriver: true,
       }),
     ]).start();
+  }, [fadeAnim, logoScale, titleSlide, subtitleSlide, buttonsSlide]);
 
-    // אנימציית זוהר מתמשכת
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowPulse, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowPulse, {
-          toValue: 0.5,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // אנימציית חלקיקים צפים
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(particleFloat, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particleFloat, {
-          toValue: 0,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [
-    fadeAnim,
-    logoScale,
-    logoRotate,
-    glowPulse,
-    titleSlide,
-    subtitleSlide,
-    buttonsSlide,
-    particleFloat,
-  ]);
-
+  // 🎬 הפעלת אנימציות בעת טעינת הרכיב
   useEffect(() => {
     startAnimations();
   }, [startAnimations]);
 
-  // פונקציה לאיפוס הנתונים (למפתחים בלבד)
-  const resetAllData = async () => {
-    try {
-      await clearAllData();
-      console.log("🗑️ All data cleared");
-
-      // רענון האפליקציה במצב פיתוח
-      if (__DEV__ && DevSettings) {
-        DevSettings.reload();
+  // 👤 התחברות כמשתמש דמו
+  const handleDemoLogin = useCallback(
+    async (userId: string) => {
+      const demoUser = demoUsers.find((u) => u.id === userId);
+      if (demoUser) {
+        await loginAsDemoUser(userId);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main" }],
+        });
       }
-    } catch (error) {
-      console.error("Failed to reset data:", error);
-    }
-  };
+    },
+    [loginAsDemoUser, navigation]
+  );
 
-  // פונקציה לכניסה כמשתמש דמו
-  const handleDemoLogin = async (demoUser: User) => {
-    try {
-      console.log(`🎭 Logging in as demo user: ${demoUser.name}`);
-      await loginAsDemoUser(demoUser);
-    } catch (error) {
-      console.error("Failed to login as demo user:", error);
-    }
-  };
+  // 🧑‍💼 כניסה כאורח
+  const handleGuestLogin = useCallback(() => {
+    becomeGuest();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Main" }],
+    });
+  }, [becomeGuest, navigation]);
 
-  // פונקציה לקבלת אייקון לפי רמת ניסיון
-  const getExperienceIcon = (experience: string) => {
-    switch (experience) {
-      case "beginner":
-        return "🌱";
-      case "intermediate":
-        return "💪";
-      case "advanced":
-        return "🔥";
-      default:
-        return "💯";
+  // 🗑️ איפוס נתונים (רק ב-DEV)
+  const handleResetData = useCallback(async () => {
+    if (__DEV__) {
+      await clearAllData();
+      console.log("✅ All data cleared!");
     }
-  };
-
-  // פונקציה לקבלת תיאור רמת ניסיון
-  const getExperienceLabel = (experience: string) => {
-    switch (experience) {
-      case "beginner":
-        return "מתחיל";
-      case "intermediate":
-        return "בינוני";
-      case "advanced":
-        return "מתקדם";
-      default:
-        return "כללי";
-    }
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Background */}
-      <ImageBackground
-        source={require("../../../assets/images/backgrounds/welcome-bg.png")}
-        style={styles.backgroundImage}
-        resizeMode="cover"
+      {/* רקע כהה עם גרדיאנט */}
+      <View style={StyleSheet.absoluteFillObject}>
+        <View style={[styles.backgroundGradient, styles.gradientTop]} />
+        <View style={[styles.backgroundGradient, styles.gradientBottom]} />
+      </View>
+
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
       >
-        <View style={styles.overlay} />
-
-        {/* Floating particles effect */}
-        <Animated.View
-          style={[
-            styles.particleContainer,
-            {
-              transform: [
-                {
-                  translateY: particleFloat.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -30],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          {[...Array(6)].map((_, i) => (
-            <Animated.View
-              key={i}
-              style={[
-                styles.particle,
-                {
-                  left: `${15 + i * 12}%`,
-                  top: `${20 + (i % 3) * 25}%`,
-                  opacity: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.6],
-                  }),
-                },
-              ]}
-            />
-          ))}
-        </Animated.View>
-
-        {/* Main Content */}
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <Animated.View
-              style={[
-                styles.logoContainer,
-                {
-                  transform: [
-                    { scale: logoScale },
-                    {
-                      rotate: logoRotate.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ["0deg", "360deg"],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Animated.View
-                style={[
-                  styles.logoGlow,
-                  {
-                    opacity: glowPulse,
-                  },
-                ]}
-              />
-              <Text style={styles.logo}>💪</Text>
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.titleContainer,
-                {
-                  transform: [{ translateY: titleSlide }],
-                },
-              ]}
-            >
-              <Text style={styles.title}>Gymovo</Text>
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.subtitleContainer,
-                {
-                  transform: [{ translateY: subtitleSlide }],
-                },
-              ]}
-            >
-              <Text style={styles.subtitle}>האפליקציה המחכה שתעשה גיינז</Text>
-            </Animated.View>
-          </View>
-
-          <View style={styles.spacer} />
-
-          {/* Actions Section */}
+        {/* לוגו וכותרת */}
+        <View style={styles.logoSection}>
           <Animated.View
             style={[
-              styles.actionsSection,
+              styles.logoContainer,
               {
-                transform: [{ translateY: buttonsSlide }],
+                transform: [{ scale: logoScale }],
               },
             ]}
           >
-            <View style={styles.primaryActions}>
-              <Button
-                title="הירשמו"
-                onPress={() => navigation.navigate("Signup")}
-                style={styles.primaryButton}
-              />
-              <Button
-                title="התחברו"
-                onPress={() => navigation.navigate("Login")}
-                variant="outline"
-                style={styles.secondaryButton}
-              />
-            </View>
+            <View style={styles.logoGlow} />
+            <Text style={styles.logo}>💪</Text>
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.titleContainer,
+              {
+                transform: [{ translateY: titleSlide }],
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            <Text style={styles.title}>Gymovo</Text>
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.subtitleContainer,
+              {
+                transform: [{ translateY: subtitleSlide }],
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            <Text style={styles.subtitle}>האפליקציה החכמה לאימונים</Text>
+          </Animated.View>
+        </View>
+
+        <View style={styles.spacer} />
+
+        {/* כפתורים ראשיים */}
+        <Animated.View
+          style={[
+            styles.actionsSection,
+            {
+              transform: [{ translateY: buttonsSlide }],
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          <View style={styles.primaryActions}>
+            <Button
+              title="התחל עכשיו"
+              onPress={() => navigation.navigate("Signup")}
+              variant="primary"
+              style={styles.primaryButton}
+            />
 
             <Button
-              title="המשיכו כאורח"
-              onPress={becomeGuest}
+              title="יש לי חשבון"
+              onPress={() => navigation.navigate("Login")}
+              variant="outline"
+              style={styles.secondaryButton}
+            />
+
+            <Button
+              title="כניסה כאורח"
+              onPress={handleGuestLogin}
               variant="outline"
               style={styles.guestButton}
             />
+          </View>
 
-            {/* 🎭 כפתורי דמו למפתחים */}
-            {__DEV__ && (
-              <View style={styles.devPanel}>
-                <View style={styles.devHeader}>
-                  <View style={styles.devIndicator} />
-                  <Text style={styles.devTitle}>DEV MODE</Text>
-                  <View style={styles.devIndicator} />
-                </View>
-
-                <Text style={styles.demoSectionTitle}>🎭 משתמשי דמו</Text>
-                <View style={styles.devActions}>
-                  {demoUsers.map((demoUser) => (
-                    <TouchableOpacity
-                      key={demoUser.id}
-                      style={[
-                        styles.devButton,
-                        {
-                          backgroundColor:
-                            demoUser.experience === "beginner"
-                              ? "rgba(34, 197, 94, 0.2)"
-                              : demoUser.experience === "intermediate"
-                              ? "rgba(251, 191, 36, 0.2)"
-                              : "rgba(239, 68, 68, 0.2)",
-                          borderColor:
-                            demoUser.experience === "beginner"
-                              ? "#22c55e"
-                              : demoUser.experience === "intermediate"
-                              ? "#fbbf24"
-                              : "#ef4444",
-                          borderWidth: 1,
-                        },
-                      ]}
-                      onPress={() => handleDemoLogin(demoUser)}
-                    >
-                      <Text style={styles.demoButtonText}>
-                        {getExperienceIcon(demoUser.experience || "beginner")}{" "}
-                        {demoUser.name}
-                      </Text>
-                      <Text style={styles.demoButtonSubtext}>
-                        {getExperienceLabel(demoUser.experience || "beginner")}
-                      </Text>
-                      <Text style={styles.demoButtonDetails}>
-                        {demoUser.stats?.workoutsCount || 0} אימונים •{" "}
-                        {demoUser.stats?.streakDays || 0} ימי רצף
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* כפתור איפוס נתונים */}
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={resetAllData}
-                >
-                  <Text style={styles.resetButtonText}>
-                    🗑️ איפוס כל הנתונים
-                  </Text>
-                </TouchableOpacity>
+          {/* פאנל למפתחים - רק ב-DEV */}
+          {__DEV__ && (
+            <View style={styles.devPanel}>
+              <View style={styles.devHeader}>
+                <View style={styles.devIndicator} />
+                <Text style={styles.devTitle}>DEV MODE</Text>
               </View>
-            )}
-          </Animated.View>
+
+              <Text style={styles.demoSectionTitle}>משתמשי דמו</Text>
+              <View style={styles.devActions}>
+                {demoUsers.map((user) => (
+                  <TouchableOpacity
+                    key={user.id}
+                    style={[
+                      styles.devButton,
+                      {
+                        backgroundColor:
+                          user.id === "demo_1"
+                            ? "rgba(34, 197, 94, 0.2)"
+                            : user.id === "demo_2"
+                            ? "rgba(59, 130, 246, 0.2)"
+                            : "rgba(168, 85, 247, 0.2)",
+                      },
+                    ]}
+                    onPress={() => handleDemoLogin(user)}
+                  >
+                    <Text style={styles.demoButtonText}>{user.name}</Text>
+                    <Text style={styles.demoButtonSubtext}>{user.email}</Text>
+                    <Text style={styles.demoButtonDetails}>
+                      {user.id.includes("beginner")
+                        ? "מתחיל"
+                        : user.id.includes("intermediate")
+                        ? "בינוני"
+                        : "מתקדם"}{" "}
+                      • סיים כמה אימונים
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleResetData}
+              >
+                <Text style={styles.resetButtonText}>🗑️ נקה את כל הנתונים</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
-      </ImageBackground>
+      </Animated.View>
     </View>
   );
 };
@@ -381,39 +265,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
-  backgroundImage: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
-  },
-  particleContainer: {
-    ...StyleSheet.absoluteFillObject,
-    pointerEvents: "none",
-  },
-  particle: {
+  // רקע וגרדיאנטים
+  backgroundGradient: {
     position: "absolute",
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#3B82F6",
-    shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    left: 0,
+    right: 0,
+    height: height * 0.6,
+  },
+  gradientTop: {
+    top: 0,
+    backgroundColor: "rgba(59, 130, 246, 0.15)",
+  },
+  gradientBottom: {
+    bottom: 0,
+    backgroundColor: "rgba(0, 255, 136, 0.1)",
+    transform: [{ scaleY: -1 }],
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
     paddingBottom: 40,
   },
+  // לוגו וכותרות
   logoSection: {
     alignItems: "center",
-    marginTop: 60,
+    marginTop: height * 0.1,
   },
   logoContainer: {
     position: "relative",
@@ -427,10 +304,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
     top: -10,
     left: -10,
-    shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    opacity: 0.3,
   },
   logo: {
     fontSize: 100,
@@ -463,6 +337,7 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
   },
+  // כפתורים
   actionsSection: {
     gap: 16,
   },
@@ -492,7 +367,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: "rgba(100, 116, 139, 0.1)",
   },
-  // Dev Panel Styles
+  // פאנל מפתחים
   devPanel: {
     marginTop: 20,
     padding: 16,
