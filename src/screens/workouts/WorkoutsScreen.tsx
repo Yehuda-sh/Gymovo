@@ -5,7 +5,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   Platform,
   RefreshControl,
@@ -16,30 +15,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 // Imports that need to be created or already exist
 import { colors } from "../../theme/colors";
-import { Workout } from "../../types/workout";
-
-// Types that need to be defined
-export type WorkoutSortBy =
-  | "date-desc"
-  | "date-asc"
-  | "rating-desc"
-  | "rating-asc"
-  | "duration-desc"
-  | "duration-asc"
-  | "volume-desc"
-  | "volume-asc";
-
-export interface WorkoutHistoryFilters {
-  dateRange?: { start: string; end: string };
-  minRating?: number;
-  difficulty?: "beginner" | "intermediate" | "advanced";
-  minDuration?: number;
-  maxDuration?: number;
-  targetMuscles?: string[];
-}
+import {
+  Workout,
+  WorkoutHistoryFilters,
+  WorkoutSortBy,
+} from "../../types/workout";
+import { RootStackParamList } from "../../types/navigation";
+import WorkoutFilterModal from "../../components/modals/WorkoutFilterModal";
 
 // Mock hook for now - you can replace with real implementation
 const useWorkoutHistory = ({
@@ -51,8 +38,6 @@ const useWorkoutHistory = ({
   sortBy: WorkoutSortBy;
   enableOptimisticUpdates: boolean;
 }) => {
-  const [refreshing, setRefreshing] = useState(false);
-
   // Mock data - replace with real data
   const mockWorkouts: Workout[] = [];
 
@@ -61,9 +46,7 @@ const useWorkoutHistory = ({
     isLoading: false,
     isError: false,
     refresh: async () => {
-      setRefreshing(true);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      setRefreshing(false);
     },
     deleteWorkout: async (id: string) => {
       console.log("Delete workout:", id);
@@ -77,8 +60,6 @@ const useWorkoutHistory = ({
     },
   };
 };
-
-const { width } = Dimensions.get("window");
 
 // 🎛️ Filter and Sort Header
 const FilterSortHeader = ({
@@ -199,7 +180,7 @@ const FilterSortHeader = ({
   );
 };
 
-// 🏋️ Workout Card Component
+// 📊 Workout Card Component
 const WorkoutCard = ({
   workout,
   index,
@@ -212,12 +193,23 @@ const WorkoutCard = ({
   onLongPress: () => void;
 }) => {
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "תאריך לא זמין";
-    return new Date(dateString).toLocaleDateString("he-IL", {
-      day: "2-digit",
-      month: "2-digit",
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("he-IL", {
+      day: "numeric",
+      month: "short",
       year: "numeric",
     });
+  };
+
+  const formatDuration = (minutes?: number) => {
+    if (!minutes) return "0 דק'";
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, "0")} ש'`;
+    }
+    return `${mins} דק'`;
   };
 
   return (
@@ -235,32 +227,14 @@ const WorkoutCard = ({
           <Text
             style={[styles.cardDate, { color: colors.textSecondary || "#666" }]}
           >
-            {formatDate(workout.date)}
+            {formatDate(workout.date || workout.completedAt)}
           </Text>
         </View>
 
         <View style={styles.cardStats}>
-          {workout.duration && (
-            <View style={styles.stat}>
-              <Ionicons
-                name="time-outline"
-                size={16}
-                color={colors.textSecondary || "#666"}
-              />
-              <Text
-                style={[
-                  styles.statText,
-                  { color: colors.textSecondary || "#666" },
-                ]}
-              >
-                {workout.duration} דק
-              </Text>
-            </View>
-          )}
-
           <View style={styles.stat}>
             <Ionicons
-              name="fitness-outline"
+              name="time-outline"
               size={16}
               color={colors.textSecondary || "#666"}
             />
@@ -270,13 +244,35 @@ const WorkoutCard = ({
                 { color: colors.textSecondary || "#666" },
               ]}
             >
-              {workout.exercises?.length || 0} תרגילים
+              {formatDuration(workout.duration)}
             </Text>
           </View>
 
+          {workout.exercises && (
+            <View style={styles.stat}>
+              <Ionicons
+                name="barbell-outline"
+                size={16}
+                color={colors.textSecondary || "#666"}
+              />
+              <Text
+                style={[
+                  styles.statText,
+                  { color: colors.textSecondary || "#666" },
+                ]}
+              >
+                {workout.exercises.length} תרגילים
+              </Text>
+            </View>
+          )}
+
           {workout.rating && (
             <View style={styles.stat}>
-              <Ionicons name="star" size={16} color="#FFD700" />
+              <Ionicons
+                name="star"
+                size={16}
+                color={colors.primary || "#007AFF"}
+              />
               <Text
                 style={[
                   styles.statText,
@@ -314,6 +310,8 @@ const WorkoutCardSkeleton = ({ index }: { index: number }) => (
 
 // 🎯 Main Component
 const WorkoutsScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [filters, setFilters] = useState<WorkoutHistoryFilters>({});
   const [sortBy, setSortBy] = useState<WorkoutSortBy>("date-desc");
   const [refreshing, setRefreshing] = useState(false);
@@ -348,6 +346,8 @@ const WorkoutsScreen = () => {
 
   const handleWorkoutPress = useCallback((workout: Workout) => {
     console.log("Navigate to workout:", workout.id);
+    // TODO: Navigate to workout details
+    // navigation.navigate('WorkoutDetails', { workoutId: workout.id });
   }, []);
 
   const handleWorkoutLongPress = useCallback(
@@ -400,6 +400,17 @@ const WorkoutsScreen = () => {
     const nextIndex = (currentIndex + 1) % sortOptions.length;
     setSortBy(sortOptions[nextIndex]);
   }, [sortBy]);
+
+  const handleApplyFilters = useCallback(
+    (newFilters: WorkoutHistoryFilters) => {
+      setFilters(newFilters);
+    },
+    []
+  );
+
+  const handleStartWorkout = useCallback(() => {
+    navigation.navigate("StartWorkout");
+  }, [navigation]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Workout; index: number }) => (
@@ -588,25 +599,26 @@ const WorkoutsScreen = () => {
                 { color: colors.textSecondary || "#666" },
               ]}
             >
-              האימונים שתסיים יופיעו כאן ותוכל לעקוב אחר ההתקדמות שלך
+              התחל את האימון הראשון שלך עכשיו!
             </Text>
             <TouchableOpacity
               style={[
                 styles.startWorkoutButton,
                 { backgroundColor: colors.primary || "#007AFF" },
               ]}
+              onPress={handleStartWorkout}
             >
               <Text
                 style={[styles.startWorkoutButtonText, { color: "#FFFFFF" }]}
               >
-                התחל אימון ראשון
+                התחל אימון
               </Text>
             </TouchableOpacity>
           </View>
         }
       />
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay (when deleting) */}
       {isDeleting && (
         <View style={styles.loadingOverlay}>
           <View
@@ -627,31 +639,39 @@ const WorkoutsScreen = () => {
           </View>
         </View>
       )}
+
+      {/* Filter Modal */}
+      <WorkoutFilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={filters}
+      />
     </View>
   );
 };
 
-// 🎨 Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   headerContainer: {
+    paddingTop: Platform.OS === "ios" ? 50 : StatusBar.currentHeight || 20,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
   header: {
-    fontSize: 32,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "bold",
     textAlign: "right",
   },
   headerSubtitle: {
-    fontSize: 16,
-    textAlign: "right",
+    fontSize: 14,
     marginTop: 4,
+    textAlign: "right",
   },
+  // Filter Header Styles
   filterHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -662,40 +682,44 @@ const styles = StyleSheet.create({
   },
   filterLeftSection: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 12,
   },
   filterButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#F2F2F7",
-    borderRadius: 8,
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E5E7",
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: "500",
   },
   filterBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 4,
   },
   filterBadgeText: {
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "600",
-    color: "white",
   },
   sortButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E5E7",
   },
   sortButtonText: {
     fontSize: 14,
@@ -704,21 +728,21 @@ const styles = StyleSheet.create({
   statsButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   statsButtonText: {
     fontSize: 14,
     fontWeight: "500",
   },
+  // List and Card Styles
   list: {
-    padding: 16,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  // Card Styles
   card: {
     borderRadius: 16,
     padding: 20,

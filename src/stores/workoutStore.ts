@@ -4,7 +4,8 @@ import { produce } from "immer";
 import { create } from "zustand";
 import { Exercise } from "../types/exercise";
 import { Plan } from "../types/plan";
-import { Workout, WorkoutExercise, WorkoutSet } from "../types/workout";
+import { Workout, WorkoutExercise } from "../types/workout";
+import { useUserStore } from "./userStore";
 
 // ממשק מלא למצב ה-store
 export interface WorkoutState {
@@ -110,10 +111,14 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
       `🎯 Starting custom workout with ${exercises.length} exercises`
     );
 
+    // קבלת userId מה-userStore
+    const userId = useUserStore.getState().user?.id || "guest-user";
+
     const customWorkout: Workout = {
       id: `custom_workout_${Date.now()}`,
       name: "אימון מותאם",
       date: new Date().toISOString(),
+      userId: userId, // ✅ תיקון: הוספת userId החסר
       exercises: exercises.map((exercise, index) => ({
         id: `${exercise.id}_${index}`,
         name: exercise.name,
