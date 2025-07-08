@@ -1,7 +1,7 @@
-// src/services/wgerApi.ts - 🔧 תיקון מלא לשגיאות API
+// src/services/wgerApi.ts - שירות API מלא ומתוקן
 
 import { Exercise } from "../types/exercise";
-import { Plan, PlanDay, PlanExercise } from "../types/plan";
+import { Plan } from "../types/plan";
 
 const WGER_API_URL = "https://wger.de/api/v2";
 
@@ -86,157 +86,252 @@ export const fetchPublicPlans = async (): Promise<Plan[]> => {
 
     const plans: Plan[] = data.results
       .filter((p: any) => p.name && p.description)
-      .slice(0, 10)
-      .map((p: any) => {
-        const plan: Plan = {
-          id: `wger-${p.id}`,
-          name: p.name || "תוכנית ללא שם",
-          description:
-            p.description?.replace(/<[^>]*>?/gm, "") || "תוכנית אימון ציבורית",
-          creator: "wger.de",
-          days: [],
-          ...generatePlanDefaults("wger"),
-        };
-        return plan;
-      });
+      .map((plan: any) => ({
+        id: `wger-plan-${plan.id}`,
+        name: plan.name,
+        description: plan.description || "תוכנית מומלצת מ-WGER",
+        ...generatePlanDefaults("wger"),
+        days: [], // יתמלא בהמשך
+      }));
 
-    const validPlans = plans.filter(isValidPlan);
-    console.log(`✅ Successfully processed ${validPlans.length} plans`);
-    return validPlans;
+    // מיון לפי תאריך יצירה (חדש ראשון)
+    plans.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    console.log(`✅ Successfully parsed ${plans.length} plans`);
+    return plans;
   } catch (error) {
     console.error("❌ Failed to fetch public plans:", error);
-    // במקום לזרוק שגיאה, החזר מערך ריק
     return [];
   }
 };
 
-// תיקון 5: בדיקת קישוריות
-export const checkApiConnection = async (): Promise<boolean> => {
-  try {
-    const response = await fetchWithRetry(`${WGER_API_URL}/language/`, 1);
-    return response.ok;
-  } catch (error) {
-    console.log("🔌 No connection to WGER API");
-    return false;
-  }
-};
-
-// תיקון 6: פונקציה עם fallback לדמו
-export const fetchPublicPlansWithFallback = async (): Promise<Plan[]> => {
-  const isConnected = await checkApiConnection();
-
-  if (!isConnected) {
-    console.log("📱 Using demo plans instead of API");
-    try {
-      const { demoPlans } = await import("../constants/demoPlans");
-      return demoPlans?.slice(0, 3) || [];
-    } catch (error) {
-      console.log("⚠️ Demo plans not available either");
-      return [];
-    }
-  }
-
-  return fetchPublicPlans();
-};
-
-// שאר הפונקציות עם תיקונים דומים
+// תיקון 5: fetchAllExercises משופר
 export const fetchAllExercises = async (): Promise<Exercise[]> => {
+  console.log("🏋️ Fetching all exercises...");
+
   try {
     const response = await fetchWithRetry(
-      `${WGER_API_URL}/exerciseinfo/?language=2&limit=100`
+      `${WGER_API_URL}/exercise/?language=2&status=2&limit=200`
     );
 
     const data = await response.json();
+    console.log(`📊 Received ${data.results?.length || 0} exercises`);
 
-    if (!data.results) {
+    if (!data.results || !Array.isArray(data.results)) {
+      console.warn("⚠️ Unexpected format from API");
       return [];
     }
 
     const exercises: Exercise[] = data.results
-      .filter((ex: any) => ex.name && ex.description)
+      .filter((ex: any) => ex.name && ex.category)
       .map((ex: any) => ({
         id: String(ex.id),
         name: ex.name,
-        description: ex.description.replace(/<[^>]*>?/gm, ""),
-        category: ex.category?.name || "General",
-        imageUrl:
-          ex.images?.[0]?.image ||
-          `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
+        description: ex.description || "",
+        category: mapCategory(ex.category),
+        equipment: mapEquipment(ex.equipment),
+        targetMuscleGroups:
+          ex.muscles?.map((m: number) => getMuscleGroup(m)) || [],
+        instructions: ex.description ? [cleanInstructions(ex.description)] : [],
+        difficulty: "intermediate" as const,
       }));
 
+    // הוספת תרגילים נוספים אם צריך
+    if (exercises.length < 50) {
+      exercises.push(...getFallbackExercises());
+    }
+
+    console.log(`✅ Total exercises: ${exercises.length}`);
     return exercises;
   } catch (error) {
     console.error("❌ Failed to fetch exercises:", error);
-    return [];
+    return getFallbackExercises();
   }
 };
 
+// תיקון 6: fetchExerciseInfoById משופר
 export const fetchExerciseInfoById = async (
   exerciseId: string
-): Promise<Exercise> => {
+): Promise<Exercise | null> => {
+  console.log(`🔍 Fetching exercise info for ID: ${exerciseId}`);
+
   try {
+    const numericId = exerciseId.replace(/\D/g, "");
     const response = await fetchWithRetry(
-      `${WGER_API_URL}/exerciseinfo/${exerciseId}/`
+      `${WGER_API_URL}/exerciseinfo/${numericId}/?language=2`
     );
-    const ex = await response.json();
+
+    const data = await response.json();
+
+    if (!data || !data.name) {
+      console.warn(`⚠️ No data found for exercise ${exerciseId}`);
+      return null;
+    }
 
     const exercise: Exercise = {
-      id: String(ex.id),
-      name: ex.name,
-      description: ex.description.replace(/<[^>]*>?/gm, ""),
-      category: ex.category?.name || "General",
-      imageUrl:
-        ex.images?.[0]?.image ||
-        `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
+      id: String(data.id),
+      name: data.name,
+      description: data.description || "",
+      category: mapCategory(data.category?.id),
+      equipment: mapEquipment(data.equipment),
+      targetMuscleGroups:
+        data.muscles?.map((m: number) => getMuscleGroup(m)) || [],
+      instructions: data.description
+        ? [cleanInstructions(data.description)]
+        : [],
+      difficulty: "intermediate" as const,
     };
+
+    console.log(`✅ Found exercise: ${exercise.name}`);
     return exercise;
   } catch (error) {
     console.error(`❌ Failed to fetch exercise ${exerciseId}:`, error);
-    throw error;
+    return null;
   }
 };
 
-export const searchWgerExercises = async (
-  query: string
-): Promise<Exercise[]> => {
-  try {
-    const response = await fetchWithRetry(
-      `${WGER_API_URL}/exerciseinfo/?search=${encodeURIComponent(
-        query
-      )}&language=2&limit=20`
-    );
-
-    const data = await response.json();
-    return data.results
-      .filter((ex: any) => ex.name && ex.description)
-      .map((ex: any) => ({
-        id: String(ex.id),
-        name: ex.name,
-        description: ex.description.replace(/<[^>]*>?/gm, ""),
-        category: ex.category?.name || "General",
-        imageUrl:
-          ex.images?.[0]?.image ||
-          `https://wger.de/media/exercise-images/8/Abs-roller-1.png`,
-      }));
-  } catch (error) {
-    console.error("❌ Failed to search exercises:", error);
-    return [];
-  }
+// פונקציות עזר
+const getMuscleGroup = (muscleId: number): string => {
+  const muscleMap: Record<number, string> = {
+    1: "biceps",
+    2: "shoulders",
+    3: "triceps",
+    4: "chest",
+    5: "lats",
+    6: "abs",
+    7: "calves",
+    8: "glutes",
+    9: "traps",
+    10: "quadriceps",
+    11: "hamstrings",
+    12: "back",
+    13: "delts",
+    14: "forearms",
+    15: "obliques",
+  };
+  return muscleMap[muscleId] || "other";
 };
 
-export const getWgerCategories = async () => {
-  try {
-    const response = await fetchWithRetry(`${WGER_API_URL}/exercisecategory/`);
-    const data = await response.json();
-    return data.results.map((cat: any) => ({
-      id: cat.id,
-      name: cat.name,
-    }));
-  } catch (error) {
-    console.error("❌ Failed to fetch categories:", error);
-    return [];
-  }
+const mapCategory = (categoryId: number): string => {
+  const categories: Record<number, string> = {
+    8: "Arms",
+    9: "Legs",
+    10: "Abs",
+    11: "Chest",
+    12: "Back",
+    13: "Shoulders",
+    14: "Calves",
+    15: "Cardio",
+  };
+  return categories[categoryId] || "Other";
 };
 
-// Export helper functions
-export { generatePlanDefaults, isValidPlan };
+const mapEquipment = (equipmentList: any[]): string[] => {
+  if (!Array.isArray(equipmentList)) return ["Bodyweight"];
+
+  const equipmentMap: Record<number, string> = {
+    1: "Barbell",
+    2: "SZ-Bar",
+    3: "Dumbbell",
+    4: "Gym mat",
+    5: "Swiss Ball",
+    6: "Pull-up bar",
+    7: "None",
+    8: "Bench",
+    9: "Incline bench",
+    10: "Kettlebell",
+  };
+
+  return equipmentList
+    .map((eq) => equipmentMap[eq.id] || eq.name)
+    .filter(Boolean);
+};
+
+const cleanInstructions = (text: string): string => {
+  if (!text) return "";
+
+  // הסרת תגי HTML
+  return text
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+};
+
+// Fallback exercises אם ה-API נכשל
+const getFallbackExercises = (): Exercise[] => [
+  {
+    id: "1",
+    name: "לחיצת חזה - משקולת",
+    description: "תרגיל בסיסי לחיזוק שרירי החזה",
+    category: "Chest",
+    equipment: ["Dumbbell", "Bench"],
+    targetMuscleGroups: ["chest", "triceps", "shoulders"],
+    instructions: [
+      "שכב על ספסל עם משקולות בידיים. הורד באיטיות עד גובה החזה ולחץ חזרה למעלה.",
+    ],
+    difficulty: "intermediate",
+  },
+  {
+    id: "2",
+    name: "סקוואט",
+    description: "תרגיל מרכזי לרגליים וישבן",
+    category: "Legs",
+    equipment: ["Bodyweight"],
+    targetMuscleGroups: ["quadriceps", "hamstrings", "glutes"],
+    instructions: [
+      "עמוד עם רגליים ברוחב הכתפיים. רד למטה תוך כיפוף הברכיים עד 90 מעלות וחזור למעלה.",
+    ],
+    difficulty: "beginner",
+  },
+  {
+    id: "3",
+    name: "מתח - רחב",
+    description: "תרגיל מעולה לחיזוק הגב",
+    category: "Back",
+    equipment: ["Pull-up bar"],
+    targetMuscleGroups: ["lats", "biceps", "back"],
+    instructions: [
+      "אחוז במוט באחיזה רחבה ומשוך את הגוף למעלה עד שהסנטר מעל המוט.",
+    ],
+    difficulty: "advanced",
+  },
+  {
+    id: "4",
+    name: "לחיצת כתפיים",
+    description: "תרגיל לפיתוח כתפיים חזקות",
+    category: "Shoulders",
+    equipment: ["Dumbbell"],
+    targetMuscleGroups: ["shoulders", "triceps"],
+    instructions: ["החזק משקולות בגובה הכתפיים ולחץ למעלה עד יישור הידיים."],
+    difficulty: "intermediate",
+  },
+  {
+    id: "5",
+    name: "כפיפות בטן",
+    description: "תרגיל קלאסי לחיזוק שרירי הבטן",
+    category: "Abs",
+    equipment: ["Bodyweight"],
+    targetMuscleGroups: ["abs"],
+    instructions: [
+      "שכב על הגב עם ברכיים כפופות. הרם את פלג הגוף העליון לכיוון הברכיים.",
+    ],
+    difficulty: "beginner",
+  },
+];
+
+// ייצוא נוסף של פונקציות עזר
+export {
+  generatePlanDefaults,
+  isValidPlan,
+  mapCategory,
+  mapEquipment,
+  getMuscleGroup,
+};
