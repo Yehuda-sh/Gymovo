@@ -57,26 +57,27 @@ const AppTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Home"
-        component={DashboardScreen}
+        name="Profile"
+        component={status === "guest" ? GuestProfileScreen : ProfileScreen}
         options={{
-          // TODO: בעתיד, להוסיף תג עם מספר עדכונים, למשל 'tabBarBadge: 3'
-          tabBarAccessibilityLabel: "מסך הבית", // שדרוג נגישות
+          tabBarAccessibilityLabel: "פרופיל אישי", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
+
       <Tab.Screen
-        name="Plans"
-        component={PlansScreen}
+        name="Workouts"
+        component={WorkoutsScreen}
         options={{
-          tabBarAccessibilityLabel: "תוכניות אימון", // שדרוג נגישות
+          tabBarAccessibilityLabel: "היסטוריית אימונים", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list-outline" size={size} color={color} />
+            <Ionicons name="barbell-outline" size={size} color={color} />
           ),
         }}
       />
+
       {/* מסך האמצע עם הכפתור המותאם אישית */}
       <Tab.Screen
         name="StartWorkout"
@@ -91,23 +92,26 @@ const AppTabs = () => {
           ),
         }}
       />
+
       <Tab.Screen
-        name="Workouts"
-        component={WorkoutsScreen}
+        name="Plans"
+        component={PlansScreen}
         options={{
-          tabBarAccessibilityLabel: "היסטוריית אימונים", // שדרוג נגישות
+          tabBarAccessibilityLabel: "תוכניות אימון", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="barbell-outline" size={size} color={color} />
+            <Ionicons name="list-outline" size={size} color={color} />
           ),
         }}
       />
+
       <Tab.Screen
-        name="Profile"
-        component={status === "guest" ? GuestProfileScreen : ProfileScreen}
+        name="Home"
+        component={DashboardScreen}
         options={{
-          tabBarAccessibilityLabel: "פרופיל אישי", // שדרוג נגישות
+          // TODO: בעתיד, להוסיף תג עם מספר עדכונים, למשל 'tabBarBadge: 3'
+          tabBarAccessibilityLabel: "מסך הבית", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />

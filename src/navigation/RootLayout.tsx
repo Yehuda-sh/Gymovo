@@ -176,20 +176,28 @@ const AppTabs = () => {
       })}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        name="Profile"
+        component={status === "guest" ? GuestProfileScreen : ProfileScreen}
         options={{
-          title: "בית",
-          headerTitle: "Gymovo",
+          title: "פרופיל",
+          headerTitle: user?.name || "פרופיל",
+          headerRight: () => (
+            <TouchableOpacity
+              style={{ marginRight: 16 }}
+              onPress={() => navigation.navigate("Settings")}
+            >
+              <Ionicons name="settings-outline" size={24} color={colors.text} />
+            </TouchableOpacity>
+          ),
         }}
       />
 
       <Tab.Screen
-        name="Plans"
-        component={PlansScreen}
+        name="Workouts"
+        component={WorkoutsScreen}
         options={{
-          title: "תוכניות",
-          headerTitle: "תוכניות האימון שלי",
+          title: "היסטוריה",
+          headerTitle: "אימונים קודמים",
         }}
       />
 
@@ -208,28 +216,20 @@ const AppTabs = () => {
       />
 
       <Tab.Screen
-        name="Workouts"
-        component={WorkoutsScreen}
+        name="Plans"
+        component={PlansScreen}
         options={{
-          title: "היסטוריה",
-          headerTitle: "אימונים קודמים",
+          title: "תוכניות",
+          headerTitle: "תוכניות האימון שלי",
         }}
       />
 
       <Tab.Screen
-        name="Profile"
-        component={status === "guest" ? GuestProfileScreen : ProfileScreen}
+        name="Home"
+        component={HomeScreen}
         options={{
-          title: "פרופיל",
-          headerTitle: user?.name || "פרופיל",
-          headerRight: () => (
-            <TouchableOpacity
-              style={{ marginRight: 16 }}
-              onPress={() => navigation.navigate("Settings")}
-            >
-              <Ionicons name="settings-outline" size={24} color={colors.text} />
-            </TouchableOpacity>
-          ),
+          title: "בית",
+          headerTitle: "Gymovo",
         }}
       />
     </Tab.Navigator>
