@@ -63,8 +63,6 @@ const PlaceholderScreen = ({ title }: { title: string }) => (
   </View>
 );
 
-// מסכים זמניים
-
 // 🚀 יצירת navigators
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<AppTabsParamList>();
@@ -197,7 +195,7 @@ const AppTabs = () => {
 
       <Tab.Screen
         name="StartWorkout"
-        component={() => <PlaceholderScreen title="אימון מהיר" />}
+        component={StartWorkoutScreen} // ✅ שינוי כאן - השתמש במסך האמיתי במקום PlaceholderScreen
         options={{
           title: "אימון",
           headerTitle: "התחל אימון",
@@ -411,67 +409,32 @@ const RootLayout = () => {
     }
   };
 
-  // 🔄 מסך טעינה עד שהכל מוכן
-  if (status === "loading" || !isNavigationReady) {
-    return <SplashScreen />;
+  // 🔄 מסך טעינה בזמן אתחול
+  if (!isNavigationReady) {
+    return (
+      <ErrorBoundary>
+        <SplashScreen />
+      </ErrorBoundary>
+    );
   }
 
+  // 🎯 הרכיב הראשי
   return (
-    <NavigationContainer
-      onReady={() => {
-        if (__DEV__) {
-          console.log("🧭 Navigation container ready");
-        }
-      }}
-      theme={{
-        dark: true, // תמיד דארק מוד
-        colors: {
-          primary: colors.primary,
-          background: colors.background,
-          card: colors.surface,
-          text: colors.text,
-          border: colors.border,
-          notification: colors.primary,
-        },
-        fonts: {
-          regular: {
-            fontFamily: "System",
-            fontWeight: "normal",
-          },
-          medium: {
-            fontFamily: "System",
-            fontWeight: "500",
-          },
-          bold: {
-            fontFamily: "System",
-            fontWeight: "bold",
-          },
-          heavy: {
-            fontFamily: "System",
-            fontWeight: "900",
-          },
-        },
-      }}
-    >
-      <ErrorBoundary>
-        {status === "authenticated" || status === "guest" ? (
-          <AppStack />
-        ) : (
-          <AuthStack />
-        )}
-      </ErrorBoundary>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <NavigationContainer>
+          {status === "loading" ? (
+            <SplashScreen />
+          ) : status === "authenticated" || status === "guest" ? (
+            <AppStack />
+          ) : (
+            <AuthStack />
+          )}
+          <Toast />
+        </NavigationContainer>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
-// 🌟 הרכיב הראשי עם כל ה-Providers
-const AppWithProviders = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <RootLayout />
-      <Toast />
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
-
-export default AppWithProviders;
+export default RootLayout;
