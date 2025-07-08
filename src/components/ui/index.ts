@@ -8,7 +8,5 @@ export { LoadingSkeleton } from "./LoadingSkeleton";
 export { ProgressBar } from "./ProgressBar";
 export { Spacer } from "./Spacer";
 export { Divider } from "./Divider";
-
-// Re-export layouts for convenience
 export { CardLayout } from "../layouts/CardLayout";
 export { ScreenLayout } from "../layouts/ScreenLayout";

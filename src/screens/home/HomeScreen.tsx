@@ -1,4 +1,4 @@
-// src/screens/home/HomeScreen.tsx - Dashboard מקצועי ומלא
+// src/screens/home/HomeScreen.tsx - עם Design System החדש
 
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -10,18 +10,27 @@ import {
   Dimensions,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
-// Components
+// 🎨 Design System Components
 import {
-  ExerciseListSkeleton,
-  StatsGridSkeleton,
-  PlanCardSkeleton,
-} from "../../components/common/LoadingSkeleton";
+  ScreenLayout,
+  CardLayout,
+  Typography,
+  Button,
+  Badge,
+  Spacer,
+  Divider,
+  LoadingSkeleton,
+  ProgressBar,
+  IconButton,
+} from "../../components/ui";
+
+// Theme
+import { theme } from "../../theme";
 
 // Services & Stores
 import { getPlansByUserId, getWorkoutHistory } from "../../data/storage";
@@ -29,7 +38,6 @@ import { UserPreferencesService } from "../../services/userPreferences";
 import { useUserStore } from "../../stores/userStore";
 
 // Types & Utils
-import { colors, withOpacity } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
 import { Plan } from "../../types/plan";
 import { Workout } from "../../types/workout";
@@ -51,7 +59,7 @@ interface DashboardData {
   todaysWorkout?: Plan;
 }
 
-// 🎯 רכיב כרטיס מהיר
+// 🎯 רכיב כרטיס מהיר - עם Design System
 const QuickActionCard = ({
   title,
   subtitle,
@@ -68,32 +76,48 @@ const QuickActionCard = ({
   disabled?: boolean;
 }) => (
   <TouchableOpacity
-    style={[
-      styles.quickActionCard,
-      disabled && styles.disabled,
-      {
-        backgroundColor: withOpacity(color, 0.1),
-        borderColor: withOpacity(color, 0.2),
-      },
-    ]}
     onPress={onPress}
     disabled={disabled}
     activeOpacity={0.8}
+    style={{ opacity: disabled ? 0.5 : 1 }}
   >
-    <View
-      style={[
-        styles.quickActionIcon,
-        { backgroundColor: withOpacity(color, 0.2) },
-      ]}
+    <CardLayout
+      style={{
+        width: 140,
+        alignItems: "center",
+        backgroundColor: `${color}10`, // 10% opacity
+        borderColor: `${color}20`, // 20% opacity
+        borderWidth: 1,
+      }}
     >
-      <Ionicons name={icon} size={24} color={color} />
-    </View>
-    <Text style={styles.quickActionTitle}>{title}</Text>
-    <Text style={styles.quickActionSubtitle}>{subtitle}</Text>
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: theme.borderRadius.full,
+          backgroundColor: `${color}20`,
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: theme.spacing.md,
+        }}
+      >
+        <Ionicons name={icon} size={24} color={color} />
+      </View>
+      <Typography variant="body" align="center">
+        {title}
+      </Typography>
+      <Typography
+        variant="caption"
+        color={theme.colors.textSecondary}
+        align="center"
+      >
+        {subtitle}
+      </Typography>
+    </CardLayout>
   </TouchableOpacity>
 );
 
-// 📈 רכיב סטטיסטיקה
+// 📈 רכיב סטטיסטיקה - עם Design System
 const StatCard = ({
   label,
   value,
@@ -107,9 +131,21 @@ const StatCard = ({
   icon: keyof typeof Ionicons.glyphMap;
   trend?: "up" | "down" | "neutral";
 }) => (
-  <View style={styles.statCard}>
-    <View style={styles.statHeader}>
-      <Ionicons name={icon} size={20} color={colors.primary} />
+  <CardLayout
+    style={{
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: theme.spacing.lg,
+    }}
+  >
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: theme.spacing.sm,
+      }}
+    >
+      <Ionicons name={icon} size={20} color={theme.colors.primary} />
       {trend && (
         <Ionicons
           name={
@@ -117,123 +153,159 @@ const StatCard = ({
               ? "trending-up"
               : trend === "down"
               ? "trending-down"
-              : "minus"
+              : "remove"
           }
           size={16}
           color={
             trend === "up"
-              ? colors.success
+              ? theme.colors.success
               : trend === "down"
-              ? colors.error
-              : colors.textSecondary
+              ? theme.colors.error
+              : theme.colors.textSecondary
           }
+          style={{ marginLeft: theme.spacing.xs }}
         />
       )}
     </View>
-    <Text style={styles.statValue}>
+    <Typography variant="h2" align="center">
       {value}
-      {unit && <Text style={styles.statUnit}> {unit}</Text>}
-    </Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
-// 🏋️ כרטיס אימון אחרון
-const RecentWorkoutCard = ({ workout }: { workout: Workout }) => (
-  <TouchableOpacity
-    style={styles.recentWorkoutCard}
-    onPress={() => {
-      Alert.alert("אימון", `${workout.name}\n${workout.duration} דקות`);
-    }}
-    activeOpacity={0.8}
-  >
-    <View style={styles.recentWorkoutHeader}>
-      <Text style={styles.recentWorkoutName} numberOfLines={1}>
-        {workout.name}
-      </Text>
-      <Text style={styles.recentWorkoutDate}>
-        {workout.completedAt
-          ? new Date(workout.completedAt).toLocaleDateString("he-IL")
-          : "תאריך לא זמין"}
-      </Text>
-    </View>
-
-    <View style={styles.recentWorkoutStats}>
-      <View style={styles.recentWorkoutStat}>
-        <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-        <Text style={styles.recentWorkoutStatText}>
-          {workout.duration || 0} דק׳
-        </Text>
-      </View>
-
-      <View style={styles.recentWorkoutStat}>
-        <Ionicons
-          name="fitness-outline"
-          size={14}
-          color={colors.textSecondary}
-        />
-        <Text style={styles.recentWorkoutStatText}>
-          {workout.exercises?.length || 0} תרגילים
-        </Text>
-      </View>
-
-      {workout.rating && (
-        <View style={styles.recentWorkoutStat}>
-          <Ionicons name="star" size={14} color={colors.warning} />
-          <Text style={styles.recentWorkoutStatText}>{workout.rating}/5</Text>
-        </View>
+      {unit && (
+        <Typography variant="caption" color={theme.colors.textSecondary}>
+          {" "}
+          {unit}
+        </Typography>
       )}
-    </View>
+    </Typography>
+    <Typography
+      variant="caption"
+      color={theme.colors.textSecondary}
+      align="center"
+    >
+      {label}
+    </Typography>
+  </CardLayout>
+);
+
+// 🏋️ רכיב תוכנית מומלצת - עם Design System
+const RecommendedPlanCard = ({
+  plan,
+  onPress,
+}: {
+  plan: Plan;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+    <CardLayout
+      style={{
+        padding: theme.spacing.lg,
+        backgroundColor: theme.colors.primary,
+        ...theme.shadows.lg,
+      }}
+    >
+      <View style={{ alignItems: "center" }}>
+        <Typography variant="h3" color="#fff" align="center">
+          {plan.name}
+        </Typography>
+        <Spacer size="sm" />
+        <Typography variant="body" color="rgba(255,255,255,0.8)" align="center">
+          {plan.description}
+        </Typography>
+        <Spacer size="lg" />
+
+        <View
+          style={{
+            flexDirection: "row",
+            gap: theme.spacing.lg,
+            marginBottom: theme.spacing.md,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.spacing.xs,
+            }}
+          >
+            <Ionicons name="calendar-outline" size={16} color="#fff" />
+            <Typography variant="caption" color="#fff">
+              {plan.durationWeeks || 4} שבועות
+            </Typography>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.spacing.xs,
+            }}
+          >
+            <Ionicons name="barbell-outline" size={16} color="#fff" />
+            <Typography variant="caption" color="#fff">
+              {plan.days?.length || 3} ימים בשבוע
+            </Typography>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.spacing.xs,
+            }}
+          >
+            <Ionicons name="trophy-outline" size={16} color="#fff" />
+            <Typography variant="caption" color="#fff">
+              {plan.difficulty || "בינוני"}
+            </Typography>
+          </View>
+        </View>
+
+        <Button
+          title="התחל עכשיו"
+          onPress={onPress}
+          variant="secondary"
+          size="lg"
+          fullWidth
+        />
+      </View>
+    </CardLayout>
   </TouchableOpacity>
 );
 
-// 📋 כרטיס תוכנית מומלצת
-const RecommendedPlanCard = ({ plan }: { plan: Plan }) => (
-  <TouchableOpacity
-    style={[styles.recommendedPlanCard, { backgroundColor: colors.primary }]}
-    onPress={() => {
-      Alert.alert("תוכנית", `נבחרה: ${plan.name}`);
-    }}
-  >
-    <View style={styles.recommendedPlanContent}>
-      <Text style={styles.recommendedPlanTitle}>{plan.name}</Text>
-      <Text style={styles.recommendedPlanDescription} numberOfLines={2}>
-        {plan.description}
-      </Text>
+// 🏠 הרכיב הראשי עם Design System
+// חישוב רצף אימונים
+const calculateStreak = (workouts: Workout[]): number => {
+  if (!workouts.length) return 0;
 
-      <View style={styles.recommendedPlanStats}>
-        <View style={styles.recommendedPlanStat}>
-          <Ionicons
-            name="calendar-outline"
-            size={16}
-            color="rgba(255,255,255,0.8)"
-          />
-          <Text style={styles.recommendedPlanStatText}>
-            {plan.workouts?.length || plan.days?.length || 0} ימים
-          </Text>
-        </View>
+  const sortedWorkouts = [...workouts]
+    .filter((w) => w.completedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime()
+    );
 
-        <View style={styles.recommendedPlanStat}>
-          <Ionicons
-            name="trophy-outline"
-            size={16}
-            color="rgba(255,255,255,0.8)"
-          />
-          <Text style={styles.recommendedPlanStatText}>
-            {plan.metadata?.difficulty || "בינוני"}
-          </Text>
-        </View>
-      </View>
+  let streak = 0;
+  let currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
 
-      <View style={styles.recommendedPlanAction}>
-        <Text style={styles.recommendedPlanActionText}>התחל עכשיו</Text>
-        <Ionicons name="arrow-forward" size={20} color="#fff" />
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+  for (const workout of sortedWorkouts) {
+    const workoutDate = new Date(workout.completedAt!);
+    workoutDate.setHours(0, 0, 0, 0);
 
-// 🏠 הרכיב הראשי
+    const daysDiff = Math.floor(
+      (currentDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysDiff === streak) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+};
+
+// 🏠 הרכיב הראשי עם Design System
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useUserStore((state) => state.user);
@@ -279,61 +351,57 @@ const HomeScreen = () => {
           0
         ),
         totalDuration: weeklyWorkouts.reduce(
-          (total, w) => total + (w.duration || 0),
+          (total, workout) => total + (workout.totalDuration || 0),
           0
         ),
         streak: calculateStreak(workouts),
       };
 
+      // בחירת תוכנית מומלצת
+      const activePlans = plans.filter((p) => p.isActive);
+      const todaysWorkout = activePlans[0]; // בעתיד: לוגיקה חכמה יותר
+
       setDashboardData({
-        recentWorkouts: workouts.slice(0, 3),
-        activePlans: plans.filter((p) => p.isActive),
+        recentWorkouts: workouts.slice(0, 5),
+        activePlans,
         weeklyStats,
-        todaysWorkout: plans.find((p) => p.isActive),
+        todaysWorkout,
       });
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
-      Alert.alert("שגיאה", "לא ניתן לטעון את הנתונים");
+      console.error("Error loading dashboard:", error);
+      Alert.alert("שגיאה", "לא הצלחנו לטעון את הנתונים");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [user?.id]);
 
-  // 🔄 רענון
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadDashboardData();
-    setRefreshing(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [loadDashboardData]);
-
-  // 📊 חישוב רצף אימונים
+  // חישוב רצף אימונים
   const calculateStreak = (workouts: Workout[]): number => {
-    if (workouts.length === 0) return 0;
+    if (!workouts.length) return 0;
 
-    const sortedWorkouts = [...workouts].sort((a, b) => {
-      const dateA = new Date(a.completedAt || 0).getTime();
-      const dateB = new Date(b.completedAt || 0).getTime();
-      return dateB - dateA;
-    });
+    const sortedWorkouts = [...workouts]
+      .filter((w) => w.completedAt)
+      .sort(
+        (a, b) =>
+          new Date(b.completedAt!).getTime() -
+          new Date(a.completedAt!).getTime()
+      );
 
     let streak = 0;
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
 
     for (const workout of sortedWorkouts) {
-      if (!workout.completedAt) continue;
-
-      const workoutDate = new Date(workout.completedAt);
+      const workoutDate = new Date(workout.completedAt!);
       workoutDate.setHours(0, 0, 0, 0);
 
       const daysDiff = Math.floor(
-        (currentDate.getTime() - workoutDate.getTime()) / (24 * 60 * 60 * 1000)
+        (currentDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (daysDiff <= 1) {
+      if (daysDiff === streak) {
         streak++;
-        currentDate = workoutDate;
       } else {
         break;
       }
@@ -342,8 +410,14 @@ const HomeScreen = () => {
     return streak;
   };
 
-  // 🎬 אתחול
+  // טעינה ראשונית
   useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // רענון
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
     loadDashboardData();
   }, [loadDashboardData]);
 
@@ -353,7 +427,7 @@ const HomeScreen = () => {
       title: "התחל אימון",
       subtitle: "בחר תוכנית וקדימה",
       icon: "play-circle" as const,
-      color: colors.primary,
+      color: theme.colors.primary,
       onPress: () => navigation.navigate("StartWorkout"),
       disabled: !dashboardData?.activePlans.length,
     },
@@ -361,21 +435,21 @@ const HomeScreen = () => {
       title: "תוכניות שלי",
       subtitle: `${dashboardData?.activePlans.length || 0} תוכניות פעילות`,
       icon: "list" as const,
-      color: colors.accentBlue,
+      color: theme.colors.secondary,
       onPress: () => navigation.navigate("Plans" as any),
     },
     {
       title: "היסטוריה",
       subtitle: `${dashboardData?.recentWorkouts.length || 0} אימונים אחרונים`,
       icon: "bar-chart" as const,
-      color: colors.accentPurple,
+      color: theme.colors.success,
       onPress: () => navigation.navigate("Workouts" as any),
     },
     {
       title: "הגדרות",
       subtitle: "התאם אישית",
       icon: "settings" as const,
-      color: colors.accent,
+      color: theme.colors.warning,
       onPress: () => navigation.navigate("Settings"),
     },
   ];
@@ -383,109 +457,162 @@ const HomeScreen = () => {
   // ⏳ מסך טעינה
   if (loading) {
     return (
-      <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeText}>שלום!</Text>
-            <Text style={styles.welcomeSubtext}>טוען נתונים...</Text>
+      <ScreenLayout scrollable>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <View>
+            <LoadingSkeleton width={100} height={28} />
+            <Spacer size="xs" />
+            <LoadingSkeleton width={150} height={20} />
           </View>
-          <View style={styles.notificationButton}>
-            <StatsGridSkeleton columns={1} />
-          </View>
+          <LoadingSkeleton width={44} height={44} borderRadius={22} />
         </View>
+
+        <Spacer size="xl" />
 
         {/* סטטיסטיקות */}
-        <View style={styles.statsSection}>
-          <StatsGridSkeleton columns={4} />
+        <View
+          style={{
+            flexDirection: "row",
+            gap: theme.spacing.sm,
+          }}
+        >
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} style={{ flex: 1 }}>
+              <LoadingSkeleton height={100} />
+            </View>
+          ))}
         </View>
+
+        <Spacer size="xl" />
 
         {/* תוכניות */}
-        <View style={styles.section}>
-          <PlanCardSkeleton />
-          <PlanCardSkeleton style={{ marginTop: 12 }} />
-        </View>
-
-        {/* אימונים אחרונים */}
-        <View style={styles.section}>
-          <ExerciseListSkeleton count={3} />
-        </View>
-      </ScrollView>
+        <LoadingSkeleton height={200} />
+        <Spacer size="md" />
+        <LoadingSkeleton height={200} />
+      </ScreenLayout>
     );
   }
+
   // 📱 המסך הראשי
   return (
-    <ScrollView
-      style={styles.container}
+    <ScreenLayout
+      scrollable
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={colors.primary}
-          colors={[colors.primary]}
+          tintColor={theme.colors.primary}
         />
       }
-      showsVerticalScrollIndicator={false}
     >
-      {/* Header עם ברכה */}
-      <View style={styles.header}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>שלום, {user?.name || "אלוף"}!</Text>
-          <Text style={styles.welcomeSubtext}>{getTimeBasedGreeting()}</Text>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <View>
+          <Typography variant="h1">שלום, {user?.name || "אלוף"} 👋</Typography>
+          <Typography variant="body" color={theme.colors.textSecondary}>
+            {new Date().toLocaleDateString("he-IL", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </Typography>
         </View>
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={() => Alert.alert("התראות", "אין התראות חדשות")}
-        >
-          <Ionicons
-            name="notifications-outline"
-            size={24}
-            color={colors.text}
-          />
-        </TouchableOpacity>
+
+        <IconButton
+          icon={
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color={theme.colors.text}
+            />
+          }
+          onPress={() => Alert.alert("הודעות", "בקרוב...")}
+          size="md"
+          variant="ghost"
+        />
       </View>
 
+      <Spacer size="xl" />
+
       {/* סטטיסטיקות שבועיות */}
-      {dashboardData && (
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>השבוע שלך</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              label="אימונים"
-              value={dashboardData.weeklyStats.completedWorkouts}
-              icon="fitness"
-              trend="up"
-            />
-            <StatCard
-              label="משקל כולל"
-              value={Math.round(
-                dashboardData.weeklyStats.totalWeightLifted / 1000
-              )}
-              unit="ק״ג"
-              icon="barbell"
-            />
-            <StatCard
-              label="זמן כולל"
-              value={Math.round(dashboardData.weeklyStats.totalDuration / 60)}
-              unit="שעות"
-              icon="time"
-            />
-            <StatCard
-              label="רצף ימים"
-              value={dashboardData.weeklyStats.streak}
-              icon="flame"
-              trend={dashboardData.weeklyStats.streak > 0 ? "up" : "neutral"}
-            />
-          </View>
+      <View>
+        <Typography variant="h3">השבוע שלך</Typography>
+        <Spacer size="md" />
+
+        <View
+          style={{
+            flexDirection: "row",
+            gap: theme.spacing.sm,
+          }}
+        >
+          <StatCard
+            label="אימונים"
+            value={dashboardData?.weeklyStats.completedWorkouts || 0}
+            icon="fitness-outline"
+            trend={
+              dashboardData?.weeklyStats.completedWorkouts
+                ? dashboardData.weeklyStats.completedWorkouts > 3
+                  ? "up"
+                  : "down"
+                : "neutral"
+            }
+          />
+          <StatCard
+            label="משקל כולל"
+            value={
+              dashboardData?.weeklyStats.totalWeightLifted
+                ? Math.round(dashboardData.weeklyStats.totalWeightLifted / 1000)
+                : 0
+            }
+            unit="טון"
+            icon="barbell-outline"
+          />
+          <StatCard
+            label="זמן כולל"
+            value={
+              dashboardData?.weeklyStats.totalDuration
+                ? Math.round(dashboardData.weeklyStats.totalDuration / 60)
+                : 0
+            }
+            unit="דק'"
+            icon="time-outline"
+          />
+          <StatCard
+            label="רצף"
+            value={dashboardData?.weeklyStats.streak || 0}
+            unit="ימים"
+            icon="flame-outline"
+            trend={
+              dashboardData?.weeklyStats.streak
+                ? dashboardData.weeklyStats.streak > 0
+                  ? "up"
+                  : "neutral"
+                : "neutral"
+            }
+          />
         </View>
-      )}
+      </View>
+
+      <Spacer size="xl" />
 
       {/* פעולות מהירות */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>פעולות מהירות</Text>
+      <View>
+        <Typography variant="h3">פעולות מהירות</Typography>
+        <Spacer size="md" />
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickActionsContainer}
+          contentContainerStyle={{
+            paddingRight: theme.spacing.md,
+            gap: theme.spacing.md,
+          }}
         >
           {quickActions.map((action, index) => (
             <QuickActionCard key={index} {...action} />
@@ -493,357 +620,173 @@ const HomeScreen = () => {
         </ScrollView>
       </View>
 
+      <Spacer size="xl" />
+
       {/* תוכנית מומלצת */}
       {dashboardData?.todaysWorkout && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>מומלץ לך היום</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Plans" as any)}
-            >
-              <Text style={styles.seeAllText}>ראה הכל</Text>
-            </TouchableOpacity>
-          </View>
-          <RecommendedPlanCard plan={dashboardData.todaysWorkout} />
-        </View>
+        <>
+          <Typography variant="h3">התוכנית שלך להיום</Typography>
+          <Spacer size="md" />
+          <RecommendedPlanCard
+            plan={dashboardData.todaysWorkout}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              navigation.navigate("StartWorkout", {
+                planId: dashboardData.todaysWorkout!.id,
+              });
+            }}
+          />
+          <Spacer size="xl" />
+        </>
       )}
 
       {/* אימונים אחרונים */}
-      {dashboardData && dashboardData.recentWorkouts.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>פעילות אחרונה</Text>
+      {dashboardData?.recentWorkouts.length ? (
+        <>
+          <Typography variant="h3">אימונים אחרונים</Typography>
+          <Spacer size="md" />
+
+          {dashboardData.recentWorkouts.map((workout) => (
             <TouchableOpacity
-              onPress={() => navigation.navigate("Workouts" as any)}
+              key={workout.id}
+              onPress={() =>
+                navigation.navigate("WorkoutSummary", {
+                  workoutId: workout.id,
+                })
+              }
+              activeOpacity={0.7}
             >
-              <Text style={styles.seeAllText}>ראה הכל</Text>
+              <CardLayout style={{ marginBottom: theme.spacing.sm }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography variant="body">{workout.name}</Typography>
+                  <Typography
+                    variant="caption"
+                    color={theme.colors.textSecondary}
+                  >
+                    {new Date(workout.date).toLocaleDateString("he-IL")}
+                  </Typography>
+                </View>
+
+                <Spacer size="sm" />
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: theme.spacing.md,
+                    justifyContent: "center",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: theme.spacing.xs,
+                    }}
+                  >
+                    <Ionicons
+                      name="barbell-outline"
+                      size={14}
+                      color={theme.colors.textSecondary}
+                    />
+                    <Typography
+                      variant="caption"
+                      color={theme.colors.textSecondary}
+                    >
+                      {workout.exercises?.length || 0} תרגילים
+                    </Typography>
+                  </View>
+
+                  {workout.totalDuration && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: theme.spacing.xs,
+                      }}
+                    >
+                      <Ionicons
+                        name="time-outline"
+                        size={14}
+                        color={theme.colors.textSecondary}
+                      />
+                      <Typography
+                        variant="caption"
+                        color={theme.colors.textSecondary}
+                      >
+                        {workout.totalDuration} דקות
+                      </Typography>
+                    </View>
+                  )}
+
+                  {workout.rating && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: theme.spacing.xs,
+                      }}
+                    >
+                      <Ionicons
+                        name="star"
+                        size={14}
+                        color={theme.colors.warning}
+                      />
+                      <Typography
+                        variant="caption"
+                        color={theme.colors.textSecondary}
+                      >
+                        {workout.rating}/5
+                      </Typography>
+                    </View>
+                  )}
+                </View>
+              </CardLayout>
             </TouchableOpacity>
-          </View>
-          {dashboardData.recentWorkouts.map((workout, index) => (
-            <RecentWorkoutCard key={workout.id || index} workout={workout} />
           ))}
-        </View>
+        </>
+      ) : (
+        // מצב ריק
+        <CardLayout
+          style={{
+            alignItems: "center",
+            paddingVertical: theme.spacing.xxl,
+          }}
+        >
+          <Ionicons
+            name="barbell-outline"
+            size={64}
+            color={theme.colors.textSecondary}
+          />
+          <Spacer size="lg" />
+          <Typography variant="h3">טרם התחלת להתאמן</Typography>
+          <Spacer size="sm" />
+          <Typography
+            variant="body"
+            color={theme.colors.textSecondary}
+            align="center"
+          >
+            בוא נתחיל את המסע שלך לכושר טוב יותר!
+          </Typography>
+          <Spacer size="lg" />
+          <Button
+            title="בחר תוכנית אימונים"
+            onPress={() => navigation.navigate("Plans" as any)}
+            variant="primary"
+            size="lg"
+          />
+        </CardLayout>
       )}
 
-      {/* מצב ריק */}
-      {dashboardData &&
-        dashboardData.recentWorkouts.length === 0 &&
-        dashboardData.activePlans.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="barbell-outline"
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.emptyStateTitle}>בוא נתחיל להתאמן!</Text>
-            <Text style={styles.emptyStateText}>
-              צור תוכנית אימון מותאמת אישית או בחר מהתוכניות המומלצות שלנו
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyStateButton}
-              onPress={() => navigation.navigate("Plans" as any)}
-            >
-              <Text style={styles.emptyStateButtonText}>לתוכניות האימון</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-      <View style={styles.bottomSpacing} />
-    </ScrollView>
+      {/* Spacing for tab bar */}
+      <View style={{ height: 100 }} />
+    </ScreenLayout>
   );
 };
-
-// 🕐 ברכה לפי שעה
-const getTimeBasedGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 5) return "לילה טוב! עדיין ער?";
-  if (hour < 12) return "בוקר טוב! מוכן לאימון?";
-  if (hour < 17) return "איך הצהריים? בא לאמן?";
-  if (hour < 21) return "ערב טוב! זמן לאימון ערב";
-  return "לילה טוב! אימון לילה?";
-};
-
-// 🎨 עיצוב
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  welcomeSection: {
-    flex: 1,
-    alignItems: "center", // ✅ מרכז את התוכן
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 4,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  welcomeSubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  // Sections
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-    textAlign: "center", // ✅ מרכז את הטקסט
-    flex: 1,
-  },
-  seeAllText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-
-  // Stats
-  statsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 16,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: (width - 52) / 2, // 2 עמודות עם gap
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 4,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  statUnit: {
-    fontSize: 14,
-    fontWeight: "normal",
-    color: colors.textSecondary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-
-  // Quick Actions
-  quickActionsContainer: {
-    paddingRight: 20,
-    gap: 12,
-  },
-  quickActionCard: {
-    width: 140,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  quickActionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  quickActionSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-
-  // Recommended Plan
-  recommendedPlanCard: {
-    borderRadius: 16,
-    padding: 20,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  recommendedPlanContent: {
-    alignItems: "center", // ✅ מרכז את התוכן
-  },
-  recommendedPlanTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  recommendedPlanDescription: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
-    marginBottom: 16,
-    lineHeight: 20,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  recommendedPlanStats: {
-    flexDirection: "row",
-    gap: 24,
-    marginBottom: 16,
-  },
-  recommendedPlanStat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  recommendedPlanStatText: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "500",
-  },
-  recommendedPlanAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  recommendedPlanActionText: {
-    fontSize: 14,
-    color: "#fff",
-    fontWeight: "bold",
-  },
-
-  // Recent Workouts
-  recentWorkoutCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  recentWorkoutHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  recentWorkoutName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    flex: 1,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  recentWorkoutDate: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  recentWorkoutStats: {
-    flexDirection: "row",
-    gap: 16,
-    justifyContent: "center", // ✅ מרכז את הסטטיסטיקות
-  },
-  recentWorkoutStat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  recentWorkoutStatText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: "500",
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center", // ✅ מרכז את הטקסט
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  emptyStateButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyStateButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-    textAlign: "center", // ✅ מרכז את הטקסט
-  },
-
-  // Utils
-  disabled: {
-    opacity: 0.5,
-  },
-  bottomSpacing: {
-    height: 100, // מקום לטאב בר
-  },
-});
 
 export default HomeScreen;
