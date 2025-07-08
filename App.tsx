@@ -1,7 +1,7 @@
 // App.tsx - גרסה מתוקנת עם אתחול מלא
 
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   AppState,
@@ -50,69 +50,10 @@ if (__DEV__) {
 // 📱 רכיב App הראשי
 const App = () => {
   const [isAppReady, setIsAppReady] = useState(false);
-  const [initializationError, setInitializationError] = useState<string | null>(
-    null
-  );
   const appState = useRef(AppState.currentState);
 
-  // 🎬 אתחול האפליקציה
-  useEffect(() => {
-    initializeApp();
-  }, []);
-
-  // מעקב אחר מצב האפליקציה
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === "active"
-      ) {
-        console.log("📱 App has come to the foreground");
-      }
-      appState.current = nextAppState;
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  // 🚀 פונקציית אתחול ראשית
-  const initializeApp = async () => {
-    try {
-      console.log("🔧 Initializing Gymovo app...");
-
-      // שלב 1: אתחול שירותים חיוניים
-      await initializeServices();
-
-      // שלב 2: טעינת הגדרות משתמש
-      await loadUserPreferences();
-
-      // שלב 3: סיום טעינה והצגת האפליקציה
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setIsAppReady(true);
-      await SplashScreen.hideAsync();
-
-      console.log("✅ App initialization completed successfully");
-    } catch (error) {
-      console.error("❌ App initialization failed:", error);
-      handleInitializationError(error);
-    }
-  };
-
-  // 🛠️ אתחול שירותים חיוניים
-  const initializeServices = async () => {
-    try {
-      // סימולציה של זמן טעינה לשירותים
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log("🔧 Core services initialized");
-    } catch (error) {
-      console.error("Failed to initialize services:", error);
-      throw error;
-    }
-  };
-
   // ⚙️ טעינת העדפות משתמש
-  const loadUserPreferences = async () => {
+  const loadUserPreferences = useCallback(async () => {
     try {
       // טעינת העדפות בסיסיות
       const defaultPreferences = {
@@ -155,14 +96,26 @@ const App = () => {
       console.error("Failed to load user preferences:", error);
       // לא קריטי - אפשר להמשיך בלי העדפות
     }
-  };
+  }, []);
+
+  // 🛠️ אתחול שירותים חיוניים
+  const initializeServices = useCallback(async () => {
+    try {
+      // סימולציה של זמן טעינה לשירותים
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log("🔧 Core services initialized");
+    } catch (error) {
+      console.error("Failed to initialize services:", error);
+      throw error;
+    }
+  }, []);
 
   // ❌ טיפול בשגיאות אתחול קריטיות
-  const handleInitializationError = (error: any) => {
+  const handleInitializationError = useCallback((error: any) => {
     console.error("💥 Critical initialization error:", error);
 
     const errorMessage = error?.message || "Unknown initialization error";
-    setInitializationError(errorMessage);
+    console.error("Initialization error details:", errorMessage);
 
     // מציגים את האפליקציה בכל מקרה
     setIsAppReady(true);
@@ -176,7 +129,51 @@ const App = () => {
         [{ text: "הבנתי", style: "default" }]
       );
     }, 1000);
-  };
+  }, []);
+
+  // 🚀 פונקציית אתחול ראשית
+  const initializeApp = useCallback(async () => {
+    try {
+      console.log("🔧 Initializing Gymovo app...");
+
+      // שלב 1: אתחול שירותים חיוניים
+      await initializeServices();
+
+      // שלב 2: טעינת הגדרות משתמש
+      await loadUserPreferences();
+
+      // שלב 3: סיום טעינה והצגת האפליקציה
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setIsAppReady(true);
+      await SplashScreen.hideAsync();
+
+      console.log("✅ App initialization completed successfully");
+    } catch (error) {
+      console.error("❌ App initialization failed:", error);
+      handleInitializationError(error);
+    }
+  }, [initializeServices, loadUserPreferences, handleInitializationError]);
+
+  // 🎬 אתחול האפליקציה
+  useEffect(() => {
+    initializeApp();
+  }, [initializeApp]);
+
+  // מעקב אחר מצב האפליקציה
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        console.log("📱 App has come to the foreground");
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => subscription?.remove();
+  }, []);
 
   // עד שהאפליקציה לא מוכנה, נשאיר את ה-splash screen
   if (!isAppReady) {
