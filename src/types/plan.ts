@@ -1,6 +1,6 @@
 // src/types/plan.ts - גרסה מתוקנת עם שדה creator
 
-import { Workout, WorkoutExercise } from "./workout";
+import { Workout } from "./workout";
 
 // 🏋️ תרגיל בתוכנית
 export interface PlanExercise {
@@ -88,6 +88,7 @@ export const convertLegacyToModern = (legacyPlan: Plan): Plan => {
     id: day.id,
     name: day.name,
     date: new Date().toISOString(),
+    userId: legacyPlan.userId, // ✅ תיקון: הוספת userId החסר
     exercises: day.exercises.map((ex) => ({
       id: ex.id,
       name: ex.name,
