@@ -2,7 +2,18 @@
 // נקודת כניסה ראשית לכל שירותי הרשת - קובץ מעודכן
 
 // ייבוא כל הפונקציות מהמודולים החדשים
-export * from "./network";
+import {
+  checkInternetConnection,
+  withNetworkCheck,
+  withRetry,
+  apiCall,
+  useNetworkStatus,
+  showNetworkError,
+  createNetworkError,
+  enhanceError,
+  CancelableRequest,
+  cancelableApiCall,
+} from "./network";
 
 // תאימות לאחור - שמירה על exports הישנים
 export {
@@ -16,4 +27,4 @@ export {
   enhanceError,
   CancelableRequest,
   cancelableApiCall,
-} from "./network";
+};

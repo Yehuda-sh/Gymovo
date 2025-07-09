@@ -1,82 +1,152 @@
 // src/theme/design/index.ts
 // נקודת כניסה ראשית לכל מערכת העיצוב
 
-// Spacing System
-export * from "./spacing";
-export { spacing, componentSpacing, mobileSpacing } from "./spacing";
-
-// Typography System
-export * from "./typography";
-export { typography, fontSizes, fontWeights, fitnessTypography } from "./typography";
-
-// Shadow System
-export * from "./shadows";
-export { shadows, componentShadows, fitnessShadows } from "./shadows";
-
-// Animation System
-export * from "./animations";
-export { timing, easing, presets, screenTransitions, fitnessAnimations } from "./animations";
-
-// Component Styles
-export * from "./components";
-export { button, card, input, container, list, modal, fitnessComponents } from "./components";
-
-// Design Tokens
-export * from "./tokens";
-export { borderRadius, breakpoints, iconSizes, heights, widths, zIndex } from "./tokens";
-
-// Status Colors
-export * from "./status";
-export { statusColors, fitnessStatusColors, progressColors, intensityColors } from "./status";
-
-// Fitness Tokens
-export * from "./fitness";
-export { 
-  difficultyColors, 
-  muscleGroupColors, 
-  fitnessSizes, 
-  workoutStatusColors, 
-  fitnessStyles 
+// ייבוא כל רכיבי מערכת העיצוב
+import {
+  spacing,
+  getSpacing,
+  getCustomSpacing,
+  calculateGridItemWidth,
+} from "./spacing";
+import { typography, getTypography, createTypographyStyle } from "./typography";
+import {
+  shadows,
+  getShadow,
+  createCustomShadow,
+  getInteractiveShadow,
+} from "./shadows";
+import {
+  timing,
+  easing,
+  getTiming,
+  createAnimation,
+  getStateAnimation,
+  getStaggerDelay,
+} from "./animations";
+import { button, card, input, container, list, modal } from "./components";
+import {
+  borderRadius,
+  getBorderRadius,
+  getBreakpoint,
+  getResponsiveValue,
+  breakpoints,
+  iconSizes,
+  heights,
+  widths,
+  zIndex,
+} from "./tokens";
+import {
+  statusColors,
+  progressColors as statusProgressColors,
+  getStatusColors,
+  getProgressColors,
+  getDifficultyColors,
+  getIntensityColors as getStatusIntensityColors,
+} from "./status";
+import {
+  difficultyColors,
+  muscleGroupColors,
+  fitnessSizes,
+  workoutStatusColors,
+  fitnessStyles,
+  getMuscleGroupColor,
+  getDifficultyColor,
+  getExerciseTypeColor,
+  getIntensityColor as getFitnessIntensityColor,
 } from "./fitness";
+
+// Spacing System - Export all spacing related items
+export { spacing, getSpacing, getCustomSpacing, calculateGridItemWidth };
+
+// Typography System - Export all typography related items
+export { typography, getTypography, createTypographyStyle };
+
+// Shadow System - Export all shadow related items
+export { shadows, getShadow, createCustomShadow, getInteractiveShadow };
+
+// Animation System - Export all animation related items (excluding conflicting ones)
+export {
+  timing,
+  easing,
+  getTiming,
+  createAnimation,
+  getStateAnimation,
+  getStaggerDelay,
+};
+
+// Component Styles - Export all component related items
+export { button, card, input, container, list, modal };
+
+// Design Tokens - Export all token related items
+export {
+  borderRadius,
+  getBorderRadius,
+  getBreakpoint,
+  getResponsiveValue,
+  breakpoints,
+  iconSizes,
+  heights,
+  widths,
+  zIndex,
+};
+
+// Status Colors - Export status related items with renamed conflicting exports
+export { statusColors, getStatusColors, getDifficultyColors };
+export { progressColors as statusProgressColors, getProgressColors };
+export { getIntensityColors as getStatusIntensityColors };
+
+// Fitness Tokens - Export fitness related items with renamed conflicting exports
+export {
+  difficultyColors,
+  muscleGroupColors,
+  fitnessSizes,
+  workoutStatusColors,
+  fitnessStyles,
+};
+export { getMuscleGroupColor, getDifficultyColor, getExerciseTypeColor };
+export { getIntensityColor as getFitnessIntensityColor };
+
+// For backward compatibility, export progressColors as the status version
+export { progressColors } from "./status";
+export { intensityColors } from "./status";
 
 /**
  * אובייקט מרכזי עם כל מערכת העיצוב
  */
 export const designSystem = {
   // Core systems
-  spacing: require("./spacing").spacing,
-  typography: require("./typography").typography,
-  shadows: require("./shadows").shadows,
-  animations: require("./animations"),
-  
+  spacing,
+  typography,
+  shadows,
+  animations: { timing, easing },
+
   // Tokens
-  borderRadius: require("./tokens").borderRadius,
-  breakpoints: require("./tokens").breakpoints,
-  iconSizes: require("./tokens").iconSizes,
-  heights: require("./tokens").heights,
-  widths: require("./tokens").widths,
-  zIndex: require("./tokens").zIndex,
-  
+  borderRadius,
+  breakpoints,
+  iconSizes,
+  heights,
+  widths,
+  zIndex,
+
   // Components
-  button: require("./components").button,
-  card: require("./components").card,
-  input: require("./components").input,
-  container: require("./components").container,
-  list: require("./components").list,
-  modal: require("./components").modal,
-  
+  button,
+  card,
+  input,
+  container,
+  list,
+  modal,
+
   // Status & Colors
-  statusColors: require("./status").statusColors,
-  progressColors: require("./status").progressColors,
-  intensityColors: require("./status").intensityColors,
-  
+  statusColors,
+  progressColors: statusProgressColors,
+  intensityColors: getStatusIntensityColors,
+
   // Fitness specific
-  difficultyColors: require("./fitness").difficultyColors,
-  muscleGroupColors: require("./fitness").muscleGroupColors,
-  fitnessSizes: require("./fitness").fitnessSizes,
-  workoutStatusColors: require("./fitness").workoutStatusColors,
-  fitnessStyles: require("./fitness").fitnessStyles,
-  fitnessAnimations: require("./fitness").fitnessAnimations,
+  difficultyColors,
+  muscleGroupColors,
+  fitnessSizes,
+  workoutStatusColors,
+  fitnessStyles,
 } as const;
 
 /**
@@ -84,41 +154,41 @@ export const designSystem = {
  */
 export const helpers = {
   // Spacing helpers
-  getSpacing: require("./spacing").getSpacing,
-  getCustomSpacing: require("./spacing").getCustomSpacing,
-  calculateGridItemWidth: require("./spacing").calculateGridItemWidth,
-  
+  getSpacing,
+  getCustomSpacing,
+  calculateGridItemWidth,
+
   // Typography helpers
-  getTypography: require("./typography").getTypography,
-  createTypographyStyle: require("./typography").createTypographyStyle,
-  
+  getTypography,
+  createTypographyStyle,
+
   // Shadow helpers
-  getShadow: require("./shadows").getShadow,
-  createCustomShadow: require("./shadows").createCustomShadow,
-  getInteractiveShadow: require("./shadows").getInteractiveShadow,
-  
+  getShadow,
+  createCustomShadow,
+  getInteractiveShadow,
+
   // Animation helpers
-  getTiming: require("./animations").getTiming,
-  createAnimation: require("./animations").createAnimation,
-  getStateAnimation: require("./animations").getStateAnimation,
-  getStaggerDelay: require("./animations").getStaggerDelay,
-  
+  getTiming,
+  createAnimation,
+  getStateAnimation,
+  getStaggerDelay,
+
   // Token helpers
-  getBorderRadius: require("./tokens").getBorderRadius,
-  getBreakpoint: require("./tokens").getBreakpoint,
-  getResponsiveValue: require("./tokens").getResponsiveValue,
-  
+  getBorderRadius,
+  getBreakpoint,
+  getResponsiveValue,
+
   // Status helpers
-  getStatusColors: require("./status").getStatusColors,
-  getProgressColors: require("./status").getProgressColors,
-  getDifficultyColors: require("./status").getDifficultyColors,
-  getIntensityColors: require("./status").getIntensityColors,
-  
+  getStatusColors,
+  getProgressColors,
+  getDifficultyColors,
+  getIntensityColors: getStatusIntensityColors,
+
   // Fitness helpers
-  getMuscleGroupColor: require("./fitness").getMuscleGroupColor,
-  getDifficultyColor: require("./fitness").getDifficultyColor,
-  getExerciseTypeColor: require("./fitness").getExerciseTypeColor,
-  getIntensityColor: require("./fitness").getIntensityColor,
+  getMuscleGroupColor,
+  getDifficultyColor,
+  getExerciseTypeColor,
+  getIntensityColor: getFitnessIntensityColor,
 } as const;
 
 /**
@@ -127,26 +197,26 @@ export const helpers = {
 export const constants = {
   // Base unit (4px)
   BASE_UNIT: 4,
-  
+
   // Golden ratio
   GOLDEN_RATIO: 1.618,
-  
+
   // Common aspect ratios
   ASPECT_RATIOS: {
     square: 1,
     card: 1.5,
-    video: 16/9,
-    photo: 4/3,
+    video: 16 / 9,
+    photo: 4 / 3,
   },
-  
+
   // Z-index layers
-  Z_INDEX: require("./tokens").zIndex,
-  
+  Z_INDEX: zIndex,
+
   // Breakpoints
-  BREAKPOINTS: require("./tokens").breakpoints,
-  
+  BREAKPOINTS: breakpoints,
+
   // Animation durations
-  DURATIONS: require("./animations").timing,
+  DURATIONS: timing,
 } as const;
 
 /**
@@ -160,4 +230,4 @@ export const themes = {
 /**
  * ברירת מחדל לייצוא
  */
-export default designSystem; 
+export default designSystem;
