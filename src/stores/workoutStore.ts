@@ -2,21 +2,16 @@
 
 import { produce } from "immer";
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { devtools, persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Exercise } from "../types/exercise";
 import { Plan } from "../types/plan";
-import {
-  Workout,
-  WorkoutExercise,
-  WorkoutSet,
-  PersonalRecord,
-} from "../types/workout";
+import { Workout, WorkoutExercise, PersonalRecord } from "../types/workout";
 import { useUserStore } from "./userStore";
 import {
   getWorkoutHistory,
-  saveWorkout,
-  deleteWorkoutFromStorage,
+  saveWorkoutToHistory,
+  deleteWorkoutFromHistory,
 } from "../data/storage";
 import { generateId } from "../utils/idGenerator";
 
@@ -107,10 +102,6 @@ const DEFAULT_REPS_PER_SET = 12;
 const CALORIES_PER_SET = 10; // הערכה בסיסית
 
 // 🔧 פונקציות עזר
-const generateId = (): string => {
-  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-
 const calculateVolume = (exercise: WorkoutExercise): number => {
   return exercise.sets.reduce((total, set) => {
     if (set.status === "completed") {
@@ -675,7 +666,8 @@ export const useWorkoutStore = create<WorkoutState>()(
 
           // שמירת האימון
           try {
-            await saveWorkout(finishedWorkout);
+            const userId = useUserStore.getState().user?.id || "guest";
+            await saveWorkoutToHistory(userId, finishedWorkout);
             console.log(
               `✅ Workout finished: ${finishedWorkout.name}, Duration: ${duration}min`
             );
@@ -760,7 +752,8 @@ export const useWorkoutStore = create<WorkoutState>()(
         // 🗑️ מחיקת אימון
         deleteWorkout: async (workoutId: string) => {
           try {
-            await deleteWorkoutFromStorage(workoutId);
+            const userId = useUserStore.getState().user?.id || "guest";
+            await deleteWorkoutFromHistory(userId, workoutId);
 
             set(
               produce((state: WorkoutState) => {

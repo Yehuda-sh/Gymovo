@@ -143,7 +143,11 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
     const updatedWorkout: Workout = {
       id: workout.id,
       name: workout.name,
-      date: workout.date || new Date().toISOString(),
+      date: workout.date
+        ? workout.date instanceof Date
+          ? workout.date
+          : new Date(workout.date)
+        : new Date(),
       exercises: workout.exercises,
       notes: notes,
       rating: rating,

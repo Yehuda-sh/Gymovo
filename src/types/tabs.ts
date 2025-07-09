@@ -10,37 +10,46 @@ import { RootStackParamList } from "./navigation";
 export type AppTabsParamList = {
   // 🏠 מסך הבית
   Home: undefined;
-  
+
   // 📋 תוכניות אימון
-  Plans: {
-    filter?: "active" | "completed" | "favorites";
-    scrollToId?: string;
-  } | undefined;
-  
+  Plans:
+    | {
+        filter?: "active" | "completed" | "favorites";
+        scrollToId?: string;
+      }
+    | undefined;
+
   // 🏋️ התחלת אימון
-  StartWorkout: {
-    planId?: string;
-    dayId?: string;
-    isQuickStart?: boolean;
-  } | undefined;
-  
+  StartWorkout:
+    | {
+        planId?: string;
+        dayId?: string;
+        isQuickStart?: boolean;
+      }
+    | undefined;
+
   // 📊 היסטוריית אימונים
-  Workouts: {
-    dateFilter?: "week" | "month" | "year" | "all";
-    muscleFilter?: string;
-  } | undefined;
-  
+  Workouts:
+    | {
+        dateFilter?: "week" | "month" | "year" | "all";
+        muscleFilter?: string;
+      }
+    | undefined;
+
   // 👤 פרופיל משתמש
-  Profile: {
-    section?: "stats" | "achievements" | "settings";
-  } | undefined;
+  Profile:
+    | {
+        section?: "stats" | "achievements" | "settings";
+      }
+    | undefined;
 };
 
 // 🔧 טיפוסי ניווט לכל טאב
-export type TabNavigationProp<T extends keyof AppTabsParamList> = CompositeNavigationProp<
-  BottomTabNavigationProp<AppTabsParamList, T>,
-  NativeStackNavigationProp<RootStackParamList>
->;
+export type TabNavigationProp<T extends keyof AppTabsParamList> =
+  CompositeNavigationProp<
+    BottomTabNavigationProp<AppTabsParamList, T>,
+    NativeStackNavigationProp<RootStackParamList>
+  >;
 
 // 🎯 טיפוסי Route לכל טאב
 export type TabRouteProp<T extends keyof AppTabsParamList> = RouteProp<
@@ -204,7 +213,7 @@ export const isValidTab = (tab: string): tab is keyof AppTabsParamList => {
 
 export const hasTabParams = <T extends keyof AppTabsParamList>(
   route: TabRouteProp<T>
-): route.params is NonNullable<AppTabsParamList[T]> => {
+): route is TabRouteProp<T> & { params: NonNullable<AppTabsParamList[T]> } => {
   return route.params !== undefined;
 };
 
@@ -213,17 +222,23 @@ export const getTabIcon = (
   tabName: keyof AppTabsParamList,
   focused: boolean
 ): string => {
-  const config = TAB_CONFIG.find(tab => tab.name === tabName);
-  return config ? (focused ? config.icon.focused : config.icon.unfocused) : "help-outline";
+  const config = TAB_CONFIG.find((tab) => tab.name === tabName);
+  return config
+    ? focused
+      ? config.icon.focused
+      : config.icon.unfocused
+    : "help-outline";
 };
 
 export const getTabLabel = (tabName: keyof AppTabsParamList): string => {
-  const config = TAB_CONFIG.find(tab => tab.name === tabName);
+  const config = TAB_CONFIG.find((tab) => tab.name === tabName);
   return config?.label || "";
 };
 
-export const getTabAccessibilityLabel = (tabName: keyof AppTabsParamList): string => {
-  const config = TAB_CONFIG.find(tab => tab.name === tabName);
+export const getTabAccessibilityLabel = (
+  tabName: keyof AppTabsParamList
+): string => {
+  const config = TAB_CONFIG.find((tab) => tab.name === tabName);
   return config?.accessibilityLabel || config?.label || "";
 };
 
@@ -247,9 +262,12 @@ export const TAB_DIMENSIONS = {
   badgeSize: 18,
   badgeFontSize: 10,
 } as const;
-
 // 🎯 אירועי Analytics לטאבים
-export type TabAnalyticsEvent = 
-  | { type: "tab_switched"; from: keyof AppTabsParamList; to: keyof AppTabsParamList }
+export type TabAnalyticsEvent =
+  | {
+      type: "tab_switched";
+      from: keyof AppTabsParamList;
+      to: keyof AppTabsParamList;
+    }
   | { type: "tab_badge_shown"; tab: keyof AppTabsParamList; count: number }
   | { type: "fab_pressed"; source: "tab_bar" };

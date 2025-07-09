@@ -470,7 +470,6 @@ export const generatePlan = async (
         injuries: answers.injuries,
         generatedAt: new Date().toISOString(),
         version: "1.0",
-        tags: [answers.goal, answers.experience],
       },
       // ✅ Required fields that were missing
       createdAt: new Date().toISOString(),

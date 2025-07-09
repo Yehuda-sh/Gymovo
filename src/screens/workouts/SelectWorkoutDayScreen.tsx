@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { usePlans } from "../../hooks/usePlans";
 import { useWorkoutStore } from "../../stores/workoutStore";
+import { useUserStore } from "../../stores/userStore";
 import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
 import { PlanDay } from "../../types/plan";
@@ -32,6 +33,7 @@ const SelectWorkoutDayScreen = () => {
   const plan = plans?.find((p) => p.id === planId);
 
   const startWorkout = useWorkoutStore((state) => state.startWorkout);
+  const user = useUserStore((state) => state.user);
 
   const handleSelectDay = (day: PlanDay) => {
     if (!plan) return;
@@ -40,7 +42,8 @@ const SelectWorkoutDayScreen = () => {
     const workout: Workout = {
       id: `workout_${Date.now()}`,
       name: `${plan.name} - ${day.name}`,
-      date: new Date().toISOString(),
+      date: new Date(),
+      userId: user?.id || "guest",
       exercises: day.exercises.map((planEx, index) => ({
         id: `${planEx.id}_${index}`,
         name: planEx.name,

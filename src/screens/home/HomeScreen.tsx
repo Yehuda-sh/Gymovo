@@ -351,7 +351,7 @@ const HomeScreen = () => {
           0
         ),
         totalDuration: weeklyWorkouts.reduce(
-          (total, workout) => total + (workout.totalDuration || 0),
+          (total, workout) => total + (workout.duration || 0),
           0
         ),
         streak: calculateStreak(workouts),
@@ -631,7 +631,7 @@ const HomeScreen = () => {
             plan={dashboardData.todaysWorkout}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              navigation.navigate("StartWorkout", {
+              navigation.navigate("StartWorkout" as any, {
                 planId: dashboardData.todaysWorkout!.id,
               });
             }}
@@ -651,7 +651,7 @@ const HomeScreen = () => {
               key={workout.id}
               onPress={() =>
                 navigation.navigate("WorkoutSummary", {
-                  workoutId: workout.id,
+                  workoutData: workout,
                 })
               }
               activeOpacity={0.7}
@@ -669,7 +669,7 @@ const HomeScreen = () => {
                     variant="caption"
                     color={theme.colors.textSecondary}
                   >
-                    {new Date(workout.date).toLocaleDateString("he-IL")}
+                    {new Date(workout.date!).toLocaleDateString("he-IL")}
                   </Typography>
                 </View>
 
@@ -702,7 +702,7 @@ const HomeScreen = () => {
                     </Typography>
                   </View>
 
-                  {workout.totalDuration && (
+                  {workout.duration && (
                     <View
                       style={{
                         flexDirection: "row",
@@ -719,7 +719,7 @@ const HomeScreen = () => {
                         variant="caption"
                         color={theme.colors.textSecondary}
                       >
-                        {workout.totalDuration} דקות
+                        {workout.duration} דקות
                       </Typography>
                     </View>
                   )}

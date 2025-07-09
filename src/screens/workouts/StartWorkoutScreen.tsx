@@ -350,7 +350,8 @@ const StartWorkoutScreen = () => {
           const workout: Workout = {
             id: `workout_${Date.now()}`,
             name: `${selectedPlan.name} - ${selectedDay.name}`,
-            date: new Date().toISOString(),
+            date: new Date(),
+            userId: user?.id || "guest",
             exercises: selectedDay.exercises.map((planEx, index) =>
               createWorkoutFromPlanExercise(planEx, index)
             ),
@@ -367,7 +368,8 @@ const StartWorkoutScreen = () => {
           const workout: Workout = {
             id: `workout_${Date.now()}`,
             name: `${selectedPlan.name} - ${firstDay.name}`,
-            date: new Date().toISOString(),
+            date: new Date(),
+            userId: user?.id || "guest",
             exercises: firstDay.exercises.map((planEx, index) =>
               createWorkoutFromPlanExercise(planEx, index)
             ),

@@ -78,7 +78,7 @@ const StatsOverview = ({ stats }: { stats: any }) => {
   return (
     <Animated.View style={[styles.statsContainer, { opacity: fadeAnim }]}>
       <LinearGradient
-        colors={modernColors.primaryGradient}
+        colors={modernColors.primaryGradient as any}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.statsGradient}
@@ -101,7 +101,7 @@ const StatsOverview = ({ stats }: { stats: any }) => {
             <Text style={styles.statValue}>
               {Math.round(stats.totalDuration / 60)}h
             </Text>
-            <Text style={styles.statLabel}>סה"כ זמן</Text>
+            <Text style={styles.statLabel}>סה&quot;כ זמן</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -283,7 +283,9 @@ const WorkoutCard = ({
                 styles.progressBar,
                 {
                   width: `${
-                    (workout.completedExercises / workout.totalExercises) * 100
+                    ((workout.completedExercises || 0) /
+                      (workout.totalExercises || 0)) *
+                    100
                   }%`,
                 },
               ]}
@@ -296,7 +298,7 @@ const WorkoutCard = ({
               <View style={styles.cardTitleSection}>
                 <Text style={styles.workoutTitle}>{workout.name}</Text>
                 <Text style={styles.workoutDate}>
-                  {formatDate(workout.date)}
+                  {formatDate(workout.date!)}
                 </Text>
               </View>
               <View style={styles.ratingBadge}>
@@ -314,7 +316,7 @@ const WorkoutCard = ({
                   color={modernColors.primary}
                 />
                 <Text style={styles.statChipText}>
-                  {formatDuration(workout.duration)}
+                  {formatDuration(workout.duration || 0)}
                 </Text>
               </View>
               <View style={styles.statChip}>
@@ -382,7 +384,7 @@ const EmptyState = ({ onStartWorkout }: { onStartWorkout: () => void }) => (
       }}
     >
       <LinearGradient
-        colors={modernColors.primaryGradient}
+        colors={modernColors.primaryGradient as any}
         style={styles.gradientButton}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -534,7 +536,7 @@ const WorkoutFilterModal = ({
                           styles.filterOptionTextActive,
                       ]}
                     >
-                      {duration} דק'
+                      {duration} דקות
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -554,7 +556,7 @@ const WorkoutFilterModal = ({
               }}
             >
               <LinearGradient
-                colors={modernColors.primaryGradient}
+                colors={modernColors.primaryGradient as any}
                 style={styles.gradientButton}
               >
                 <Text style={styles.applyButtonText}>החל סינון</Text>
@@ -589,8 +591,13 @@ const WorkoutsScreen = () => {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const weeklyWorkouts = workouts.filter((w) => w.date >= weekAgo).length;
-    const totalDuration = workouts.reduce((sum, w) => sum + w.duration, 0);
+    const weeklyWorkouts = workouts.filter(
+      (w) => w.date && w.date >= weekAgo
+    ).length;
+    const totalDuration = workouts.reduce(
+      (sum, w) => sum + (w.duration || 0),
+      0
+    );
     const ratingsCount = workouts.filter((w) => w.rating).length;
     const averageRating =
       ratingsCount > 0
@@ -627,7 +634,7 @@ const WorkoutsScreen = () => {
       }
 
       if (filters.dateRange !== "all") {
-        filtered = filtered.filter((w) => w.date >= startDate);
+        filtered = filtered.filter((w) => w.date && w.date >= startDate);
       }
     }
 
@@ -636,24 +643,26 @@ const WorkoutsScreen = () => {
     }
 
     if (filters.minDuration) {
-      filtered = filtered.filter((w) => w.duration >= filters.minDuration!);
+      filtered = filtered.filter(
+        (w) => w.duration && w.duration >= filters.minDuration!
+      );
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "date-desc":
-          return b.date.getTime() - a.date.getTime();
+          return b.date!.getTime() - a.date!.getTime();
         case "date-asc":
-          return a.date.getTime() - b.date.getTime();
+          return a.date!.getTime() - b.date!.getTime();
         case "rating-desc":
           return (b.rating || 0) - (a.rating || 0);
         case "rating-asc":
           return (a.rating || 0) - (b.rating || 0);
         case "duration-desc":
-          return b.duration - a.duration;
+          return (b.duration || 0) - (a.duration || 0);
         case "duration-asc":
-          return a.duration - b.duration;
+          return (a.duration || 0) - (b.duration || 0);
         default:
           return 0;
       }
@@ -677,7 +686,7 @@ const WorkoutsScreen = () => {
 
   const handleWorkoutPress = useCallback(
     (workout: Workout) => {
-      navigation.navigate("WorkoutSummary", { workoutId: workout.id });
+      navigation.navigate("WorkoutSummary", { workoutData: workout });
     },
     [navigation]
   );
@@ -910,7 +919,7 @@ const WorkoutsScreen = () => {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={modernColors.primaryGradient}
+            colors={modernColors.primaryGradient as any}
             style={styles.fabGradient}
           >
             <Ionicons name="add" size={28} color="white" />

@@ -249,40 +249,43 @@ export const fetchExerciseInfoById = async (
   }
 };
 
-// פונקציות עזר
+// תיקון פונקציות המיפוי לעברית:
+
+// 1. מיפוי שרירים לעברית
 const getMuscleGroup = (muscleId: number): string => {
   const muscleMap: Record<number, string> = {
-    1: "biceps",
-    2: "shoulders",
-    3: "triceps",
-    4: "chest",
-    5: "lats",
-    6: "abs",
-    7: "calves",
-    8: "gluteus",
-    9: "traps",
-    10: "quadriceps",
-    11: "hamstrings",
-    12: "back",
-    13: "deltoids",
-    14: "forearms",
-    15: "obliques",
+    1: "זרועות", // biceps
+    2: "כתפיים", // shoulders
+    3: "זרועות", // triceps
+    4: "חזה", // chest
+    5: "גב", // lats
+    6: "ליבה", // abs
+    7: "רגליים", // calves
+    8: "רגליים", // gluteus
+    9: "גב", // traps
+    10: "רגליים", // quadriceps
+    11: "רגליים", // hamstrings
+    12: "גב", // back
+    13: "כתפיים", // deltoids
+    14: "זרועות", // forearms
+    15: "ליבה", // obliques
   };
-  return muscleMap[muscleId] || "other";
+  return muscleMap[muscleId] || "כללי";
 };
 
+// 2. מיפוי קטגוריות לעברית
 const mapCategory = (categoryId: number): string => {
   const categories: Record<number, string> = {
-    8: "Arms",
-    9: "Legs",
-    10: "Abs",
-    11: "Chest",
-    12: "Back",
-    13: "Shoulders",
-    14: "Calves",
-    15: "Cardio",
+    8: "זרועות",
+    9: "רגליים",
+    10: "ליבה",
+    11: "חזה",
+    12: "גב",
+    13: "כתפיים",
+    14: "רגליים",
+    15: "קרדיו",
   };
-  return categories[categoryId] || "Other";
+  return categories[categoryId] || "כללי";
 };
 
 const mapEquipment = (equipmentList: any[]): string[] => {
@@ -321,61 +324,61 @@ const cleanInstructions = (text: string): string => {
     .trim();
 };
 
-// Fallback exercises אם ה-API נכשל
+// 3. תיקון הFallback exercises
 const getFallbackExercises = (): Exercise[] => [
   {
-    id: "1",
+    id: "fallback-1",
     name: "לחיצת חזה - משקולת",
     description: "תרגיל בסיסי לחיזוק שרירי החזה",
-    category: "Chest",
+    category: "חזה", // 🔥 שונה מ-"Chest"
     equipment: ["Dumbbell", "Bench"],
-    targetMuscleGroups: ["chest", "triceps", "shoulders"],
+    targetMuscleGroups: ["חזה"], // 🔥 שונה מ-["chest", "triceps", "shoulders"]
     instructions: [
       "שכב על ספסל עם משקולות בידיים. הורד באיטיות עד גובה החזה ולחץ חזרה למעלה.",
     ],
     difficulty: "intermediate",
   },
   {
-    id: "2",
+    id: "fallback-2",
     name: "סקוואט",
     description: "תרגיל מרכזי לרגליים וישבן",
-    category: "Legs",
+    category: "רגליים", // 🔥 שונה מ-"Legs"
     equipment: ["Bodyweight"],
-    targetMuscleGroups: ["quadriceps", "hamstrings", "gluteus"],
+    targetMuscleGroups: ["רגליים"], // 🔥 שונה מ-["quadriceps", "hamstrings", "gluteus"]
     instructions: [
       "עמוד עם רגליים ברוחב הכתפיים. רד למטה תוך כיפוף הברכיים עד 90 מעלות וחזור למעלה.",
     ],
     difficulty: "beginner",
   },
   {
-    id: "3",
-    name: "מתח - רחב",
+    id: "fallback-3",
+    name: "מתח רחב",
     description: "תרגיל מעולה לחיזוק הגב",
-    category: "Back",
+    category: "גב", // 🔥 שונה מ-"Back"
     equipment: ["Pull-up bar"],
-    targetMuscleGroups: ["lats", "biceps", "back"],
+    targetMuscleGroups: ["גב"], // 🔥 שונה מ-["lats", "biceps", "back"]
     instructions: [
       "אחוז במוט באחיזה רחבה ומשוך את הגוף למעלה עד שהסנטר מעל המוט.",
     ],
     difficulty: "advanced",
   },
   {
-    id: "4",
+    id: "fallback-4",
     name: "לחיצת כתפיים",
     description: "תרגיל לפיתוח כתפיים חזקות",
-    category: "Shoulders",
+    category: "כתפיים", // 🔥 שונה מ-"Shoulders"
     equipment: ["Dumbbell"],
-    targetMuscleGroups: ["shoulders", "triceps"],
+    targetMuscleGroups: ["כתפיים"], // 🔥 שונה מ-["shoulders", "triceps"]
     instructions: ["החזק משקולות בגובה הכתפיים ולחץ למעלה עד יישור הידיים."],
     difficulty: "intermediate",
   },
   {
-    id: "5",
+    id: "fallback-5",
     name: "כפיפות בטן",
     description: "תרגיל קלאסי לחיזוק שרירי הבטן",
-    category: "Abs",
+    category: "ליבה", // 🔥 שונה מ-"Abs"
     equipment: ["Bodyweight"],
-    targetMuscleGroups: ["abs"],
+    targetMuscleGroups: ["ליבה"], // 🔥 שונה מ-["abs"]
     instructions: [
       "שכב על הגב עם ברכיים כפופות. הרם את פלג הגוף העליון לכיוון הברכיים.",
     ],
