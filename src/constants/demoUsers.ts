@@ -1,8 +1,8 @@
-// src/constants/demoUsers.ts - ✅ קובץ מעודכן עם משתמשי הדמו הנכונים ותוכניות מלאות
+// src/constants/demoUsers.ts - ✅ קובץ מתוקן עם משתמשי הדמו
 
 import { User } from "../types/user";
 import { Workout } from "../types/workout";
-import { Plan, PlanDay, PlanExercise } from "../types/plan";
+import { Plan } from "../types/plan";
 
 // ✅ משתמשי הדמו שלך - אבי כהן, מאיה לוי, יוני רוזן
 export const demoUsers: User[] = [
@@ -17,9 +17,40 @@ export const demoUsers: User[] = [
     createdAt: "2024-10-01T00:00:00Z",
     joinedAt: "2024-10-01T00:00:00Z",
     stats: {
+      // שדות חובה
       workoutsCount: 45,
+      totalDuration: 3375, // 45 workouts * 75 min average
       totalWeightLifted: 85000,
+      totalCaloriesBurned: 13500,
+      totalSets: 810,
+      totalReps: 8100,
       streakDays: 12,
+      longestStreak: 15,
+      weeklyAverage: 4,
+      monthlyWorkouts: 16,
+      yearlyWorkouts: 45,
+      lastWorkoutDate: new Date(
+        Date.now() - 1 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+
+      // הישגים
+      achievementsUnlocked: 8,
+      personalRecordsCount: 3,
+      plansCompleted: 2,
+      challengesCompleted: 1,
+
+      // דירוגים
+      averageWorkoutRating: 4.5,
+      totalWorkoutRatings: 40,
+
+      // חלוקה לפי קבוצות שרירים
+      muscleGroupDistribution: {
+        חזה: 25,
+        גב: 25,
+        רגליים: 20,
+        כתפיים: 15,
+        זרועות: 15,
+      },
     },
   },
   {
@@ -29,13 +60,44 @@ export const demoUsers: User[] = [
     age: 32,
     isGuest: false,
     experience: "advanced",
-    goals: ["weight_loss", "endurance", "muscle_definition"],
+    goals: ["weight_loss", "endurance"],
     createdAt: "2024-09-15T00:00:00Z",
     joinedAt: "2024-09-15T00:00:00Z",
     stats: {
+      // שדות חובה
       workoutsCount: 78,
+      totalDuration: 3510, // 78 workouts * 45 min average
       totalWeightLifted: 95000,
+      totalCaloriesBurned: 23400,
+      totalSets: 1248,
+      totalReps: 15600,
       streakDays: 23,
+      longestStreak: 30,
+      weeklyAverage: 6,
+      monthlyWorkouts: 24,
+      yearlyWorkouts: 78,
+      lastWorkoutDate: new Date(
+        Date.now() - 1 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+
+      // הישגים
+      achievementsUnlocked: 15,
+      personalRecordsCount: 5,
+      plansCompleted: 3,
+      challengesCompleted: 4,
+
+      // דירוגים
+      averageWorkoutRating: 4.8,
+      totalWorkoutRatings: 75,
+
+      // חלוקה לפי קבוצות שרירים
+      muscleGroupDistribution: {
+        "כל הגוף": 40,
+        רגליים: 25,
+        ליבה: 20,
+        חזה: 10,
+        גב: 5,
+      },
     },
   },
   {
@@ -49,9 +111,39 @@ export const demoUsers: User[] = [
     createdAt: "2024-11-01T00:00:00Z",
     joinedAt: "2024-11-01T00:00:00Z",
     stats: {
+      // שדות חובה
       workoutsCount: 15,
+      totalDuration: 375, // 15 workouts * 25 min average
       totalWeightLifted: 18000,
+      totalCaloriesBurned: 3000,
+      totalSets: 135,
+      totalReps: 1350,
       streakDays: 3,
+      longestStreak: 5,
+      weeklyAverage: 2,
+      monthlyWorkouts: 8,
+      yearlyWorkouts: 15,
+      lastWorkoutDate: new Date(
+        Date.now() - 2 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+
+      // הישגים
+      achievementsUnlocked: 2,
+      personalRecordsCount: 1,
+      plansCompleted: 0,
+      challengesCompleted: 0,
+
+      // דירוגים
+      averageWorkoutRating: 4.0,
+      totalWorkoutRatings: 12,
+
+      // חלוקה לפי קבוצות שרירים
+      muscleGroupDistribution: {
+        "כל הגוף": 50,
+        רגליים: 20,
+        חזה: 15,
+        גב: 15,
+      },
     },
   },
 ];
@@ -646,57 +738,53 @@ export const getDemoWorkoutHistory = (userId: string): Workout[] => {
       {
         id: "workout-avi-1",
         name: "Push Day - חזה וכתפיים",
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
         duration: 75,
         exercises: [],
         rating: 5,
-        results: {
-          totalWeight: 3800,
-          completedSets: 18,
-          totalSets: 18,
-        },
+        userId: "demo-user-avi",
+        totalSets: 18,
+        completedSets: 18,
+        totalWeight: 3800,
         notes: "אימון מצוין! הרגשתי חזק היום",
       },
       {
         id: "workout-avi-2",
         name: "Pull Day - גב ויד קדמית",
-        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         duration: 70,
         exercises: [],
         rating: 4,
-        results: {
-          totalWeight: 4200,
-          completedSets: 16,
-          totalSets: 18,
-        },
+        userId: "demo-user-avi",
+        totalSets: 18,
+        completedSets: 16,
+        totalWeight: 4200,
         notes: "קשה במתח, אבל המשכתי",
       },
       {
         id: "workout-avi-3",
         name: "Leg Day - רגליים מלא",
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         duration: 80,
         exercises: [],
         rating: 5,
-        results: {
-          totalWeight: 4800,
-          completedSets: 20,
-          totalSets: 20,
-        },
+        userId: "demo-user-avi",
+        totalSets: 20,
+        completedSets: 20,
+        totalWeight: 4800,
         notes: "יום רגליים קשה אבל מספק!",
       },
       {
         id: "workout-avi-4",
         name: "Push Day - חזרה",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         duration: 65,
         exercises: [],
         rating: 4,
-        results: {
-          totalWeight: 3600,
-          completedSets: 16,
-          totalSets: 18,
-        },
+        userId: "demo-user-avi",
+        totalSets: 18,
+        completedSets: 16,
+        totalWeight: 3600,
       },
     ],
 
@@ -704,57 +792,53 @@ export const getDemoWorkoutHistory = (userId: string): Workout[] => {
       {
         id: "workout-maya-1",
         name: "HIIT חלק עליון",
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
         duration: 45,
         exercises: [],
         rating: 5,
-        results: {
-          totalWeight: 1600,
-          completedSets: 16,
-          totalSets: 16,
-        },
+        userId: "demo-user-maya",
+        totalSets: 16,
+        completedSets: 16,
+        totalWeight: 1600,
         notes: "אימון אינטנסיבי ומצוין! הרגשתי בכושר",
       },
       {
         id: "workout-maya-2",
         name: "כוח רגליים",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
         duration: 50,
         exercises: [],
         rating: 4,
-        results: {
-          totalWeight: 2200,
-          completedSets: 17,
-          totalSets: 17,
-        },
+        userId: "demo-user-maya",
+        totalSets: 17,
+        completedSets: 17,
+        totalWeight: 2200,
         notes: "הרגליים עבדו קשה היום",
       },
       {
         id: "workout-maya-3",
         name: "מעגל כל הגוף",
-        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
         duration: 40,
         exercises: [],
         rating: 5,
-        results: {
-          totalWeight: 1400,
-          completedSets: 13,
-          totalSets: 13,
-        },
+        userId: "demo-user-maya",
+        totalSets: 13,
+        completedSets: 13,
+        totalWeight: 1400,
         notes: "מעגל מהיר ויעיל!",
       },
       {
         id: "workout-maya-4",
         name: "HIIT חלק עליון",
-        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
         duration: 45,
         exercises: [],
         rating: 4,
-        results: {
-          totalWeight: 1500,
-          completedSets: 15,
-          totalSets: 16,
-        },
+        userId: "demo-user-maya",
+        totalSets: 16,
+        completedSets: 15,
+        totalWeight: 1500,
       },
     ],
 
@@ -762,43 +846,40 @@ export const getDemoWorkoutHistory = (userId: string): Workout[] => {
       {
         id: "workout-yoni-1",
         name: "בסיסי חלק עליון",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
         duration: 30,
         exercises: [],
         rating: 4,
-        results: {
-          totalWeight: 800,
-          completedSets: 8,
-          totalSets: 10,
-        },
+        userId: "demo-user-yoni",
+        totalSets: 10,
+        completedSets: 8,
+        totalWeight: 800,
         notes: "התחלה טובה! קצת קשה אבל מרגיש טוב",
       },
       {
         id: "workout-yoni-2",
         name: "בסיסי רגליים",
-        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
         duration: 25,
         exercises: [],
         rating: 3,
-        results: {
-          totalWeight: 400,
-          completedSets: 7,
-          totalSets: 10,
-        },
+        userId: "demo-user-yoni",
+        totalSets: 10,
+        completedSets: 7,
+        totalWeight: 400,
         notes: "קשה עדיין, אבל משתפר",
       },
       {
         id: "workout-yoni-3",
         name: "גמישות ושיקום",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         duration: 20,
         exercises: [],
         rating: 5,
-        results: {
-          totalWeight: 0,
-          completedSets: 9,
-          totalSets: 9,
-        },
+        userId: "demo-user-yoni",
+        totalSets: 9,
+        completedSets: 9,
+        totalWeight: 0,
         notes: "אימון מתיחות נעים ומרגיע",
       },
     ],
@@ -828,7 +909,7 @@ export const getDemoUserStats = (userId: string) => {
   const workouts = getDemoWorkoutHistory(userId);
   const totalDuration = workouts.reduce((sum, w) => sum + (w.duration || 0), 0);
   const totalVolume = workouts.reduce(
-    (sum, w) => sum + (w.results?.totalWeight || 0),
+    (sum, w) => sum + (w.totalWeight || 0),
     0
   );
   const averageRating =
@@ -851,7 +932,7 @@ export const getDemoUserStats = (userId: string) => {
 
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         return workoutDate > weekAgo;
-      } catch (error) {
+      } catch {
         console.warn("Invalid date in workout:", w.date);
         return false;
       }
