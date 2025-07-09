@@ -1,10 +1,7 @@
 // src/components/ui/index.ts
-export { Button } from "./Button";
-export { Input } from "./Input";
 export { Typography } from "./Typography";
 export { Badge } from "./Badge";
 export { IconButton } from "./IconButton";
-export { LoadingSkeleton } from "./LoadingSkeleton";
 export { ProgressBar } from "./ProgressBar";
 export { Spacer } from "./Spacer";
 export { Divider } from "./Divider";

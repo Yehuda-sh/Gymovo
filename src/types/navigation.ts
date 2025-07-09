@@ -27,7 +27,7 @@ export type RootStackParamList = {
 
   // ✅ מסכים ראשיים
   Main: { screen?: string };
-  SelectPlan: undefined;
+  // ❌ הסרתי: SelectPlan: undefined;
   SelectWorkoutDay: { planId: string };
   WorkoutSummary: { workoutData: any };
   ExerciseDetails: { exerciseId: string };

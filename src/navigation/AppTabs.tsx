@@ -6,7 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import DashboardScreen from "../screens/dashboard/DashboardScreen";
+import HomeScreen from "../screens/home/HomeScreen";
 import PlansScreen from "../screens/plans/PlansScreen";
 import GuestProfileScreen from "../screens/profile/GuestProfileScreen";
 import ProfileScreen from "../screens/profile/ProfileScreen";
@@ -106,7 +106,7 @@ const AppTabs = () => {
 
       <Tab.Screen
         name="Home"
-        component={DashboardScreen}
+        component={HomeScreen}
         options={{
           // TODO: בעתיד, להוסיף תג עם מספר עדכונים, למשל 'tabBarBadge: 3'
           tabBarAccessibilityLabel: "מסך הבית", // שדרוג נגישות
