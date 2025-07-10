@@ -25,8 +25,8 @@ import {
 // Components
 import Button from "../../components/common/Button";
 import {
-  StatsGridSkeleton,
-  PlanCardSkeleton,
+  CardSkeleton,
+  TextSkeleton,
 } from "../../components/common/LoadingSkeleton";
 import { Dialog } from "../../components/common/Dialog";
 
@@ -445,9 +445,9 @@ const StartWorkoutScreen = () => {
     return (
       <View style={styles.container}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <StatsGridSkeleton />
-          <PlanCardSkeleton />
-          <PlanCardSkeleton />
+          <TextSkeleton lines={2} style={{ marginBottom: 16 }} />
+          <CardSkeleton style={{ marginBottom: 16, height: 120 }} />
+          <CardSkeleton style={{ marginBottom: 16, height: 120 }} />
         </Animated.View>
       </View>
     );
