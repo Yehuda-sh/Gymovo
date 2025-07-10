@@ -42,9 +42,19 @@ export const mayaLevi: DemoUserData = {
     plansCompleted: 3,
     challengesCompleted: 4,
 
+    // התקדמות פיזית מרשימה
+    strengthGain: 8, // 8% עלייה במשקלים (דגש על סיבולת)
+    muscleGain: 1.5, // 1.5 ק"ג שרירים
+    fatLoss: 8.2, // 8.2 ק"ג שומן (מטרה עיקרית)
+    enduranceImprovement: 35, // 35% שיפור בסיבולת
+
     // דירוגים גבוהים
     averageWorkoutRating: 4.8,
     totalWorkoutRatings: 75,
+
+    // יעדים מתקדמים
+    goalsAchieved: 4,
+    goalsInProgress: 2,
 
     // התפלגות קבוצות שרירים - דגש על כל הגוף ופונקציונליות
     muscleGroupDistribution: {

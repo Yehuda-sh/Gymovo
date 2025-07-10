@@ -12,25 +12,46 @@
  * - utils/: פונקציות עזר וחיפוש
  */
 
-// 📂 נתוני משתמשים - ייצוא ישיר לתאימות לאחור
-export { demoUsers } from "./data";
-export type { DemoUserData } from "./data";
+// 📂 נתוני משתמשים - import לפני שימוש
+import { demoUsers } from "./data";
+import type { DemoUserData } from "./data";
 
-// 📋 תוכניות אימון - פונקציה מרכזית + ייצוא נוסף
-export { getDemoPlanForUser } from "./plans";
-export type { DemoPlanConfig } from "./plans";
+// 📋 תוכניות אימון - import לפני שימוש
+import { getDemoPlanForUser } from "./plans";
+import type { DemoPlanConfig } from "./plans";
 
-// 🏋️ היסטוריית אימונים - פונקציה מרכזית + ייצוא נוסף
-export { getDemoWorkoutHistory } from "./workouts";
-export type { DemoWorkoutData } from "./workouts";
+// 🏋️ היסטוריית אימונים - import לפני שימוש
+import { getDemoWorkoutHistory } from "./workouts";
+import type { DemoWorkoutData } from "./workouts";
 
-// 🛠️ כלי עזר - פונקציות עזר מרכזיות
-export {
+// 🛠️ כלי עזר - import לפני שימוש
+import {
   getDemoUserById,
   getDemoUserByEmail,
   isDemoUser,
   getDemoUserStats,
 } from "./utils";
+
+// Re-export everything for backward compatibility
+export {
+  // נתוני משתמשים - ייצוא ישיר לתאימות לאחור
+  demoUsers,
+  type DemoUserData,
+
+  // תוכניות אימון - פונקציה מרכזית + ייצוא נוסף
+  getDemoPlanForUser,
+  type DemoPlanConfig,
+
+  // היסטוריית אימונים - פונקציה מרכזית + ייצוא נוסף
+  getDemoWorkoutHistory,
+  type DemoWorkoutData,
+
+  // כלי עזר - פונקציות עזר מרכזיות
+  getDemoUserById,
+  getDemoUserByEmail,
+  isDemoUser,
+  getDemoUserStats,
+};
 
 // 🎯 ייצוא מודולים מלאים למתפתחים מתקדמים
 export * as DemoData from "./data";

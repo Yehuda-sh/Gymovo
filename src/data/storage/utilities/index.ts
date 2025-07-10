@@ -264,7 +264,7 @@ export async function generateSystemReport(): Promise<string> {
 
   return [
     "📊 Gymovo Storage System Report",
-    "=" * 40,
+    "=".repeat(40),
     `📅 Generated: ${new Date().toISOString()}`,
     "",
     "📊 Storage Usage:",

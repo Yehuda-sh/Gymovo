@@ -8,7 +8,7 @@
  */
 
 // 🔧 תשתית ליבה - retry, שגיאות, ניטור, ולידציה
-export {
+import {
   // Retry mechanism
   withRetry,
   RETRY_CONFIG,
@@ -47,7 +47,7 @@ export {
 } from "./storage/core";
 
 // 📋 ניהול תוכניות אימון
-export {
+import {
   getPlansByUserId,
   savePlan,
   deletePlan,
@@ -57,7 +57,7 @@ export {
 } from "./storage/plans";
 
 // 🏋️ ניהול אימונים והיסטוריה
-export {
+import {
   // Basic CRUD operations
   getWorkoutHistory,
   saveWorkoutToHistory,
@@ -89,7 +89,7 @@ export {
 } from "./storage/workouts";
 
 // 🛠️ כלי עזר ותחזוקה
-export {
+import {
   getStorageUsage,
   clearUserData,
   clearAllData,
@@ -98,6 +98,71 @@ export {
   validateDataIntegrity,
   generateSystemReport,
 } from "./storage/utilities";
+
+// Re-export everything for backward compatibility
+export {
+  // Core infrastructure
+  withRetry,
+  RETRY_CONFIG,
+  STORAGE_CONFIG,
+  StorageError,
+  isRetryable,
+  safeExecute,
+  getStorageStats,
+  resetStorageStats,
+  updateStorageStats,
+  validatePlan,
+  validateWorkout,
+  validateStatsData,
+  cleanAndValidate,
+  StorageKeys,
+  getUserStorageKeys,
+  compressData,
+  decompressData,
+  formatDataSize,
+  smartOptimize,
+  createStorageCore,
+  type StorageCore,
+  type StorageStats,
+
+  // Plans management
+  getPlansByUserId,
+  savePlan,
+  deletePlan,
+  searchPlans,
+  getPlanStatistics,
+  clearAllPlans,
+
+  // Workouts management
+  getWorkoutHistory,
+  saveWorkoutToHistory,
+  deleteWorkoutFromHistory,
+  updateWorkoutInHistory,
+  clearWorkoutHistory,
+  getWorkoutStatistics,
+  getAdvancedWorkoutStatistics,
+  getExerciseStatistics,
+  type WorkoutStatistics,
+  searchWorkouts,
+  findWorkoutsByExercise,
+  findWorkoutsByDateRange,
+  findWorkoutsByRating,
+  exportWorkoutHistory,
+  exportWorkoutSummary,
+  importWorkoutHistory,
+  importNewWorkoutsOnly,
+  createWorkoutOperations,
+  type WorkoutOperations,
+
+  // System utilities
+  getStorageUsage,
+  clearUserData,
+  clearAllData,
+  findUsersWithData,
+  getUsersStorageReport,
+  validateDataIntegrity,
+  generateSystemReport,
+};
 
 /**
  * 🎯 Interface מאוחד לכל מערכת האחסון

@@ -42,9 +42,19 @@ export const yoniRozen: DemoUserData = {
     plansCompleted: 0,
     challengesCompleted: 0,
 
+    // התקדמות פיזית ראשונית
+    strengthGain: 12, // 12% עלייה במשקלים (התחלה מרשימה)
+    muscleGain: 1.8, // 1.8 ק"ג שרירים
+    fatLoss: 2.3, // 2.3 ק"ג שומן
+    enduranceImprovement: 25, // 25% שיפור בסיבולת
+
     // דירוגים טובים למתחיל
     averageWorkoutRating: 4.0,
     totalWorkoutRatings: 12,
+
+    // יעדים מתחילים
+    goalsAchieved: 1,
+    goalsInProgress: 2,
 
     // התפלגות קבוצות שרירים - דגש על כל הגוף ויסודות
     muscleGroupDistribution: {

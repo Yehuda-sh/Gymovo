@@ -92,7 +92,7 @@ export function generatePerformanceReport(): string {
 
   return [
     "📊 Storage Performance Report",
-    "=" * 35,
+    "=".repeat(35),
     `📈 Total Operations: ${detailed.operations}`,
     `✅ Successes: ${detailed.successes} (${detailed.successRate.toFixed(1)}%)`,
     `❌ Failures: ${detailed.failures} (${detailed.failureRate.toFixed(1)}%)`,

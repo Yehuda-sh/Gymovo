@@ -2,7 +2,7 @@
 // 🏋️ מודול אימונים מרכזי - ייצוא כל הפונקציונליות
 
 // History - פעולות CRUD בסיסיות
-export {
+import {
   getWorkoutHistory,
   saveWorkoutToHistory,
   deleteWorkoutFromHistory,
@@ -12,15 +12,15 @@ export {
 } from "./history";
 
 // Statistics - סטטיסטיקות ואנליטיקס
-export type { WorkoutStatistics } from "./statistics";
-export {
+import type { WorkoutStatistics } from "./statistics";
+import {
   getWorkoutStatistics,
   getAdvancedWorkoutStatistics,
   getExerciseStatistics,
 } from "./statistics";
 
 // Search - חיפוש מתקדם
-export {
+import {
   searchWorkouts,
   findWorkoutsByExercise,
   findWorkoutsByDateRange,
@@ -28,10 +28,41 @@ export {
 } from "./search";
 
 // Export - יצוא נתונים
-export { exportWorkoutHistory, exportWorkoutSummary } from "./export";
+import { exportWorkoutHistory, exportWorkoutSummary } from "./export";
 
 // Import - יבוא נתונים
-export { importWorkoutHistory, importNewWorkoutsOnly } from "./import";
+import { importWorkoutHistory, importNewWorkoutsOnly } from "./import";
+
+// Re-export everything for external use
+export {
+  // History
+  getWorkoutHistory,
+  saveWorkoutToHistory,
+  deleteWorkoutFromHistory,
+  updateWorkoutInHistory,
+  clearWorkoutHistory,
+  getWorkoutHistoryInfo,
+
+  // Statistics
+  type WorkoutStatistics,
+  getWorkoutStatistics,
+  getAdvancedWorkoutStatistics,
+  getExerciseStatistics,
+
+  // Search
+  searchWorkouts,
+  findWorkoutsByExercise,
+  findWorkoutsByDateRange,
+  findWorkoutsByRating,
+
+  // Export
+  exportWorkoutHistory,
+  exportWorkoutSummary,
+
+  // Import
+  importWorkoutHistory,
+  importNewWorkoutsOnly,
+};
 
 /**
  * 🎯 Interface מרכזי לכל פעולות האימונים

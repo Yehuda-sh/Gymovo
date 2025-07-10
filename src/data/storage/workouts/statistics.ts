@@ -269,7 +269,7 @@ export async function getAdvancedWorkoutStatistics(userId: string): Promise<{
         exerciseRecords.set(exercise.name, {
           maxWeight,
           maxVolume: totalVolume,
-          date: workout.completedAt || workout.date || "",
+          date: (workout.completedAt || workout.date || "").toString(),
         });
       }
     });
@@ -370,7 +370,7 @@ export async function getExerciseStatistics(
     );
 
     targetExercises.forEach((exercise) => {
-      const workoutDate = workout.completedAt || workout.date || "";
+      const workoutDate = (workout.completedAt || workout.date || "").toString();
       let workoutMaxWeight = 0;
       let workoutVolume = 0;
 

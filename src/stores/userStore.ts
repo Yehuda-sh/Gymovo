@@ -165,7 +165,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
       }
 
       return { success: false, error: "אימייל או סיסמה שגויים" };
-    } catch (error) {
+    } catch (_error) {
       return { success: false, error: "שגיאה בהתחברות" };
     }
   },

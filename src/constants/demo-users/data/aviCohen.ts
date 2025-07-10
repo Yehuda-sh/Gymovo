@@ -42,9 +42,19 @@ export const aviCohen: DemoUserData = {
     plansCompleted: 2,
     challengesCompleted: 1,
 
+    // התקדמות פיזית
+    strengthGain: 15, // 15% עלייה במשקלים
+    muscleGain: 3.2, // 3.2 ק"ג שרירים
+    fatLoss: 2.1, // 2.1 ק"ג שומן
+    enduranceImprovement: 8, // 8% שיפור בסיבולת
+
     // דירוגים ומשוב
     averageWorkoutRating: 4.5,
     totalWorkoutRatings: 40,
+
+    // יעדים
+    goalsAchieved: 2,
+    goalsInProgress: 1,
 
     // התפלגות קבוצות שרירים - מתמחה בחלוקה קלאסית
     muscleGroupDistribution: {

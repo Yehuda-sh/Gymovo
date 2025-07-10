@@ -2,10 +2,10 @@
 // 🔧 תשתית אחסון מרכזית - ייצוא מודולים
 
 // 🔄 מנגנון retry וקונפיגורציה
-export { withRetry, RETRY_CONFIG, STORAGE_CONFIG } from "./retry";
+import { withRetry, RETRY_CONFIG, STORAGE_CONFIG } from "./retry";
 
 // 🚨 ניהול שגיאות
-export {
+import {
   StorageError,
   isRetryable,
   safeExecute,
@@ -13,8 +13,8 @@ export {
 } from "./errors";
 
 // 📊 ניטור וסטטיסטיקות
-export type { StorageStats } from "./monitoring";
-export {
+import type { StorageStats } from "./monitoring";
+import {
   getStorageStats,
   resetStorageStats,
   updateStorageStats,
@@ -24,7 +24,7 @@ export {
 } from "./monitoring";
 
 // 🛡️ ולידציה של נתונים
-export {
+import {
   validatePlan,
   validateWorkout,
   validateStatsData,
@@ -33,7 +33,7 @@ export {
 } from "./validation";
 
 // 🔑 ניהול מפתחות אחסון
-export {
+import {
   StorageKeys,
   getUserStorageKeys,
   getCachePatterns,
@@ -44,7 +44,7 @@ export {
 } from "./keys";
 
 // 🗜️ דחיסה ואופטימיזציה
-export {
+import {
   compressData,
   decompressData,
   formatDataSize,
@@ -54,6 +54,55 @@ export {
   calculateOptimizationSavings,
   smartOptimize,
 } from "./compression";
+
+// Re-export everything for external use
+export {
+  // Retry mechanism
+  withRetry,
+  RETRY_CONFIG,
+  STORAGE_CONFIG,
+
+  // Error handling
+  StorageError,
+  isRetryable,
+  safeExecute,
+  createDeveloperErrorMessage,
+
+  // Monitoring & Statistics
+  type StorageStats,
+  getStorageStats,
+  resetStorageStats,
+  updateStorageStats,
+  getDetailedStats,
+  generatePerformanceReport,
+  checkPerformanceIssues,
+
+  // Data validation
+  validatePlan,
+  validateWorkout,
+  validateStatsData,
+  validateArray,
+  cleanAndValidate,
+
+  // Storage keys management
+  StorageKeys,
+  getUserStorageKeys,
+  getCachePatterns,
+  keyBelongsToUser,
+  parseStorageKey,
+  getExpiredKeys,
+  createVersionedKey,
+
+  // Data compression & optimization
+  compressData,
+  decompressData,
+  formatDataSize,
+  getStringSize,
+  analyzeDataSize,
+  optimizeJsonString,
+  calculateOptimizationSavings,
+  smartOptimize,
+};
 
 /**
  * 🎯 Interface מרכזי לכל הפעולות Core
