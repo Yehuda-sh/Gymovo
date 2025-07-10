@@ -431,3 +431,6 @@ const styles = StyleSheet.create({
     width: screenWidth,
   },
 });
+
+// Default export for compatibility
+export default Skeleton;

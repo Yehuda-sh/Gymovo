@@ -2,7 +2,7 @@
 // סטיילים עבור מסך פרופיל אורח
 
 import { StyleSheet } from "react-native";
-import { colors } from "../../../theme/colors";
+import { colors } from "../../../../theme/colors";
 
 export const guestProfileStyles = StyleSheet.create({
   container: {

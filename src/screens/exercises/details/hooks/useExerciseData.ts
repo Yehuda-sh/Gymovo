@@ -1,9 +1,9 @@
 // src/screens/exercises/details/hooks/useExerciseData.ts
 // Hook לניהול מצב ונתונים של התרגיל
 
-import { useExerciseDetails } from "../../../hooks/useExerciseDetails";
-import { useWorkoutStore } from "../../../stores/workoutStore";
-import { Toast } from "../../../components/common/Toast";
+import { useExerciseDetails } from "../../../../hooks/useExerciseDetails";
+import { useWorkoutStore } from "../../../../stores/workoutStore";
+import { Toast } from "../../../../components/common/Toast";
 import { ExerciseDataHook } from "../types";
 
 export const useExerciseData = (
@@ -26,7 +26,7 @@ export const useExerciseData = (
   };
 
   return {
-    exercise,
+    exercise: exercise || null,
     isLoading,
     isError,
     handleAddToWorkout,

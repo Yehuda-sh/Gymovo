@@ -7,7 +7,7 @@ import { QuizAnimations } from "../types";
 const { width } = Dimensions.get("window");
 
 // Custom hook לניהול אנימציות מעבר בין שאלות
-export const useQuizAnimations = (): QuizAnimations => {
+const useQuizAnimations = (): QuizAnimations => {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 

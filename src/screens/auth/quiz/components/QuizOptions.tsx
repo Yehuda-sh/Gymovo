@@ -1,44 +1,36 @@
-// src/screens/auth/quiz/components/QuizOptions.tsx - רשימת האפשרויות
+// src/screens/auth/quiz/components/QuizOptions.tsx - רשימת אפשרויות מתאנמות
 
 import React from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { QuizOptionsProps } from "../types";
 import QuizOptionCard from "./QuizOptionCard";
 
-// רכיב רשימת האפשרויות עם scroll חלק
-export const QuizOptions: React.FC<QuizOptionsProps> = ({
+// רכיב רשימת אפשרויות עם אנימציות
+const QuizOptions: React.FC<QuizOptionsProps> = ({
   options,
-  selectedOptions,
-  multiSelect,
+  selectedValue,
   onSelect,
+  disabled,
 }) => {
   return (
-    <ScrollView
-      style={styles.optionsContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {options.map((option, index) => {
-        const isSelected = selectedOptions.some(
-          (o) => o.value === option.value
-        );
-
-        return (
-          <QuizOptionCard
-            key={index}
-            option={option}
-            isSelected={isSelected}
-            onPress={() => onSelect(option)}
-          />
-        );
-      })}
-    </ScrollView>
+    <View style={styles.optionsContainer}>
+      {options.map((option, index) => (
+        <QuizOptionCard
+          key={option.value}
+          option={option}
+          isSelected={selectedValue === option.value}
+          onPress={() => onSelect(option.value)}
+          disabled={disabled}
+          animationDelay={index * 100}
+        />
+      ))}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   optionsContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
+    gap: 12,
   },
 });
 

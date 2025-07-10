@@ -17,7 +17,7 @@ interface QuizLogicProps {
 }
 
 // Custom hook לניהול לוגיקת השאלון
-export const useQuizLogic = ({
+const useQuizLogic = ({
   questions,
   onComplete,
   userId,

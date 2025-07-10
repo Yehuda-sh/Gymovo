@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { QuizHeaderProps, quizColors } from "../types";
 
 // רכיב Header עם progress bar מואנם וניווט
-export const QuizHeader: React.FC<QuizHeaderProps> = ({
+const QuizHeader: React.FC<QuizHeaderProps> = ({
   progress,
   currentIndex,
   totalQuestions,

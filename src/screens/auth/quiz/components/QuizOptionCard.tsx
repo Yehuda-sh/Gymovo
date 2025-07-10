@@ -5,8 +5,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { QuizOptionCardProps, quizColors } from "../types";
 
-// רכיב כרטיס אפשרות עם אנימציות hover ובחירה
-export const QuizOptionCard: React.FC<QuizOptionCardProps> = ({
+// רכיב כרטיס אפשרות יחיד עם אנימציה
+const QuizOptionCard: React.FC<QuizOptionCardProps> = ({
   option,
   isSelected,
   onPress,

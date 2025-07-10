@@ -6,8 +6,8 @@ import { colors } from "../../../../theme/colors";
 import { LoadingScreenProps } from "../types";
 
 // רכיב מסך טעינה עם הודעה מותאמת
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
-  text = "יוצר תוכנית מותאמת אישית..." 
+const LoadingScreen: React.FC<LoadingScreenProps> = ({
+  text = "יוצר תוכנית מותאמת אישית...",
 }) => {
   return (
     <View style={styles.loadingContainer}>
@@ -33,4 +33,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoadingScreen; 
+export default LoadingScreen;

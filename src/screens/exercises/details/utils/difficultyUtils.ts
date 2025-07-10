@@ -1,7 +1,7 @@
 // src/screens/exercises/details/utils/difficultyUtils.ts
 // פונקציות עזר לרמת קושי
 
-import { colors } from "../../../theme/colors";
+import { colors } from "../../../../theme/colors";
 import { DifficultyUtils } from "../types";
 
 // פונקציה לקבלת צבע לפי רמת קושי

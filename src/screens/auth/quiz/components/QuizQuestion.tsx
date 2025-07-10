@@ -5,12 +5,8 @@ import { View, Text, StyleSheet, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { QuizQuestionProps, quizColors } from "../types";
 
-// רכיב תצוגת השאלה עם אנימציות חלקות
-export const QuizQuestion: React.FC<QuizQuestionProps> = ({
-  question,
-  fadeAnim,
-  slideAnim,
-}) => {
+// רכיב שאלה עם אנימציות
+const QuizQuestion: React.FC<QuizQuestionProps> = ({ question, fadeAnim }) => {
   return (
     <Animated.View
       style={[

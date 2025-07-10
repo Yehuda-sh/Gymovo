@@ -63,6 +63,9 @@ const PlaceholderScreen = ({ title }: { title: string }) => (
   </View>
 );
 
+// Fixed: Create a proper component for CreatePlan to avoid inline function warning
+const CreatePlanScreen = () => <PlaceholderScreen title="יצירת תוכנית" />;
+
 // 🚀 יצירת navigators
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<AppTabsParamList>();
@@ -352,7 +355,7 @@ const AppStack = () => {
 
       <Stack.Screen
         name="CreatePlan"
-        component={() => <PlaceholderScreen title="יצירת תוכנית" />}
+        component={CreatePlanScreen}
         options={{
           title: "צור תוכנית",
         }}

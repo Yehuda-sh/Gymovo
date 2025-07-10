@@ -5,8 +5,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { QuizNavigationProps, quizColors } from "../types";
 
-// רכיב כפתור ניווט עם סטטוס משתנה
-export const QuizNavigation: React.FC<QuizNavigationProps> = ({
+// רכיב ניווט עם כפתורי הבא/קודם
+const QuizNavigation: React.FC<QuizNavigationProps> = ({
   isLastQuestion,
   hasSelectedOptions,
   onNext,
