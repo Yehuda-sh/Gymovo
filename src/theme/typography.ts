@@ -1,47 +1,44 @@
-// src/theme/typography.ts - Enhanced Typography System לשלב 2
+// src/theme/typography.ts
+// מערכת טיפוגרפיה מתוקנת עם תמיכת RTL מלאה
 
 import { Platform, TextStyle } from "react-native";
 
-// 🎨 Font Families - מותאמות לכושר וטכנולוגיה
-export const fontFamilies = {
-  // English Fonts
+/**
+ * Font Families - מותאמות לעברית
+ */
+const fontFamilies = {
+  // Primary fonts with Hebrew support
   primary: Platform.select({
-    ios: "SF Pro Display", // Modern, athletic
-    android: "Roboto",
+    ios: "System", // SF Pro supports Hebrew well
+    android: "sans-serif",
     default: "System",
   }),
 
   secondary: Platform.select({
-    ios: "SF Pro Text",
-    android: "Roboto",
+    ios: "System",
+    android: "sans-serif",
     default: "System",
   }),
 
-  // טכנולוגיים לנתונים
+  // Monospace for numbers
   mono: Platform.select({
-    ios: "SF Mono",
-    android: "Roboto Mono",
-    default: "Courier New",
+    ios: "Menlo",
+    android: "monospace",
+    default: "monospace",
   }),
 
-  // מודרני לכותרות גדולות
-  display: Platform.select({
-    ios: "SF Pro Display",
-    android: "Roboto Condensed",
-    default: "System",
-  }),
-
-  // Hebrew Fonts
+  // Hebrew optimized
   hebrew: Platform.select({
-    ios: "SF Pro Display", // תומך עברית מצוין
-    android: "Noto Sans Hebrew",
+    ios: "System",
+    android: "sans-serif",
     default: "System",
   }),
 };
 
-// 📏 Font Scales - responsive וגמיש
-export const fontScale = {
-  // Base sizes
+/**
+ * Font Scales
+ */
+const fontScale = {
   xs: 10,
   sm: 12,
   base: 14,
@@ -57,8 +54,10 @@ export const fontScale = {
   massive: 64,
 } as const;
 
-// ⚖️ Font Weights
-export const fontWeights = {
+/**
+ * Font Weights
+ */
+const fontWeights = {
   thin: "100" as const,
   extraLight: "200" as const,
   light: "300" as const,
@@ -70,19 +69,23 @@ export const fontWeights = {
   black: "900" as const,
 } as const;
 
-// 📐 Line Heights - המבוססים על golden ratio
-export const lineHeights = {
+/**
+ * Line Heights
+ */
+const lineHeights = {
   none: 1,
-  tight: 1.1,
-  snug: 1.2,
-  normal: 1.4,
-  relaxed: 1.6,
-  loose: 1.8,
-  extraLoose: 2.0,
+  tight: 1.2,
+  snug: 1.3,
+  normal: 1.5,
+  relaxed: 1.625,
+  loose: 1.75,
+  extraLoose: 2,
 } as const;
 
-// 🔤 Letter Spacing
-export const letterSpacing = {
+/**
+ * Letter Spacing
+ */
+const letterSpacing = {
   tighter: -1.5,
   tight: -0.5,
   normal: 0,
@@ -92,15 +95,26 @@ export const letterSpacing = {
   extraWide: 3,
 } as const;
 
-// 🎯 Typography Styles - מערכת שלמה לכל השימושים
-export const typography = {
-  // 📱 Headers - לכותרות ראשיות
+/**
+ * Base RTL text style
+ */
+const rtlBase: TextStyle = {
+  textAlign: "right",
+  writingDirection: "rtl",
+};
+
+/**
+ * Typography Styles - כל הסגנונות עם RTL
+ */
+const typography = {
+  // Display & Headers - RTL aligned
   display: {
-    fontFamily: fontFamilies.display,
+    fontFamily: fontFamilies.primary,
     fontSize: fontScale.hero,
     fontWeight: fontWeights.black,
     lineHeight: fontScale.hero * lineHeights.tight,
     letterSpacing: letterSpacing.tight,
+    ...rtlBase,
   } as TextStyle,
 
   h1: {
@@ -109,6 +123,7 @@ export const typography = {
     fontWeight: fontWeights.bold,
     lineHeight: fontScale["5xl"] * lineHeights.snug,
     letterSpacing: letterSpacing.tight,
+    ...rtlBase,
   } as TextStyle,
 
   h2: {
@@ -116,7 +131,7 @@ export const typography = {
     fontSize: fontScale["4xl"],
     fontWeight: fontWeights.bold,
     lineHeight: fontScale["4xl"] * lineHeights.snug,
-    letterSpacing: letterSpacing.normal,
+    ...rtlBase,
   } as TextStyle,
 
   h3: {
@@ -124,6 +139,7 @@ export const typography = {
     fontSize: fontScale["3xl"],
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale["3xl"] * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   h4: {
@@ -131,6 +147,7 @@ export const typography = {
     fontSize: fontScale["2xl"],
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale["2xl"] * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   h5: {
@@ -138,6 +155,7 @@ export const typography = {
     fontSize: fontScale.xl,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.xl * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   h6: {
@@ -145,14 +163,16 @@ export const typography = {
     fontSize: fontScale.lg,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.lg * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
-  // 📄 Body Text - לתוכן רגיל
+  // Body Text - RTL aligned
   body: {
     fontFamily: fontFamilies.secondary,
     fontSize: fontScale.base,
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.base * lineHeights.relaxed,
+    ...rtlBase,
   } as TextStyle,
 
   bodyLarge: {
@@ -160,6 +180,7 @@ export const typography = {
     fontSize: fontScale.md,
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.md * lineHeights.relaxed,
+    ...rtlBase,
   } as TextStyle,
 
   bodySmall: {
@@ -167,15 +188,17 @@ export const typography = {
     fontSize: fontScale.sm,
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.sm * lineHeights.relaxed,
+    ...rtlBase,
   } as TextStyle,
 
-  // 🎯 Special Text Types
+  // Special Text Types - RTL aligned
   subtitle: {
     fontFamily: fontFamilies.secondary,
     fontSize: fontScale.md,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.md * lineHeights.normal,
     letterSpacing: letterSpacing.wide,
+    ...rtlBase,
   } as TextStyle,
 
   caption: {
@@ -184,6 +207,7 @@ export const typography = {
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.xs * lineHeights.normal,
     letterSpacing: letterSpacing.wide,
+    ...rtlBase,
   } as TextStyle,
 
   overline: {
@@ -193,16 +217,17 @@ export const typography = {
     lineHeight: fontScale.xs * lineHeights.normal,
     letterSpacing: letterSpacing.extraWide,
     textTransform: "uppercase" as const,
+    ...rtlBase,
   } as TextStyle,
 
-  // 🔘 Button Text - לכפתורים
+  // Buttons - Center aligned for buttons
   buttonLarge: {
     fontFamily: fontFamilies.primary,
     fontSize: fontScale.lg,
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale.lg * lineHeights.none,
     letterSpacing: letterSpacing.wide,
-    textTransform: "uppercase" as const,
+    textAlign: "center", // Buttons are usually centered
   } as TextStyle,
 
   buttonMedium: {
@@ -211,6 +236,7 @@ export const typography = {
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale.base * lineHeights.none,
     letterSpacing: letterSpacing.wide,
+    textAlign: "center",
   } as TextStyle,
 
   buttonSmall: {
@@ -219,15 +245,17 @@ export const typography = {
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.sm * lineHeights.none,
     letterSpacing: letterSpacing.normal,
+    textAlign: "center",
   } as TextStyle,
 
-  // 🔢 Data & Numbers - לסטטיסטיקות ונתונים
+  // Data & Numbers - Can be LTR for numbers
   dataLarge: {
     fontFamily: fontFamilies.mono,
     fontSize: fontScale["4xl"],
     fontWeight: fontWeights.bold,
     lineHeight: fontScale["4xl"] * lineHeights.tight,
     letterSpacing: letterSpacing.tight,
+    textAlign: "center", // Numbers usually centered
   } as TextStyle,
 
   dataMedium: {
@@ -235,6 +263,7 @@ export const typography = {
     fontSize: fontScale["2xl"],
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale["2xl"] * lineHeights.snug,
+    textAlign: "center",
   } as TextStyle,
 
   dataSmall: {
@@ -242,15 +271,17 @@ export const typography = {
     fontSize: fontScale.md,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.md * lineHeights.normal,
+    textAlign: "center",
   } as TextStyle,
 
-  // 🏷️ Labels & Form Elements
+  // Form Elements - RTL aligned
   label: {
     fontFamily: fontFamilies.secondary,
     fontSize: fontScale.sm,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.sm * lineHeights.normal,
     letterSpacing: letterSpacing.normal,
+    ...rtlBase,
   } as TextStyle,
 
   input: {
@@ -258,6 +289,7 @@ export const typography = {
     fontSize: fontScale.md,
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.md * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   placeholder: {
@@ -266,15 +298,16 @@ export const typography = {
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.md * lineHeights.normal,
     opacity: 0.6,
+    ...rtlBase,
   } as TextStyle,
 
-  // 🇮🇱 Hebrew Specific Styles
+  // Hebrew Specific - Already RTL
   hebrewDisplay: {
     fontFamily: fontFamilies.hebrew,
     fontSize: fontScale["4xl"],
     fontWeight: fontWeights.bold,
     lineHeight: fontScale["4xl"] * lineHeights.snug,
-    textAlign: "right" as const,
+    ...rtlBase,
   } as TextStyle,
 
   hebrewTitle: {
@@ -282,7 +315,7 @@ export const typography = {
     fontSize: fontScale["2xl"],
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale["2xl"] * lineHeights.normal,
-    textAlign: "right" as const,
+    ...rtlBase,
   } as TextStyle,
 
   hebrewBody: {
@@ -290,7 +323,7 @@ export const typography = {
     fontSize: fontScale.md,
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.md * lineHeights.relaxed,
-    textAlign: "right" as const,
+    ...rtlBase,
   } as TextStyle,
 
   hebrewCaption: {
@@ -298,17 +331,17 @@ export const typography = {
     fontSize: fontScale.sm,
     fontWeight: fontWeights.regular,
     lineHeight: fontScale.sm * lineHeights.normal,
-    textAlign: "right" as const,
+    ...rtlBase,
   } as TextStyle,
 
-  // 🎮 App-Specific Styles לGymovo
+  // App Specific - Workout styles
   workoutTitle: {
     fontFamily: fontFamilies.primary,
     fontSize: fontScale["2xl"],
     fontWeight: fontWeights.bold,
     lineHeight: fontScale["2xl"] * lineHeights.tight,
     letterSpacing: letterSpacing.wide,
-    textTransform: "uppercase" as const,
+    ...rtlBase,
   } as TextStyle,
 
   exerciseName: {
@@ -316,6 +349,7 @@ export const typography = {
     fontSize: fontScale.lg,
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale.lg * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   setNumber: {
@@ -323,6 +357,7 @@ export const typography = {
     fontSize: fontScale.xl,
     fontWeight: fontWeights.bold,
     lineHeight: fontScale.xl * lineHeights.none,
+    textAlign: "center",
   } as TextStyle,
 
   repCount: {
@@ -330,6 +365,7 @@ export const typography = {
     fontSize: fontScale.lg,
     fontWeight: fontWeights.semibold,
     lineHeight: fontScale.lg * lineHeights.none,
+    textAlign: "center",
   } as TextStyle,
 
   weight: {
@@ -337,6 +373,7 @@ export const typography = {
     fontSize: fontScale.md,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.md * lineHeights.none,
+    textAlign: "center",
   } as TextStyle,
 
   timer: {
@@ -345,9 +382,10 @@ export const typography = {
     fontWeight: fontWeights.bold,
     lineHeight: fontScale["3xl"] * lineHeights.none,
     letterSpacing: letterSpacing.wide,
+    textAlign: "center",
   } as TextStyle,
 
-  // 📊 Stats & Progress
+  // Stats
   statsTitle: {
     fontFamily: fontFamilies.primary,
     fontSize: fontScale.lg,
@@ -355,6 +393,7 @@ export const typography = {
     lineHeight: fontScale.lg * lineHeights.normal,
     letterSpacing: letterSpacing.wide,
     textTransform: "uppercase" as const,
+    ...rtlBase,
   } as TextStyle,
 
   statsValue: {
@@ -362,6 +401,7 @@ export const typography = {
     fontSize: fontScale["3xl"],
     fontWeight: fontWeights.extraBold,
     lineHeight: fontScale["3xl"] * lineHeights.tight,
+    textAlign: "center",
   } as TextStyle,
 
   statsUnit: {
@@ -371,14 +411,16 @@ export const typography = {
     lineHeight: fontScale.sm * lineHeights.normal,
     letterSpacing: letterSpacing.wider,
     textTransform: "uppercase" as const,
+    ...rtlBase,
   } as TextStyle,
 
-  // 🚨 Status & Feedback
+  // Status messages
   success: {
     fontFamily: fontFamilies.secondary,
     fontSize: fontScale.base,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.base * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   error: {
@@ -386,6 +428,7 @@ export const typography = {
     fontSize: fontScale.base,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.base * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 
   warning: {
@@ -393,24 +436,30 @@ export const typography = {
     fontSize: fontScale.base,
     fontWeight: fontWeights.medium,
     lineHeight: fontScale.base * lineHeights.normal,
+    ...rtlBase,
   } as TextStyle,
 };
 
-// 🛠️ Typography Utilities
-export const typographyUtils = {
-  // פונקציה ליצירת text style מותאם
+/**
+ * Typography Utilities
+ */
+const typographyUtils = {
+  // Create text style with RTL
   createTextStyle: (
     size: keyof typeof fontScale,
     weight: keyof typeof fontWeights,
-    family: keyof typeof fontFamilies = "secondary"
+    family: keyof typeof fontFamilies = "secondary",
+    align: "left" | "center" | "right" = "right"
   ): TextStyle => ({
     fontFamily: fontFamilies[family],
     fontSize: fontScale[size],
     fontWeight: fontWeights[weight],
     lineHeight: fontScale[size] * lineHeights.normal,
+    textAlign: align,
+    writingDirection: "rtl",
   }),
 
-  // פונקציה לטקסט עברי מותאם
+  // Create Hebrew text style
   createHebrewStyle: (
     size: keyof typeof fontScale,
     weight: keyof typeof fontWeights
@@ -420,24 +469,32 @@ export const typographyUtils = {
     fontWeight: fontWeights[weight],
     lineHeight: fontScale[size] * lineHeights.relaxed,
     textAlign: "right",
+    writingDirection: "rtl",
   }),
 
-  // רספונסיבי text size
+  // Get responsive size
   getResponsiveSize: (baseSize: number, scaleFactor: number = 1): number => {
     return baseSize * scaleFactor;
   },
+
+  // Apply RTL to any text style
+  applyRTL: (style: TextStyle): TextStyle => ({
+    ...style,
+    textAlign: "right",
+    writingDirection: "rtl",
+  }),
+
+  // Center text (for buttons, numbers, etc)
+  centerText: (style: TextStyle): TextStyle => ({
+    ...style,
+    textAlign: "center",
+  }),
 };
 
-// 🎨 Custom Fonts Configuration
-export const customFonts = {
-  // כאשר תוסיף פונטים מותאמים מ-Sora
-  // 'GymovoBold': require('../../assets/fonts/GymovoBold.ttf'),
-  // 'GymovoDisplay': require('../../assets/fonts/GymovoDisplay.ttf'),
-  // 'HebrewSport': require('../../assets/fonts/HebrewSport.ttf'),
-};
-
-// 📱 Text Variants לשימוש קל ברכיבים
-export const textVariants = {
+/**
+ * Text Variants
+ */
+const textVariants = {
   // Headers
   display: typography.display,
   h1: typography.h1,
@@ -481,7 +538,9 @@ export const textVariants = {
 
 export type TextVariant = keyof typeof textVariants;
 
-// ✅ Default Export
+/**
+ * Default Export
+ */
 export default {
   fontFamilies,
   fontScale,
@@ -491,5 +550,16 @@ export default {
   typography,
   textVariants,
   typographyUtils,
-  customFonts,
+};
+
+// Named exports for easier use
+export {
+  fontFamilies,
+  fontScale,
+  fontWeights,
+  lineHeights,
+  letterSpacing,
+  typography,
+  textVariants,
+  typographyUtils,
 };

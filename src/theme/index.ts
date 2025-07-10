@@ -1,8 +1,29 @@
 // src/theme/index.ts
+// מערכת Theme מרכזית עם תמיכת RTL מלאה
+
 import { colors } from "./colors";
+import {
+  fontFamilies,
+  fontScale,
+  fontWeights,
+  lineHeights,
+  letterSpacing,
+  typography,
+  textVariants,
+  typographyUtils,
+} from "./typography";
+import {
+  rtlConfig,
+  rtlText,
+  rtlView,
+  rtlSafe,
+  rtlStyles,
+  rtlIcons,
+  rtlHelpers,
+} from "./rtl";
 
 export const theme = {
-  // 🎨 צבעים - מיובאים מקובץ colors.ts
+  // 🎨 צבעים
   colors,
 
   // 📏 ספייסינג
@@ -15,53 +36,8 @@ export const theme = {
     xxl: 48,
   },
 
-  // 🔤 טיפוגרפיה
-  typography: {
-    h1: {
-      fontSize: 32,
-      fontWeight: "700" as const,
-      lineHeight: 40,
-      letterSpacing: -0.5,
-      fontFamily: "System",
-    },
-    h2: {
-      fontSize: 24,
-      fontWeight: "600" as const,
-      lineHeight: 32,
-      fontFamily: "System",
-    },
-    h3: {
-      fontSize: 20,
-      fontWeight: "600" as const,
-      lineHeight: 28,
-      fontFamily: "System",
-    },
-    body: {
-      fontSize: 16,
-      fontWeight: "400" as const,
-      lineHeight: 24,
-      fontFamily: "System",
-    },
-    caption: {
-      fontSize: 14,
-      fontWeight: "400" as const,
-      lineHeight: 20,
-      fontFamily: "System",
-    },
-    small: {
-      fontSize: 12,
-      fontWeight: "400" as const,
-      lineHeight: 16,
-      fontFamily: "System",
-    },
-    button: {
-      fontSize: 16,
-      fontWeight: "600" as const,
-      lineHeight: 24,
-      letterSpacing: 0.5,
-      fontFamily: "System",
-    },
-  },
+  // 🔤 טיפוגרפיה - עם RTL
+  typography: typography,
 
   // 🎨 צללים
   shadows: {
@@ -112,13 +88,40 @@ export const theme = {
     verySlow: 800,
   },
 
-  // 📱 Breakpoints (לעתיד)
+  // 📱 Breakpoints
   breakpoints: {
     sm: 320,
     md: 768,
     lg: 1024,
     xl: 1280,
   },
+
+  // 🔄 RTL Utilities
+  rtl: rtlStyles,
+  rtlHelpers: rtlHelpers,
+  rtlIcons: rtlIcons,
+};
+
+// Export typography utilities separately
+export {
+  fontFamilies,
+  fontScale,
+  fontWeights,
+  lineHeights,
+  letterSpacing,
+  textVariants,
+  typographyUtils,
+};
+
+// Export RTL utilities separately
+export {
+  rtlConfig,
+  rtlText,
+  rtlView,
+  rtlSafe,
+  rtlStyles,
+  rtlIcons,
+  rtlHelpers,
 };
 
 // TypeScript Types
@@ -129,3 +132,6 @@ export type Typography = keyof typeof theme.typography;
 export type Shadows = keyof typeof theme.shadows;
 export type BorderRadius = keyof typeof theme.borderRadius;
 export type AnimationDuration = keyof typeof theme.animation;
+
+// Default export
+export default theme;
