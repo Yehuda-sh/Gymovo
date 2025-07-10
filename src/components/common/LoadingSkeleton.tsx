@@ -1,436 +1,283 @@
-// src/components/common/LoadingSkeleton.tsx - ✅ תיקון הייצוא ושיפורים
-
+// src/components/LoadingSkeleton.tsx - ✅ תוקן לייצוא named
 import React, { useEffect, useRef } from "react";
 import {
-  Animated,
-  Dimensions,
-  StyleSheet,
   View,
+  StyleSheet,
+  Animated,
   ViewStyle,
+  Dimensions,
 } from "react-native";
-import { colors } from "../../theme/colors";
+import { LinearGradient } from "expo-linear-gradient";
 
-const { width: screenWidth } = Dimensions.get("window");
-
-interface SkeletonProps {
+// 🎨 Props לרכיב LoadingSkeleton
+interface LoadingSkeletonProps {
   width?: number | string;
   height?: number | string;
   borderRadius?: number;
   style?: ViewStyle;
+  variant?: "text" | "circular" | "rectangular" | "button";
+  lines?: number; // למספר שורות טקסט
+  spacing?: number; // רווח בין שורות
+  duration?: number; // משך האנימציה
+  direction?: "ltr" | "rtl";
+  intensity?: "light" | "medium" | "dark";
 }
 
-// 🦴 רכיב Skeleton בסיסי
-export const Skeleton: React.FC<SkeletonProps> = ({
-  width = "100%",
-  height = 20,
-  borderRadius = 4,
+// 📐 ממדי מסך
+const { width: screenWidth } = Dimensions.get("window");
+
+// 🎭 וריאנטים מוכנים
+const SKELETON_VARIANTS = {
+  text: {
+    height: 16,
+    borderRadius: 4,
+    width: "100%",
+  },
+  circular: {
+    borderRadius: 9999,
+  },
+  rectangular: {
+    borderRadius: 8,
+  },
+  button: {
+    height: 48,
+    borderRadius: 12,
+    width: "100%",
+  },
+};
+
+// 🎨 עוצמות אנימציה
+const INTENSITY_COLORS = {
+  light: {
+    base: "#f0f0f0",
+    highlight: "#e0e0e0",
+  },
+  medium: {
+    base: "#e0e0e0",
+    highlight: "#c0c0c0",
+  },
+  dark: {
+    base: "#2a2a2a",
+    highlight: "#3a3a3a",
+  },
+};
+
+// ✅ שינוי לייצוא named במקום default
+export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
+  width,
+  height,
+  borderRadius,
   style,
+  variant = "rectangular",
+  lines = 1,
+  spacing = 8,
+  duration = 1500,
+  direction = "rtl",
+  intensity = "dark",
 }) => {
   const animatedValue = useRef(new Animated.Value(0)).current;
 
+  // הגדרת סגנון לפי וריאנט
+  const variantStyle = SKELETON_VARIANTS[variant] || {};
+  const colors = INTENSITY_COLORS[intensity];
+
+  // אנימציית הבהוב
   useEffect(() => {
-    Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(animatedValue, {
           toValue: 1,
-          duration: 1000,
+          duration: duration / 2,
           useNativeDriver: true,
         }),
         Animated.timing(animatedValue, {
           toValue: 0,
-          duration: 1000,
+          duration: duration / 2,
           useNativeDriver: true,
         }),
       ])
-    ).start();
-  }, [animatedValue]);
+    );
+    animation.start();
 
+    return () => animation.stop();
+  }, [animatedValue, duration]);
+
+  // חישוב opacity לאנימציה
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
+    outputRange: [1, 0.6],
   });
 
-  // פתרון נקי יותר - יצירת style object נפרד
-  const animatedStyle = {
-    opacity,
-    width,
-    height,
-    borderRadius,
-  } as any; // נאלצים להשתמש ב-any בגלל מגבלות של Animated types
+  // יצירת שורות מרובות לטקסט
+  const renderLines = () => {
+    return Array.from({ length: lines }).map((_, index) => {
+      const isLastLine = index === lines - 1;
+      const lineWidth = isLastLine ? "70%" : "100%";
 
-  return <Animated.View style={[styles.skeleton, animatedStyle, style]} />;
-};
-
-// 🏋️ כרטיס אימון Skeleton
-export const WorkoutCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
-  style,
-}) => (
-  <View style={[styles.card, style]}>
-    <View style={styles.cardHeader}>
-      <Skeleton width="60%" height={20} borderRadius={4} />
-      <Skeleton width="30%" height={16} borderRadius={4} />
-    </View>
-    <View style={styles.cardBody}>
-      <Skeleton width="100%" height={14} borderRadius={4} />
-      <Skeleton
-        width="85%"
-        height={14}
-        borderRadius={4}
-        style={{ marginTop: 8 }}
-      />
-    </View>
-    <View style={styles.cardFooter}>
-      <Skeleton width={60} height={24} borderRadius={12} />
-      <Skeleton width={60} height={24} borderRadius={12} />
-      <Skeleton width={60} height={24} borderRadius={12} />
-    </View>
-  </View>
-);
-
-// 📋 כרטיס תוכנית Skeleton
-export const PlanCardSkeleton: React.FC<{ style?: ViewStyle }> = ({
-  style,
-}) => (
-  <View style={[styles.planCard, style]}>
-    <View style={styles.planHeader}>
-      <Skeleton width="70%" height={24} borderRadius={6} />
-      <Skeleton width={40} height={40} borderRadius={20} />
-    </View>
-    <Skeleton
-      width="100%"
-      height={60}
-      borderRadius={4}
-      style={{ marginVertical: 12 }}
-    />
-    <View style={styles.planTags}>
-      <Skeleton width={80} height={24} borderRadius={12} />
-      <Skeleton width={60} height={24} borderRadius={12} />
-      <Skeleton width={70} height={24} borderRadius={12} />
-    </View>
-  </View>
-);
-
-// 👤 פרופיל משתמש Skeleton
-export const UserProfileSkeleton: React.FC<{ style?: ViewStyle }> = ({
-  style,
-}) => (
-  <View style={[styles.profileContainer, style]}>
-    <Skeleton width={100} height={100} borderRadius={50} />
-    <Skeleton
-      width="60%"
-      height={24}
-      borderRadius={6}
-      style={{ marginTop: 16 }}
-    />
-    <Skeleton
-      width="40%"
-      height={16}
-      borderRadius={4}
-      style={{ marginTop: 8 }}
-    />
-    <View style={styles.profileStats}>
-      <View style={styles.statItem}>
-        <Skeleton width={50} height={32} borderRadius={4} />
-        <Skeleton width={60} height={14} borderRadius={4} />
-      </View>
-      <View style={styles.statItem}>
-        <Skeleton width={50} height={32} borderRadius={4} />
-        <Skeleton width={60} height={14} borderRadius={4} />
-      </View>
-      <View style={styles.statItem}>
-        <Skeleton width={50} height={32} borderRadius={4} />
-        <Skeleton width={60} height={14} borderRadius={4} />
-      </View>
-    </View>
-  </View>
-);
-
-// 📊 גריד סטטיסטיקות Skeleton
-export const StatsGridSkeleton: React.FC<{
-  columns?: number;
-  style?: ViewStyle;
-}> = ({ columns = 3, style }) => (
-  <View style={[styles.statsGrid, style]}>
-    {Array.from({ length: columns }).map((_, index) => (
-      <View key={index} style={styles.statCard}>
-        <Skeleton width={32} height={32} borderRadius={16} />
-        <Skeleton
-          width="80%"
-          height={20}
-          borderRadius={4}
-          style={{ marginTop: 8 }}
-        />
-        <Skeleton
-          width="60%"
-          height={14}
-          borderRadius={4}
-          style={{ marginTop: 4 }}
-        />
-      </View>
-    ))}
-  </View>
-);
-
-// 📝 רשימת תרגילים Skeleton
-export const ExerciseListSkeleton: React.FC<{
-  count?: number;
-  style?: ViewStyle;
-}> = ({ count = 5, style }) => (
-  <View style={style}>
-    {Array.from({ length: count }).map((_, index) => (
-      <View key={index} style={styles.exerciseItem}>
-        <Skeleton width={50} height={50} borderRadius={8} />
-        <View style={styles.exerciseInfo}>
-          <Skeleton width="70%" height={18} borderRadius={4} />
-          <Skeleton
-            width="50%"
-            height={14}
-            borderRadius={4}
-            style={{ marginTop: 6 }}
+      return (
+        <View
+          key={index}
+          style={[
+            styles.line,
+            {
+              width: lineWidth,
+              marginBottom: index < lines - 1 ? spacing : 0,
+              alignSelf: direction === "rtl" ? "flex-end" : "flex-start",
+            },
+          ]}
+        >
+          <SkeletonItem
+            width={lineWidth}
+            height={height}
+            borderRadius={borderRadius}
+            variantStyle={variantStyle}
+            opacity={opacity}
+            colors={colors}
           />
         </View>
-      </View>
-    ))}
-  </View>
-);
+      );
+    });
+  };
 
-// 🏠 דשבורד ראשי Skeleton
-export const HomeDashboardSkeleton: React.FC<{ style?: ViewStyle }> = ({
-  style,
-}) => (
-  <View style={[styles.homeDashboard, style]}>
-    {/* Header */}
-    <View style={styles.homeHeader}>
-      <View>
-        <Skeleton width="40%" height={24} borderRadius={6} />
-        <Skeleton
-          width="30%"
-          height={16}
-          borderRadius={4}
-          style={{ marginTop: 8 }}
-        />
-      </View>
-      <Skeleton width={40} height={40} borderRadius={20} />
-    </View>
-
-    {/* Quick Stats */}
-    <StatsGridSkeleton columns={3} style={{ marginVertical: 20 }} />
-
-    {/* Recent Workouts */}
-    <View style={styles.homeSection}>
-      <Skeleton
-        width="50%"
-        height={20}
-        borderRadius={6}
-        style={{ marginBottom: 16 }}
+  // רכיב בודד
+  if (lines === 1) {
+    return (
+      <SkeletonItem
+        width={width}
+        height={height}
+        borderRadius={borderRadius}
+        style={style}
+        variantStyle={variantStyle}
+        opacity={opacity}
+        colors={colors}
       />
-      <WorkoutCardSkeleton style={{ marginBottom: 12 }} />
-      <WorkoutCardSkeleton style={{ marginBottom: 12 }} />
-    </View>
+    );
+  }
 
-    {/* Recommended Plan */}
-    <View style={styles.homeSection}>
-      <Skeleton
-        width="60%"
-        height={20}
-        borderRadius={6}
-        style={{ marginBottom: 16 }}
-      />
-      <PlanCardSkeleton />
-    </View>
-  </View>
-);
+  // מספר שורות
+  return <View style={style}>{renderLines()}</View>;
+};
 
-// 📋 מסך תוכניות Skeleton
-export const PlansScreenSkeleton: React.FC<{ style?: ViewStyle }> = ({
+// 🎯 רכיב פנימי לשלד בודד
+interface SkeletonItemProps {
+  width?: number | string;
+  height?: number | string;
+  borderRadius?: number;
+  style?: ViewStyle;
+  variantStyle?: any;
+  opacity: Animated.AnimatedInterpolation<number>;
+  colors: {
+    base: string;
+    highlight: string;
+  };
+}
+
+const SkeletonItem: React.FC<SkeletonItemProps> = ({
+  width,
+  height,
+  borderRadius,
   style,
-}) => (
-  <View style={[styles.plansScreen, style]}>
-    <View style={styles.screenHeader}>
-      <Skeleton width="40%" height={28} borderRadius={8} />
-      <Skeleton width={32} height={32} borderRadius={16} />
-    </View>
-
-    <View style={styles.filterBar}>
-      <Skeleton width={80} height={32} borderRadius={16} />
-      <Skeleton width={60} height={32} borderRadius={16} />
-      <Skeleton width={40} height={32} borderRadius={16} />
-    </View>
-
-    <View style={styles.plansList}>
-      {[1, 2, 3, 4].map((index) => (
-        <PlanCardSkeleton key={index} style={{ marginBottom: 16 }} />
-      ))}
-    </View>
-  </View>
-);
-
-// ✨ אפקט Shimmer מתקדם
-export const ShimmerEffect: React.FC<{
-  children: React.ReactNode;
-  visible?: boolean;
-  duration?: number;
-}> = ({ children, visible = true, duration = 1500 }) => {
-  const translateX = useRef(new Animated.Value(-screenWidth)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.loop(
-        Animated.timing(translateX, {
-          toValue: screenWidth,
-          duration,
-          useNativeDriver: true,
-        })
-      ).start();
-    }
-  }, [visible, translateX, duration]);
-
-  if (!visible) return <>{children}</>;
-
+  variantStyle,
+  opacity,
+  colors,
+}) => {
   return (
-    <View style={styles.shimmerContainer}>
-      {children}
-      <Animated.View
-        style={[
-          styles.shimmerOverlay,
-          {
-            transform: [{ translateX }],
-          },
-        ]}
+    <Animated.View
+      style={[
+        styles.skeleton,
+        variantStyle,
+        {
+          width: width || variantStyle.width,
+          height: height || variantStyle.height,
+          borderRadius: borderRadius ?? variantStyle.borderRadius ?? 8,
+          opacity,
+        },
+        style,
+      ]}
+    >
+      <LinearGradient
+        colors={[colors.base, colors.highlight, colors.base]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFillObject}
       />
-    </View>
+    </Animated.View>
   );
 };
 
+// 🎨 Skeleton Presets - קומפוננטים מוכנים
+export const TextSkeleton: React.FC<Partial<LoadingSkeletonProps>> = (
+  props
+) => <LoadingSkeleton variant="text" {...props} />;
+
+export const CircularSkeleton: React.FC<Partial<LoadingSkeletonProps>> = (
+  props
+) => <LoadingSkeleton variant="circular" {...props} />;
+
+export const ButtonSkeleton: React.FC<Partial<LoadingSkeletonProps>> = (
+  props
+) => <LoadingSkeleton variant="button" {...props} />;
+
+export const CardSkeleton: React.FC<Partial<LoadingSkeletonProps>> = (
+  props
+) => (
+  <View style={styles.card}>
+    <LoadingSkeleton height={200} borderRadius={12} />
+    <View style={styles.cardContent}>
+      <LoadingSkeleton variant="text" lines={2} spacing={12} />
+      <View style={styles.cardFooter}>
+        <LoadingSkeleton width={60} height={24} borderRadius={12} />
+        <LoadingSkeleton width={80} height={24} borderRadius={12} />
+      </View>
+    </View>
+  </View>
+);
+
+export const ListItemSkeleton: React.FC<Partial<LoadingSkeletonProps>> = (
+  props
+) => (
+  <View style={styles.listItem}>
+    <LoadingSkeleton variant="circular" width={48} height={48} />
+    <View style={styles.listItemContent}>
+      <LoadingSkeleton variant="text" width="60%" />
+      <LoadingSkeleton variant="text" width="40%" height={12} />
+    </View>
+  </View>
+);
+
+// 🎨 סטיילים
 const styles = StyleSheet.create({
   skeleton: {
-    backgroundColor: colors.surface,
+    backgroundColor: "transparent",
+    overflow: "hidden",
+  },
+  line: {
+    overflow: "hidden",
   },
   card: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    marginVertical: 8,
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  cardBody: {
-    marginBottom: 16,
+  cardContent: {
+    marginTop: 12,
   },
   cardFooter: {
     flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  planCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  planHeader: {
-    flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    marginTop: 16,
   },
-  planTags: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  profileContainer: {
-    alignItems: "center",
-    padding: 20,
-  },
-  profileStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    marginTop: 24,
-  },
-  statItem: {
-    alignItems: "center",
-    gap: 4,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: 100,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-  },
-  exerciseItem: {
+  listItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: "#1a1a1a",
     borderRadius: 8,
-    marginBottom: 8,
+    marginVertical: 4,
   },
-  exerciseInfo: {
+  listItemContent: {
     flex: 1,
     marginLeft: 12,
   },
-  homeDashboard: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 16,
-  },
-  homeHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  homeSection: {
-    marginBottom: 24,
-  },
-  plansScreen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 16,
-  },
-  screenHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  filterBar: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
-  plansList: {
-    flex: 1,
-  },
-  shimmerContainer: {
-    overflow: "hidden",
-  },
-  shimmerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    width: screenWidth,
-  },
 });
-
-// Default export for compatibility
-export default Skeleton;
