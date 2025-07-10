@@ -122,16 +122,13 @@ const DialogModal: React.FC<{
     ]).start();
 
     // טיפול בלחצן חזרה
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => {
-        if (config.cancelable !== false) {
-          handleClose();
-          return true;
-        }
-        return false;
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (config.cancelable !== false) {
+        handleClose();
+        return true;
       }
-    );
+      return false;
+    });
 
     return () => backHandler.remove();
   }, []);
@@ -155,7 +152,7 @@ const DialogModal: React.FC<{
 
   const getIcon = () => {
     if (config.icon) return config.icon;
-
+    
     switch (config.type) {
       case "success":
         return "checkmark-circle";
@@ -193,7 +190,7 @@ const DialogModal: React.FC<{
           activeOpacity={1}
           onPress={config.cancelable !== false ? handleClose : undefined}
         />
-
+        
         <Animated.View
           style={[
             styles.dialog,
@@ -205,12 +202,7 @@ const DialogModal: React.FC<{
         >
           {/* כותרת עם אייקון */}
           <View style={styles.header}>
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: getIconColor() + "20" },
-              ]}
-            >
+            <View style={[styles.iconContainer, { backgroundColor: getIconColor() + "20" }]}>
               <Ionicons
                 name={getIcon() as any}
                 size={32}
@@ -393,13 +385,13 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.white,
+    color: colors.text,
   },
   cancelText: {
     color: colors.text,
   },
   destructiveText: {
-    color: colors.white,
+    color: colors.text,
   },
 });
 

@@ -28,6 +28,7 @@ import {
   StatsGridSkeleton,
   PlanCardSkeleton,
 } from "../../components/common/LoadingSkeleton";
+import { Dialog } from "../../components/common/Dialog";
 
 // Data & Services
 import { getPlansByUserId } from "../../data/storage";
@@ -286,7 +287,7 @@ const StartWorkoutScreen = () => {
       }
     } catch (error) {
       console.error("Failed to load plans:", error);
-      Alert.alert("שגיאה", "לא ניתן לטעון את התוכניות");
+      Dialog.error("שגיאה", "לא ניתן לטעון את התוכניות");
     } finally {
       setLoading(false);
     }
@@ -333,7 +334,7 @@ const StartWorkoutScreen = () => {
   // 🚀 התחלת אימון מעודכן
   const handleStartWorkout = useCallback(async () => {
     if (!selectedPlan) {
-      Alert.alert("בחר תוכנית", "עליך לבחור תוכנית אימון לפני שתתחיל");
+      Dialog.warning("בחר תוכנית", "עליך לבחור תוכנית אימון לפני שתתחיל");
       return;
     }
 
@@ -378,7 +379,7 @@ const StartWorkoutScreen = () => {
         } else if (selectedPlan.workouts && selectedPlan.workouts.length > 0) {
           startWorkout(selectedPlan.workouts[0], selectedPlan);
         } else {
-          Alert.alert("תוכנית ריקה", "התוכנית הנבחרת לא מכילה אימונים");
+          Dialog.error("תוכנית ריקה", "התוכנית הנבחרת לא מכילה אימונים");
           return;
         }
       }
@@ -387,7 +388,7 @@ const StartWorkoutScreen = () => {
       navigation.navigate("ActiveWorkout");
     } catch (error) {
       console.error("Failed to start workout:", error);
-      Alert.alert("שגיאה", "לא ניתן להתחיל את האימון");
+      Dialog.error("שגיאה", "לא ניתן להתחיל את האימון");
     }
   }, [selectedPlan, selectedDay, startWorkout, navigation]);
 

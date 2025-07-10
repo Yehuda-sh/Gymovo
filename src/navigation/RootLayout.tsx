@@ -11,6 +11,7 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 // 🛡️ רכיבי אבטחה
 import Toast from "react-native-toast-message";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
+import { DialogProvider } from "../components/common/Dialog";
 
 // 🎨 עיצוב ונושא
 import { colors } from "../theme/colors";
@@ -434,16 +435,18 @@ const RootLayout = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
-          {status === "loading" ? (
-            <SplashScreen />
-          ) : status === "authenticated" || status === "guest" ? (
-            <AppStack />
-          ) : (
-            <AuthStack />
-          )}
-          <Toast />
-        </NavigationContainer>
+        <DialogProvider>
+          <NavigationContainer>
+            {status === "loading" ? (
+              <SplashScreen />
+            ) : status === "authenticated" || status === "guest" ? (
+              <AppStack />
+            ) : (
+              <AuthStack />
+            )}
+            <Toast />
+          </NavigationContainer>
+        </DialogProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
