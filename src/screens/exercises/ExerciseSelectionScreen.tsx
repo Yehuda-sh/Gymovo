@@ -1,10 +1,16 @@
-// src/screens/exercises/ExerciseSelectionScreen.tsx - מסך בחירת תרגילים מתוקן
+// src/screens/exercises/ExerciseSelectionScreen.tsx - מסך בחירת תרגילים משודרג
 
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
 import {
   Alert,
   Animated,
@@ -15,7 +21,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
+import LinearGradient from "react-native-linear-gradient";
 
 // Components
 import Button from "../../components/common/Button";
@@ -26,12 +34,14 @@ import { RootStackParamList } from "../../types/navigation";
 import { Exercise } from "../../types/exercise";
 import { useWorkoutStore } from "../../stores/workoutStore";
 import { useExercises } from "../../hooks/useExercises";
+import { designSystem } from "../../theme/designSystem";
+
+const { width } = Dimensions.get("window");
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // ✅ פונקציית עזר לשקיפות צבעים
 const withOpacity = (color: string, opacity: number): string => {
-  // פשוט מחזיר צבע עם שקיפות בסיסית
   return (
     color +
     Math.round(opacity * 255)
@@ -40,99 +50,272 @@ const withOpacity = (color: string, opacity: number): string => {
   );
 };
 
-// קטגוריות שרירים
+// קטגוריות שרירים עם צבעים וגרדיאנטים
 const muscleGroups = [
-  { id: "all", name: "הכל", icon: "fitness-outline" },
-  { id: "חזה", name: "חזה", icon: "body-outline" },
-  { id: "גב", name: "גב", icon: "body-outline" },
-  { id: "כתפיים", name: "כתפיים", icon: "body-outline" },
-  { id: "זרועות", name: "זרועות", icon: "body-outline" },
-  { id: "רגליים", name: "רגליים", icon: "body-outline" },
-  { id: "ליבה", name: "ליבה", icon: "body-outline" },
+  {
+    id: "all",
+    name: "הכל",
+    icon: "view-grid",
+    color: designSystem.colors.primary.main,
+    gradient: designSystem.gradients.primary.colors,
+  },
+  {
+    id: "חזה",
+    name: "חזה",
+    icon: "shield",
+    color: designSystem.colors.accent.purple,
+    gradient: [
+      designSystem.colors.accent.purple,
+      designSystem.colors.accent.pink,
+    ],
+  },
+  {
+    id: "גב",
+    name: "גב",
+    icon: "arrow-expand-vertical",
+    color: designSystem.colors.secondary.main,
+    gradient: designSystem.gradients.secondary.colors,
+  },
+  {
+    id: "כתפיים",
+    name: "כתפיים",
+    icon: "body",
+    color: designSystem.colors.accent.orange,
+    gradient: [designSystem.colors.accent.orange, "#FF6B6B"],
+  },
+  {
+    id: "זרועות",
+    name: "זרועות",
+    icon: "arm-flex",
+    color: "#EC4899",
+    gradient: ["#EC4899", "#8B5CF6"],
+  },
+  {
+    id: "רגליים",
+    name: "רגליים",
+    icon: "human-handsdown",
+    color: "#10B981",
+    gradient: ["#10B981", "#059669"],
+  },
+  {
+    id: "ליבה",
+    name: "ליבה",
+    icon: "grid",
+    color: "#F59E0B",
+    gradient: ["#F59E0B", "#DC2626"],
+  },
 ] as const;
 
-// רכיב פילטר קטגוריות
+// רכיב פילטר קטגוריות משודרג
 const CategoryFilter = ({
   selectedCategory,
   onCategoryChange,
 }: {
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
-}) => (
-  <ScrollView
-    horizontal
-    showsHorizontalScrollIndicator={false}
-    style={styles.categoryContainer}
-    contentContainerStyle={styles.categoryContent}
-  >
-    {muscleGroups.map((group) => (
-      <TouchableOpacity
+}) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const renderCategory = (group: (typeof muscleGroups)[0], index: number) => {
+    const isSelected = selectedCategory === group.id;
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const rotateAnim = useRef(new Animated.Value(0)).current;
+
+    const handlePress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 0.9,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+        }).start();
+      });
+
+      onCategoryChange(group.id);
+    };
+
+    return (
+      <Animated.View
         key={group.id}
-        style={[
-          styles.categoryButton,
-          selectedCategory === group.id && styles.activeCategoryButton,
-        ]}
-        onPress={() => onCategoryChange(group.id)}
+        style={{
+          transform: [
+            { scale: scaleAnim },
+            {
+              rotate: rotateAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ["0deg", "360deg"],
+              }),
+            },
+          ],
+        }}
       >
-        <Ionicons
-          name={group.icon as any}
-          size={20}
-          color={
-            selectedCategory === group.id
-              ? colors.primary
-              : colors.textSecondary
-          }
-        />
-        <Text
+        <TouchableOpacity
+          onPress={handlePress}
           style={[
-            styles.categoryText,
-            selectedCategory === group.id && styles.activeCategoryText,
+            styles.categoryButton,
+            isSelected && styles.activeCategoryButton,
           ]}
         >
-          {group.name}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </ScrollView>
-);
+          {isSelected ? (
+            <LinearGradient
+              colors={group.gradient}
+              style={styles.categoryGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name={group.icon as any} size={24} color="#fff" />
+              <Text style={[styles.categoryText, styles.activeCategoryText]}>
+                {group.name}
+              </Text>
+            </LinearGradient>
+          ) : (
+            <>
+              <Ionicons
+                name={group.icon as any}
+                size={24}
+                color={group.color}
+              />
+              <Text style={styles.categoryText}>{group.name}</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
-// רכיב תרגיל בודד
+  return (
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryContainer}
+        contentContainerStyle={styles.categoryContent}
+      >
+        {muscleGroups.map((group, index) => renderCategory(group, index))}
+      </ScrollView>
+    </Animated.View>
+  );
+};
+
+// רכיב תרגיל משודרג
 const ExerciseItem = ({
   exercise,
   isSelected,
   onToggle,
+  index,
 }: {
   exercise: Exercise;
   isSelected: boolean;
-  onToggle: (exercise: Exercise) => void;
+  onToggle: () => void;
+  index: number;
 }) => {
-  const scaleAnim = useState(new Animated.Value(1))[0];
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handlePress = () => {
-    // אנימציה קצרה של לחיצה
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
         duration: 100,
         useNativeDriver: true,
       }),
-      Animated.timing(scaleAnim, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
-        duration: 100,
         useNativeDriver: true,
       }),
     ]).start();
 
-    onToggle(exercise);
+    onToggle();
+  };
+
+  const getDifficultyColor = () => {
+    switch (exercise.difficulty) {
+      case "beginner":
+        return designSystem.colors.secondary.main;
+      case "intermediate":
+        return designSystem.colors.accent.orange;
+      case "advanced":
+        return designSystem.colors.semantic.error;
+      default:
+        return designSystem.colors.primary.main;
+    }
+  };
+
+  const getDifficultyText = () => {
+    switch (exercise.difficulty) {
+      case "beginner":
+        return "מתחיל";
+      case "intermediate":
+        return "בינוני";
+      case "advanced":
+        return "מתקדם";
+      default:
+        return "";
+    }
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateX: slideAnim }, { scale: scaleAnim }],
+      }}
+    >
       <TouchableOpacity
         style={[styles.exerciseCard, isSelected && styles.selectedExerciseCard]}
         onPress={handlePress}
         activeOpacity={0.7}
       >
+        <View style={styles.exerciseIcon}>
+          <Ionicons
+            name="dumbbell"
+            size={24}
+            color={
+              isSelected
+                ? designSystem.colors.primary.main
+                : designSystem.colors.neutral.text.tertiary
+            }
+          />
+        </View>
+
         <View style={styles.exerciseInfo}>
           <Text style={styles.exerciseName}>{exercise.name}</Text>
 
@@ -142,63 +325,81 @@ const ExerciseItem = ({
             </Text>
           )}
 
-          {/* שרירים מעורבים */}
-          {exercise.targetMuscleGroups &&
-            exercise.targetMuscleGroups.length > 0 && (
-              <View style={styles.exerciseMuscles}>
-                {exercise.targetMuscleGroups
-                  .slice(0, 3)
-                  .map((muscle, index) => (
-                    <View key={index} style={styles.muscleTag}>
-                      <Text style={styles.muscleTagText}>{muscle}</Text>
-                    </View>
-                  ))}
-                {exercise.targetMuscleGroups.length > 3 && (
-                  <Text style={styles.muscleTagText}>
-                    +{exercise.targetMuscleGroups.length - 3}
-                  </Text>
-                )}
+          <View style={styles.exerciseTags}>
+            {/* Primary muscle tag */}
+            {exercise.targetMuscleGroups?.[0] && (
+              <View
+                style={[
+                  styles.tag,
+                  { backgroundColor: getDifficultyColor() + "20" },
+                ]}
+              >
+                <Text style={[styles.tagText, { color: getDifficultyColor() }]}>
+                  {exercise.targetMuscleGroups[0]}
+                </Text>
               </View>
             )}
 
-          {/* מידע נוסף */}
-          <View style={styles.exerciseMeta}>
-            <View style={styles.exerciseMetaItem}>
-              <Ionicons
-                name="barbell-outline"
-                size={14}
-                color={colors.textSecondary}
-              />
-              <Text style={styles.exerciseMetaText}>{exercise.category}</Text>
-            </View>
-
-            {exercise.difficulty && (
-              <View style={styles.exerciseMetaItem}>
+            {/* Equipment tag */}
+            {exercise.equipment && (
+              <View style={styles.tag}>
                 <Ionicons
-                  name="star-outline"
-                  size={14}
-                  color={colors.textSecondary}
+                  name="barbell"
+                  size={12}
+                  color={designSystem.colors.neutral.text.tertiary}
                 />
-                <Text style={styles.exerciseMetaText}>
-                  {exercise.difficulty === "beginner"
-                    ? "מתחיל"
-                    : exercise.difficulty === "intermediate"
-                    ? "בינוני"
-                    : "מתקדם"}
+                <Text style={styles.tagText}>{exercise.equipment}</Text>
+              </View>
+            )}
+
+            {/* Difficulty tag */}
+            {exercise.difficulty && (
+              <View
+                style={[
+                  styles.tag,
+                  { backgroundColor: getDifficultyColor() + "10" },
+                ]}
+              >
+                <Text style={[styles.tagText, { color: getDifficultyColor() }]}>
+                  {getDifficultyText()}
                 </Text>
               </View>
             )}
           </View>
+
+          {/* Secondary muscles */}
+          {exercise.targetMuscleGroups &&
+            exercise.targetMuscleGroups.length > 1 && (
+              <View style={styles.secondaryMuscles}>
+                <Text style={styles.secondaryLabel}>שרירים משניים:</Text>
+                <Text style={styles.secondaryText}>
+                  {exercise.targetMuscleGroups.slice(1).join(", ")}
+                </Text>
+              </View>
+            )}
         </View>
 
-        {/* אינדיקטור בחירה */}
+        {/* Selection indicator with animation */}
         <View style={styles.selectionIndicator}>
           {isSelected ? (
-            <Ionicons
-              name="checkmark-circle"
-              size={24}
-              color={colors.primary}
-            />
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    scale: scaleAnim.interpolate({
+                      inputRange: [0.98, 1],
+                      outputRange: [1.2, 1],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={28}
+                color={designSystem.colors.primary.main}
+              />
+            </Animated.View>
           ) : (
             <View style={styles.unselectedCircle} />
           )}
@@ -208,18 +409,35 @@ const ExerciseItem = ({
   );
 };
 
-// המסך הראשי
+// המסך הראשי משודרג
 const ExerciseSelectionScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { startCustomWorkout } = useWorkoutStore();
-
-  // שימוש ב-hook לשליפת תרגילים מה-API
   const { data: exercises, isLoading, isError } = useExercises();
 
   // State
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const searchAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(searchAnim, {
+        toValue: 1,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // סינון תרגילים
   const filteredExercises = useMemo(() => {
@@ -265,76 +483,138 @@ const ExerciseSelectionScreen = () => {
       }
     });
 
-    // Haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
-  // התחלת אימון מותאם
-  const handleStartCustomWorkout = async () => {
+  // התחלת אימון
+  const handleStartWorkout = () => {
     if (selectedExercises.length === 0) {
-      Alert.alert("שגיאה", "נא לבחור לפחות תרגיל אחד");
+      Alert.alert("שים לב", "יש לבחור לפחות תרגיל אחד");
       return;
     }
 
-    try {
-      await startCustomWorkout(selectedExercises);
-      navigation.navigate("ActiveWorkout");
-    } catch {
-      Alert.alert("שגיאה", "לא ניתן היה להתחיל את האימון");
-    }
+    const workoutExercises = selectedExercises.map((exercise) => ({
+      exerciseId: exercise.id,
+      sets: [],
+    }));
+
+    startCustomWorkout({
+      name: "אימון מותאם אישית",
+      exercises: workoutExercises,
+    });
+
+    navigation.navigate("ActiveWorkout");
   };
 
-  // מצב טעינה
+  const renderExercise = ({
+    item,
+    index,
+  }: {
+    item: Exercise;
+    index: number;
+  }) => (
+    <ExerciseItem
+      exercise={item}
+      isSelected={selectedExercises.some((e) => e.id === item.id)}
+      onToggle={() => toggleExercise(item)}
+      index={index}
+    />
+  );
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>טוען תרגילים...</Text>
+        <LinearGradient
+          colors={designSystem.gradients.dark.colors}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <Ionicons
+            name="barbell"
+            size={48}
+            color={designSystem.colors.primary.main}
+          />
+          <Text style={styles.loadingText}>טוען תרגילים...</Text>
+        </Animated.View>
       </View>
     );
   }
 
-  // מצב שגיאה
   if (isError) {
     return (
       <View style={styles.errorContainer}>
+        <LinearGradient
+          colors={designSystem.gradients.dark.colors}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Ionicons
+          name="alert-circle"
+          size={48}
+          color={designSystem.colors.semantic.error}
+        />
         <Text style={styles.errorText}>שגיאה בטעינת התרגילים</Text>
-        <Button title="חזור" onPress={() => navigation.goBack()} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={designSystem.gradients.dark.colors}
+      style={styles.container}
+    >
       {/* Header */}
-      <View style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="chevron-back" size={28} color={colors.text} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>בחירת תרגילים</Text>
 
-        <TouchableOpacity
-          style={styles.clearButton}
-          onPress={() => setSelectedExercises([])}
-        >
-          <Text style={styles.clearButtonText}>נקה</Text>
-        </TouchableOpacity>
-      </View>
+        {selectedExercises.length > 0 && (
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={() => setSelectedExercises([])}
+          >
+            <Text style={styles.clearButtonText}>נקה</Text>
+          </TouchableOpacity>
+        )}
+      </Animated.View>
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} />
+      {/* Search with animation */}
+      <Animated.View
+        style={[
+          styles.searchContainer,
+          {
+            transform: [{ scale: searchAnim }],
+          },
+        ]}
+      >
+        <Ionicons
+          name="search"
+          size={20}
+          color={designSystem.colors.neutral.text.tertiary}
+          style={styles.searchIcon}
+        />
         <TextInput
-          style={styles.searchInput}
-          placeholder="חיפוש תרגילים..."
-          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          placeholder="חיפוש תרגילים..."
+          placeholderTextColor={designSystem.colors.neutral.text.tertiary}
+          style={styles.searchInput}
         />
-      </View>
+        {searchQuery !== "" && (
+          <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={designSystem.colors.neutral.text.tertiary}
+            />
+          </TouchableOpacity>
+        )}
+      </Animated.View>
 
       {/* Categories */}
       <CategoryFilter
@@ -344,82 +624,115 @@ const ExerciseSelectionScreen = () => {
 
       {/* Selected Counter */}
       {selectedExercises.length > 0 && (
-        <View style={styles.selectedCounter}>
+        <Animated.View style={[styles.selectedCounter, { opacity: fadeAnim }]}>
           <Text style={styles.selectedCounterText}>
             נבחרו {selectedExercises.length} תרגילים
+          </Text>
+        </Animated.View>
+      )}
+
+      {/* Exercises List */}
+      {filteredExercises.length > 0 ? (
+        <FlatList
+          data={filteredExercises}
+          renderItem={renderExercise}
+          keyExtractor={(item) => item.id}
+          style={styles.exercisesList}
+          contentContainerStyle={styles.exercisesContent}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <View style={styles.emptyState}>
+          <Ionicons
+            name="search-outline"
+            size={64}
+            color={designSystem.colors.neutral.text.tertiary}
+          />
+          <Text style={styles.emptyTitle}>לא נמצאו תרגילים</Text>
+          <Text style={styles.emptyText}>
+            נסה לחפש משהו אחר או לשנות קטגוריה
           </Text>
         </View>
       )}
 
-      {/* Exercises List */}
-      <FlatList
-        style={styles.exercisesList}
-        contentContainerStyle={styles.exercisesContent}
-        data={filteredExercises}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ExerciseItem
-            exercise={item}
-            isSelected={selectedExercises.some((e) => e.id === item.id)}
-            onToggle={toggleExercise}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="search" size={64} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>לא נמצאו תרגילים</Text>
-            <Text style={styles.emptyText}>
-              נסה לשנות את הפילטרים או החיפוש
-            </Text>
-          </View>
-        }
+      {/* Bottom Section with gradient fade */}
+      <LinearGradient
+        colors={["transparent", designSystem.colors.background.primary]}
+        style={styles.bottomGradient}
+        pointerEvents="none"
       />
 
-      {/* Bottom Section */}
-      <View style={styles.bottomSection}>
-        <Button
-          title={`התחל אימון (${selectedExercises.length})`}
-          onPress={handleStartCustomWorkout}
-          disabled={selectedExercises.length === 0}
-          style={StyleSheet.flatten([
+      <Animated.View
+        style={[
+          styles.bottomSection,
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [50, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={[
             styles.startButton,
-            selectedExercises.length === 0 && { opacity: 0.5 },
-          ])}
-        />
-      </View>
-    </View>
+            selectedExercises.length === 0 && styles.startButtonDisabled,
+          ]}
+          onPress={handleStartWorkout}
+          disabled={selectedExercises.length === 0}
+        >
+          <LinearGradient
+            colors={
+              selectedExercises.length > 0
+                ? designSystem.gradients.primary.colors
+                : [
+                    designSystem.colors.neutral.border,
+                    designSystem.colors.neutral.border,
+                  ]
+            }
+            style={styles.startButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="play" size={20} color="#fff" />
+            <Text style={styles.startButtonText}>
+              התחל אימון ({selectedExercises.length})
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
   },
   loadingText: {
-    fontSize: 16,
-    color: colors.textSecondary,
     marginTop: 16,
+    fontSize: 16,
+    color: designSystem.colors.neutral.text.secondary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
-    padding: 20,
   },
   errorText: {
+    marginTop: 16,
     fontSize: 16,
-    color: colors.danger,
-    textAlign: "center",
-    marginBottom: 20,
+    color: designSystem.colors.semantic.error,
   },
 
   // Header
@@ -428,25 +741,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 60,
+    paddingBottom: 16,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    color: colors.text,
+    color: designSystem.colors.neutral.text.primary,
   },
   clearButton: {
     padding: 8,
   },
   clearButtonText: {
     fontSize: 16,
-    color: colors.primary,
+    color: designSystem.colors.primary.main,
     fontWeight: "600",
   },
 
@@ -454,26 +765,28 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
+    backgroundColor: designSystem.colors.background.card,
     marginHorizontal: 20,
     marginVertical: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: designSystem.borderRadius.input,
+    ...designSystem.shadows.sm,
+  },
+  searchIcon: {
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: colors.text,
-    marginLeft: 12,
+    color: designSystem.colors.neutral.text.primary,
     textAlign: "right",
   },
 
   // Categories
   categoryContainer: {
     marginBottom: 16,
+    maxHeight: 60,
   },
   categoryContent: {
     paddingHorizontal: 20,
@@ -482,25 +795,34 @@ const styles = StyleSheet.create({
   categoryButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    backgroundColor: designSystem.colors.background.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: designSystem.colors.neutral.border,
     gap: 8,
+    marginRight: 12,
   },
   activeCategoryButton: {
-    backgroundColor: withOpacity(colors.primary, 0.1),
-    borderColor: colors.primary,
+    borderColor: "transparent",
+    backgroundColor: "transparent",
+    ...designSystem.shadows.md,
+  },
+  categoryGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 8,
   },
   categoryText: {
     fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: "500",
+    color: designSystem.colors.neutral.text.secondary,
+    fontWeight: "600",
   },
   activeCategoryText: {
-    color: colors.primary,
+    color: "#fff",
   },
 
   // Selected Counter
@@ -511,7 +833,7 @@ const styles = StyleSheet.create({
   },
   selectedCounterText: {
     fontSize: 14,
-    color: colors.primary,
+    color: designSystem.colors.primary.main,
     fontWeight: "600",
   },
 
@@ -521,22 +843,33 @@ const styles = StyleSheet.create({
   },
   exercisesContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
 
   // Exercise Card
   exerciseCard: {
     flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: designSystem.colors.background.card,
+    borderRadius: designSystem.borderRadius.card,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: "transparent",
+    ...designSystem.shadows.sm,
   },
   selectedExerciseCard: {
-    borderColor: colors.primary,
-    backgroundColor: withOpacity(colors.primary, 0.05),
+    borderColor: designSystem.colors.primary.main,
+    backgroundColor: withOpacity(designSystem.colors.primary.main, 0.05),
+    ...designSystem.shadows.md,
+  },
+  exerciseIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: designSystem.colors.background.elevated,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   exerciseInfo: {
     flex: 1,
@@ -545,48 +878,49 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 16,
     fontWeight: "bold",
-    color: colors.text,
+    color: designSystem.colors.neutral.text.primary,
     marginBottom: 4,
     textAlign: "right",
   },
   exerciseDescription: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: designSystem.colors.neutral.text.secondary,
     lineHeight: 18,
     marginBottom: 8,
     textAlign: "right",
   },
-  exerciseMuscles: {
+  exerciseTags: {
     flexDirection: "row",
     gap: 6,
     marginBottom: 8,
     justifyContent: "flex-end",
     flexWrap: "wrap",
   },
-  muscleTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: withOpacity(colors.primary, 0.1),
-    borderRadius: 4,
-  },
-  muscleTagText: {
-    fontSize: 11,
-    color: colors.primary,
-    fontWeight: "500",
-  },
-  exerciseMeta: {
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "flex-end",
-  },
-  exerciseMetaItem: {
+  tag: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: designSystem.colors.background.secondary,
+    borderRadius: designSystem.borderRadius.sm,
     gap: 4,
   },
-  exerciseMetaText: {
+  tagText: {
+    fontSize: 11,
+    color: designSystem.colors.neutral.text.secondary,
+    fontWeight: "500",
+  },
+  secondaryMuscles: {
+    marginTop: 4,
+  },
+  secondaryLabel: {
+    fontSize: 11,
+    color: designSystem.colors.neutral.text.tertiary,
+    marginBottom: 2,
+  },
+  secondaryText: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: designSystem.colors.neutral.text.secondary,
   },
 
   // Selection
@@ -595,41 +929,69 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   unselectedCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: designSystem.colors.neutral.border,
   },
 
   // Empty State
   emptyState: {
+    flex: 1,
     alignItems: "center",
-    paddingVertical: 60,
+    justifyContent: "center",
+    paddingBottom: 100,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: colors.text,
+    color: designSystem.colors.neutral.text.primary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: designSystem.colors.neutral.text.secondary,
     textAlign: "center",
   },
 
   // Bottom Section
+  bottomGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    pointerEvents: "none",
+  },
   bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 20,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingBottom: 30,
   },
   startButton: {
-    backgroundColor: colors.primary,
+    borderRadius: designSystem.borderRadius.button,
+    overflow: "hidden",
+    ...designSystem.shadows.lg,
+  },
+  startButtonDisabled: {
+    opacity: 0.5,
+  },
+  startButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 16,
+    gap: 8,
+  },
+  startButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
 

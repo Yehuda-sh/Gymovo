@@ -1,6 +1,6 @@
-// src/screens/plans/PlansScreen.tsx - ✅ מסך תוכניות מתקדם עם כל הפיצ'רים
+// src/screens/plans/PlansScreen.tsx - מסך תוכניות משודרג עם עיצוב מתקדם
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
@@ -26,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import LinearGradient from "react-native-linear-gradient";
 
 // Components
 import Button from "../../components/common/Button";
@@ -41,33 +42,30 @@ import { useUserStore } from "../../stores/userStore";
 import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
 import { Plan } from "../../types/plan";
+import { designSystem } from "../../theme/designSystem";
 
 const { width } = Dimensions.get("window");
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// 🎨 צבעים מותאמים
-const plansColors = {
-  background: colors.background,
-  cardBg: colors.surface,
-  accent: colors.primary,
-  text: colors.text,
-  subtext: colors.textSecondary,
-  border: colors.border,
-  searchBg: colors.inputBackground || "#2a2a2a",
-  success: colors.success,
-  warning: colors.warning,
-  error: colors.error,
-  tagBg: colors.primary + "20",
+// 🎨 צבעים מותאמים עם גרדיאנטים
+const planGradients = {
+  beginner: ["#00C9FF", "#0081FF"],
+  intermediate: ["#FC466B", "#3F5EFB"],
+  advanced: ["#FF416C", "#FF4B2B"],
+  custom: designSystem.gradients.accent.colors,
+  featured: designSystem.gradients.accent.colors,
 };
 
-// 🏷️ רכיב תג
+// 🏷️ רכיב תג משודרג
 const Tag = ({
   text,
-  color = plansColors.accent,
+  color = designSystem.colors.primary.main,
+  icon,
 }: {
   text: string;
   color?: string;
+  icon?: string;
 }) => (
   <View
     style={[
@@ -75,11 +73,12 @@ const Tag = ({
       { backgroundColor: color + "20", borderColor: color + "40" },
     ]}
   >
+    {icon && <Ionicons name={icon as any} size={12} color={color} />}
     <Text style={[styles.tagText, { color }]}>{text}</Text>
   </View>
 );
 
-// 🔍 רכיב חיפוש
+// 🔍 רכיב חיפוש משודרג עם אנימציה
 const SearchBar = ({
   value,
   onChangeText,
@@ -89,247 +88,323 @@ const SearchBar = ({
   onChangeText: (text: string) => void;
   placeholder?: string;
 }) => {
-  const inputRef = useRef<TextInput>(null);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
-  const handleFocus = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1.02,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleBlur = () => {
+  useEffect(() => {
     Animated.spring(scaleAnim, {
       toValue: 1,
+      ...designSystem.animations.easings.bounce,
       useNativeDriver: true,
     }).start();
-  };
+  }, []);
 
   return (
     <Animated.View
       style={[styles.searchContainer, { transform: [{ scale: scaleAnim }] }]}
     >
-      <Ionicons name="search" size={20} color={plansColors.subtext} />
+      <Ionicons
+        name="search"
+        size={20}
+        color={designSystem.colors.neutral.text.tertiary}
+      />
       <TextInput
-        ref={inputRef}
-        style={styles.searchInput}
-        placeholder={placeholder}
-        placeholderTextColor={plansColors.subtext}
         value={value}
         onChangeText={onChangeText}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        returnKeyType="search"
+        placeholder={placeholder}
+        placeholderTextColor={designSystem.colors.neutral.text.tertiary}
+        style={styles.searchInput}
       />
-      {value.length > 0 && (
+      {value !== "" && (
         <TouchableOpacity onPress={() => onChangeText("")}>
-          <Ionicons name="close-circle" size={20} color={plansColors.subtext} />
+          <Ionicons
+            name="close-circle"
+            size={20}
+            color={designSystem.colors.neutral.text.tertiary}
+          />
         </TouchableOpacity>
       )}
     </Animated.View>
   );
 };
 
-// 🎯 כרטיס תוכנית מתקדם
+// 🔖 רכיב פילטרים משודרג
+const FilterTabs = ({
+  selected,
+  onSelect,
+}: {
+  selected: "all" | "mine" | "public";
+  onSelect: (filter: "all" | "mine" | "public") => void;
+}) => {
+  const filters = [
+    { id: "all", label: "הכל", icon: "apps" },
+    { id: "mine", label: "שלי", icon: "person" },
+    { id: "public", label: "ציבוריות", icon: "globe" },
+  ];
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.filterTabs}
+      contentContainerStyle={styles.filterTabsContent}
+    >
+      {filters.map((filter) => {
+        const isActive = selected === filter.id;
+        const scaleAnim = useRef(new Animated.Value(1)).current;
+
+        const handlePress = () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+          Animated.sequence([
+            Animated.spring(scaleAnim, {
+              toValue: 0.95,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              useNativeDriver: true,
+            }),
+          ]).start();
+
+          onSelect(filter.id as any);
+        };
+
+        return (
+          <Animated.View
+            key={filter.id}
+            style={{ transform: [{ scale: scaleAnim }] }}
+          >
+            <TouchableOpacity
+              style={[styles.filterTab, isActive && styles.filterTabActive]}
+              onPress={handlePress}
+            >
+              {isActive ? (
+                <LinearGradient
+                  colors={designSystem.gradients.primary.colors}
+                  style={styles.filterTabGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name={filter.icon as any} size={16} color="#fff" />
+                  <Text
+                    style={[styles.filterTabText, styles.filterTabTextActive]}
+                  >
+                    {filter.label}
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <>
+                  <Ionicons
+                    name={filter.icon as any}
+                    size={16}
+                    color={designSystem.colors.neutral.text.secondary}
+                  />
+                  <Text style={styles.filterTabText}>{filter.label}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        );
+      })}
+    </ScrollView>
+  );
+};
+
+// 📋 רכיב כרטיס תוכנית משודרג
 const PlanCard = ({
   plan,
+  index,
   onPress,
-  onLongPress,
-  isActive = false,
+  onShare,
+  onDelete,
 }: {
   plan: Plan;
+  index: number;
   onPress: () => void;
-  onLongPress?: () => void;
-  isActive?: boolean;
+  onShare: () => void;
+  onDelete?: () => void;
 }) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  const handlePressIn = () => {
+  useEffect(() => {
     Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 0.98,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotateAnim, {
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 500,
+        delay: index * 150,
         useNativeDriver: true,
       }),
-    ]).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotateAnim, {
+      Animated.spring(slideAnim, {
         toValue: 0,
-        duration: 200,
+        delay: index * 150,
+        ...designSystem.animations.easings.spring,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        delay: index * 150,
+        ...designSystem.animations.easings.bounce,
         useNativeDriver: true,
       }),
     ]).start();
+  }, []);
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
   };
 
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "1deg"],
-  });
-
-  const getDifficultyColor = () => {
-    switch (plan.difficulty) {
-      case "beginner":
-        return plansColors.success;
-      case "intermediate":
-        return plansColors.warning;
-      case "advanced":
-        return plansColors.error;
-      default:
-        return plansColors.accent;
-    }
-  };
-
-  const getExerciseCount = () => {
-    if (plan.days) {
-      return plan.days.reduce((total, day) => total + day.exercises.length, 0);
-    }
-    if (plan.workouts) {
-      return plan.workouts.reduce(
-        (total, workout) => total + workout.exercises.length,
-        0
-      );
-    }
-    return 0;
+  const getDifficultyGradient = () => {
+    // מחזיר גרדיאנט לפי רמת קושי או סוג תוכנית
+    if (plan.difficulty === "beginner") return planGradients.beginner;
+    if (plan.difficulty === "intermediate") return planGradients.intermediate;
+    if (plan.difficulty === "advanced") return planGradients.advanced;
+    return planGradients.custom;
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }, { rotate }] }}>
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+      }}
+    >
       <TouchableOpacity
-        style={[
-          styles.planCard,
-          isActive && { borderColor: plansColors.accent, borderWidth: 2 },
-        ]}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={0.9}
+        style={styles.planCard}
+        onPress={handlePress}
+        activeOpacity={0.8}
       >
-        {/* Header */}
-        <View style={styles.planHeader}>
-          <View style={styles.planInfo}>
-            <Text style={styles.planName}>{plan.name}</Text>
-            {plan.creator && (
-              <Text style={styles.planCreator}>יוצר: {plan.creator}</Text>
-            )}
-          </View>
-          {isActive && (
-            <View style={styles.activeBadge}>
-              <Ionicons
-                name="checkmark-circle"
-                size={24}
-                color={plansColors.success}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* Tags */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tagsContainer}
+        {/* Header Gradient */}
+        <LinearGradient
+          colors={getDifficultyGradient()}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.planCardHeader}
         >
-          {plan.difficulty && (
-            <Tag
-              text={
-                plan.difficulty === "beginner"
-                  ? "מתחיל"
-                  : plan.difficulty === "intermediate"
-                  ? "ביניים"
-                  : "מתקדם"
-              }
-              color={getDifficultyColor()}
-            />
-          )}
-          {plan.tags?.map((tag, index) => (
-            <Tag key={index} text={tag} />
-          ))}
-          {plan.targetMuscleGroups?.slice(0, 2).map((muscle, index) => (
-            <Tag
-              key={`muscle-${index}`}
-              text={muscle}
-              color={plansColors.warning}
-            />
-          ))}
-        </ScrollView>
-
-        {/* Description */}
-        {plan.description && (
-          <Text style={styles.planDescription} numberOfLines={2}>
-            {plan.description}
-          </Text>
-        )}
-
-        {/* Stats */}
-        <View style={styles.planStats}>
-          <View style={styles.statItem}>
-            <Ionicons name="calendar" size={16} color={plansColors.subtext} />
-            <Text style={styles.statText}>
-              {plan.durationWeeks || plan.days?.length || 0} שבועות
-            </Text>
+          <View style={styles.planIconContainer}>
+            <MaterialCommunityIcons name="dumbbell" size={40} color="#fff" />
           </View>
-          <View style={styles.statItem}>
-            <Ionicons name="barbell" size={16} color={plansColors.subtext} />
-            <Text style={styles.statText}>{getExerciseCount()} תרגילים</Text>
-          </View>
-          {plan.rating ? (
-            <View style={styles.statItem}>
-              <Ionicons name="star" size={16} color="#FFD700" />
-              <Text style={styles.statText}>{plan.rating}/5</Text>
+
+          {plan.isActive && (
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>פעילה</Text>
             </View>
-          ) : null}
-        </View>
+          )}
+        </LinearGradient>
 
-        {/* Actions */}
-        <View style={styles.planActions}>
-          <Button
-            title="התחל"
-            variant="primary"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onPress();
-            }}
-            style={styles.startButton}
-          />
-          <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => Toast.show("עריכה - בקרוב", "info")}
-            >
-              <Ionicons name="pencil" size={18} color={plansColors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={async () => {
-                try {
-                  await Share.share({
-                    message: `בדוק את התוכנית "${plan.name}" באפליקציית Gymovo! 💪`,
-                  });
-                } catch (error) {
-                  console.error("Share failed:", error);
-                }
-              }}
-            >
+        {/* Content */}
+        <View style={styles.planContent}>
+          <View style={styles.planHeader}>
+            <View style={styles.planInfo}>
+              <Text style={styles.planName}>{plan.name}</Text>
+              {plan.createdBy && (
+                <Text style={styles.planCreator}>
+                  נוצר ע"י {plan.createdBy}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Tags */}
+          <View style={styles.tagsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {plan.tags?.map((tag, idx) => (
+                <Tag key={idx} text={tag} />
+              ))}
+              {plan.difficulty && (
+                <Tag
+                  text={
+                    plan.difficulty === "beginner"
+                      ? "מתחילים"
+                      : plan.difficulty === "intermediate"
+                      ? "ביניים"
+                      : "מתקדמים"
+                  }
+                  color={
+                    plan.difficulty === "beginner"
+                      ? designSystem.colors.secondary.main
+                      : plan.difficulty === "intermediate"
+                      ? designSystem.colors.accent.orange
+                      : designSystem.colors.semantic.error
+                  }
+                  icon="fitness"
+                />
+              )}
+            </ScrollView>
+          </View>
+
+          {/* Description */}
+          {plan.description && (
+            <Text style={styles.planDescription} numberOfLines={2}>
+              {plan.description}
+            </Text>
+          )}
+
+          {/* Stats */}
+          <View style={styles.planStats}>
+            <View style={styles.statItem}>
               <Ionicons
-                name="share-social"
-                size={18}
-                color={plansColors.text}
+                name="calendar"
+                size={16}
+                color={designSystem.colors.primary.light}
               />
+              <Text style={styles.statText}>{plan.days?.length || 0} ימים</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons
+                name="time"
+                size={16}
+                color={designSystem.colors.primary.light}
+              />
+              <Text style={styles.statText}>{plan.duration || "גמיש"}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons
+                name="barbell"
+                size={16}
+                color={designSystem.colors.primary.light}
+              />
+              <Text style={styles.statText}>
+                {plan.totalExercises || 0} תרגילים
+              </Text>
+            </View>
+          </View>
+
+          {/* Actions */}
+          <View style={styles.planActions}>
+            <TouchableOpacity style={styles.startButton} onPress={handlePress}>
+              <LinearGradient
+                colors={designSystem.gradients.primary.colors}
+                style={styles.startButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="play" size={16} color="#fff" />
+                <Text style={styles.startButtonText}>התחל</Text>
+              </LinearGradient>
             </TouchableOpacity>
+
+            <View style={styles.quickActions}>
+              <TouchableOpacity style={styles.iconButton} onPress={onShare}>
+                <Ionicons
+                  name="share-social"
+                  size={20}
+                  color={designSystem.colors.primary.main}
+                />
+              </TouchableOpacity>
+              {onDelete && (
+                <TouchableOpacity style={styles.iconButton} onPress={onDelete}>
+                  <Ionicons
+                    name="trash"
+                    size={20}
+                    color={designSystem.colors.semantic.error}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -337,61 +412,66 @@ const PlanCard = ({
   );
 };
 
-// 🌟 Empty State מתקדם
+// 📭 רכיב Empty State משודרג
 const EmptyState = ({ onCreatePlan }: { onCreatePlan: () => void }) => {
-  const bounceAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // אנימציית כניסה
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      tension: 50,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-
-    // אנימציית bounce
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: -10,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        delay: 300,
+        ...designSystem.animations.easings.bounce,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   return (
     <Animated.View
-      style={[styles.emptyContainer, { transform: [{ scale: scaleAnim }] }]}
+      style={[
+        styles.emptyContainer,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
     >
-      <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-        <Ionicons
-          name="fitness-outline"
-          size={100}
-          color={plansColors.accent}
+      <View style={styles.emptyIconContainer}>
+        <MaterialCommunityIcons
+          name="clipboard-text-outline"
+          size={80}
+          color={designSystem.colors.neutral.text.tertiary}
         />
-      </Animated.View>
-      <Text style={styles.emptyTitle}>עוד לא יצרת תוכניות</Text>
+      </View>
+
+      <Text style={styles.emptyTitle}>אין לך תוכניות עדיין</Text>
       <Text style={styles.emptyText}>
-        התחל ליצור תוכנית מותאמת אישית או בחר מהתוכניות המומלצות
+        צור תוכנית אימון מותאמת אישית או בחר מהתוכניות הציבוריות
       </Text>
-      <TouchableOpacity style={styles.createButton} onPress={onCreatePlan}>
-        <Ionicons name="add-circle" size={24} color="#000" />
-        <Text style={styles.createButtonText}>צור תוכנית ראשונה</Text>
+
+      <TouchableOpacity onPress={onCreatePlan}>
+        <LinearGradient
+          colors={designSystem.gradients.primary.colors}
+          style={styles.createButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Ionicons name="add-circle" size={24} color="#fff" />
+          <Text style={styles.createButtonText}>צור תוכנית ראשונה</Text>
+        </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-// 🏋️ מסך תוכניות ראשי
+// 🏋️ מסך תוכניות ראשי משודרג
 const PlansScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useUserStore((state) => state.user);
@@ -409,6 +489,7 @@ const PlansScreen = () => {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  const headerScale = useRef(new Animated.Value(0.8)).current;
 
   // Load plans
   useEffect(() => {
@@ -425,8 +506,13 @@ const PlansScreen = () => {
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
-        tension: 50,
-        friction: 8,
+        ...designSystem.animations.easings.spring,
+        useNativeDriver: true,
+      }),
+      Animated.spring(headerScale, {
+        toValue: 1,
+        delay: 200,
+        ...designSystem.animations.easings.bounce,
         useNativeDriver: true,
       }),
     ]).start();
@@ -456,368 +542,428 @@ const PlansScreen = () => {
 
       // Load public plans
       try {
-        const wgerPlans = await fetchPublicPlans();
-        setPublicPlans(wgerPlans);
+        const publicData = await fetchPublicPlans();
+        setPublicPlans(publicData);
       } catch (error) {
-        console.error("Failed to load public plans:", error);
+        console.log("Could not load public plans:", error);
       }
     } catch (error) {
-      console.error("Failed to load plans:", error);
-      Toast.show("שגיאה בטעינת התוכניות", "error");
+      console.error("Error loading plans:", error);
+      Toast.show({
+        type: "error",
+        text1: "שגיאה בטעינת התוכניות",
+      });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Filter plans
   const filteredPlans = useMemo(() => {
     let allPlans: Plan[] = [];
 
-    switch (selectedFilter) {
-      case "mine":
-        allPlans = plans;
-        break;
-      case "public":
-        allPlans = publicPlans;
-        break;
-      default:
-        allPlans = [...plans, ...publicPlans];
+    if (selectedFilter === "all") {
+      allPlans = [...plans, ...publicPlans];
+    } else if (selectedFilter === "mine") {
+      allPlans = plans;
+    } else {
+      allPlans = publicPlans;
     }
 
-    if (!searchQuery) return allPlans;
-
-    return allPlans.filter((plan) => {
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        plan.name.toLowerCase().includes(searchLower) ||
-        plan.description?.toLowerCase().includes(searchLower) ||
-        plan.creator?.toLowerCase().includes(searchLower) ||
-        plan.tags?.some((tag) => tag.toLowerCase().includes(searchLower)) ||
-        plan.targetMuscleGroups?.some((muscle) =>
-          muscle.toLowerCase().includes(searchLower)
-        )
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      allPlans = allPlans.filter(
+        (plan) =>
+          plan.name.toLowerCase().includes(query) ||
+          plan.description?.toLowerCase().includes(query) ||
+          plan.tags?.some((tag) => tag.toLowerCase().includes(query))
       );
-    });
+    }
+
+    return allPlans;
   }, [plans, publicPlans, selectedFilter, searchQuery]);
 
-  // Handlers
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadPlans();
   };
 
-  const handlePlanPress = (plan: Plan) => {
-    navigation.navigate("SelectWorkoutDay", { planId: plan.id });
-  };
-
-  const handlePlanLongPress = (plan: Plan) => {
-    const isUserPlan = plans.some((p) => p.id === plan.id);
-
-    Alert.alert(
-      plan.name,
-      "בחר פעולה",
-      [
-        { text: "ביטול", style: "cancel" },
-        {
-          text: "התחל אימון",
-          onPress: () => handlePlanPress(plan),
+  const handleDeletePlan = async (planId: string) => {
+    Alert.alert("מחיקת תוכנית", "האם אתה בטוח שברצונך למחוק תוכנית זו?", [
+      { text: "ביטול", style: "cancel" },
+      {
+        text: "מחק",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deletePlan(planId);
+            await loadPlans();
+            Toast.show({
+              type: "success",
+              text1: "התוכנית נמחקה בהצלחה",
+            });
+          } catch (error) {
+            Toast.show({
+              type: "error",
+              text1: "שגיאה במחיקת התוכנית",
+            });
+          }
         },
-        ...(isUserPlan
-          ? [
-              {
-                text: "הגדר כפעילה",
-                onPress: async () => {
-                  const updatedPlan = { ...plan, isActive: true };
-                  // עדכן את כל התוכניות האחרות כלא פעילות
-                  const updatedPlans = plans.map((p) => ({
-                    ...p,
-                    isActive: p.id === plan.id,
-                  }));
-
-                  if (user?.id) {
-                    for (const p of updatedPlans) {
-                      await savePlan(user.id, p);
-                    }
-                    Toast.show("התוכנית הוגדרה כפעילה", "success");
-                    loadPlans();
-                  }
-                },
-              },
-              {
-                text: "שכפל",
-                onPress: () => Toast.show("שכפול - בקרוב", "info"),
-              },
-              {
-                text: "מחק",
-                style: "destructive" as const,
-                onPress: () => {
-                  Alert.alert(
-                    "מחיקת תוכנית",
-                    "האם אתה בטוח שברצונך למחוק את התוכנית?",
-                    [
-                      { text: "ביטול", style: "cancel" },
-                      {
-                        text: "מחק",
-                        style: "destructive" as const,
-                        onPress: async () => {
-                          if (user?.id) {
-                            await deletePlan(user.id, plan.id);
-                            Toast.show("התוכנית נמחקה", "success");
-                            loadPlans();
-                          }
-                        },
-                      },
-                    ]
-                  );
-                },
-              },
-            ]
-          : []),
-      ],
-      { cancelable: true }
-    );
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      },
+    ]);
   };
 
-  const handleCreatePlan = () => {
-    Toast.show("יצירת תוכנית - בקרוב", "info");
-    // TODO: navigation.navigate("CreatePlan") או navigation.navigate("Quiz")
+  const handleSharePlan = async (plan: Plan) => {
+    try {
+      await Share.share({
+        message: `תוכנית אימון: ${plan.name}\n${
+          plan.description || ""
+        }\n\nימי אימון: ${plan.days?.length || 0}`,
+        title: plan.name,
+      });
+    } catch (error) {
+      console.error("Error sharing plan:", error);
+    }
   };
 
-  // Render
-  if (isLoading) {
+  const renderPlan = ({ item, index }: { item: Plan; index: number }) => (
+    <PlanCard
+      plan={item}
+      index={index}
+      onPress={() => navigation.navigate("PlanDetails", { planId: item.id })}
+      onShare={() => handleSharePlan(item)}
+      onDelete={
+        item.userId === user?.id ? () => handleDeletePlan(item.id) : undefined
+      }
+    />
+  );
+
+  if (isLoading && !isRefreshing) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={plansColors.accent} />
-        <Text style={styles.loadingText}>טוען תוכניות...</Text>
-      </View>
+      <LinearGradient
+        colors={designSystem.gradients.dark.colors}
+        style={styles.loadingContainer}
+      >
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <MaterialCommunityIcons
+            name="clipboard-text"
+            size={48}
+            color={designSystem.colors.primary.main}
+          />
+          <Text style={styles.loadingText}>טוען תוכניות...</Text>
+        </Animated.View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={designSystem.gradients.dark.colors}
+      style={styles.container}
+    >
+      {/* Header */}
       <Animated.View
         style={[
-          styles.content,
+          styles.header,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
+            transform: [{ translateY: slideAnim }, { scale: headerScale }],
           },
         ]}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>התוכניות שלי</Text>
-            <Text style={styles.subtitle}>
-              {filteredPlans.length} תוכניות זמינות
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.addButton} onPress={handleCreatePlan}>
-            <Ionicons name="add-circle" size={32} color={plansColors.accent} />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>תוכניות אימון</Text>
+        <Text style={styles.subtitle}>
+          {filteredPlans.length} תוכניות זמינות
+        </Text>
+      </Animated.View>
 
-        {/* Search & Filter */}
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="חפש לפי שם, תגית או שריר..."
-        />
-
-        {/* Filter Tabs */}
-        <View style={styles.filterTabs}>
-          {[
-            { key: "all", label: "הכל", icon: "apps" },
-            { key: "mine", label: "שלי", icon: "person" },
-            { key: "public", label: "ציבורי", icon: "globe" },
-          ].map((filter) => (
-            <TouchableOpacity
-              key={filter.key}
-              style={[
-                styles.filterTab,
-                selectedFilter === filter.key && styles.filterTabActive,
-              ]}
-              onPress={() => {
-                setSelectedFilter(filter.key as typeof selectedFilter);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
+      {/* Featured Card */}
+      {!searchQuery && selectedFilter === "all" && (
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          <TouchableOpacity
+            style={styles.featuredCard}
+            onPress={() => navigation.navigate("CreateOrEditPlan")}
+          >
+            <LinearGradient
+              colors={planGradients.featured}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.featuredGradient}
             >
-              <Ionicons
-                name={filter.icon as any}
-                size={18}
-                color={
-                  selectedFilter === filter.key
-                    ? plansColors.accent
-                    : plansColors.subtext
-                }
-              />
-              <Text
-                style={[
-                  styles.filterTabText,
-                  selectedFilter === filter.key && styles.filterTabTextActive,
-                ]}
-              >
-                {filter.label}
+              <Ionicons name="star" size={30} color="#fff" />
+              <Text style={styles.featuredTitle}>צור תוכנית מותאמת</Text>
+              <Text style={styles.featuredSubtitle}>
+                בנה תוכנית אימון אישית בדיוק לפי הצרכים שלך
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+              <View style={styles.featuredButton}>
+                <Text style={styles.featuredButtonText}>התחל עכשיו</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
-        {/* Plans List */}
+      {/* Search & Filters */}
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+        }}
+      >
+        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+        <FilterTabs selected={selectedFilter} onSelect={setSelectedFilter} />
+      </Animated.View>
+
+      {/* Plans List */}
+      {filteredPlans.length > 0 ? (
         <FlatList
           data={filteredPlans}
+          renderItem={renderPlan}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <PlanCard
-              plan={item}
-              onPress={() => handlePlanPress(item)}
-              onLongPress={() => handlePlanLongPress(item)}
-              isActive={item.isActive}
-            />
-          )}
-          contentContainerStyle={[
-            styles.listContent,
-            filteredPlans.length === 0 && styles.emptyListContent,
-          ]}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              colors={[plansColors.accent]}
-              tintColor={plansColors.accent}
+              colors={[designSystem.colors.primary.main]}
+              tintColor={designSystem.colors.primary.main}
             />
           }
-          ListEmptyComponent={
-            searchQuery || selectedFilter !== "all" ? (
-              <View style={styles.noResultsContainer}>
-                <Ionicons name="search" size={60} color={plansColors.subtext} />
-                <Text style={styles.noResultsText}>
-                  לא נמצאו תוכניות התואמות את החיפוש
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSearchQuery("");
-                    setSelectedFilter("all");
-                  }}
-                >
-                  <Text style={styles.clearFiltersText}>נקה מסננים</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <EmptyState onCreatePlan={handleCreatePlan} />
-            )
-          }
         />
+      ) : searchQuery ? (
+        <View style={styles.noResultsContainer}>
+          <Ionicons
+            name="search"
+            size={64}
+            color={designSystem.colors.neutral.text.tertiary}
+          />
+          <Text style={styles.noResultsText}>
+            לא נמצאו תוכניות התואמות לחיפוש
+          </Text>
+          <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <Text style={styles.clearFiltersText}>נקה חיפוש</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <EmptyState
+          onCreatePlan={() => navigation.navigate("CreateOrEditPlan")}
+        />
+      )}
+
+      {/* Floating Action Button */}
+      <Animated.View
+        style={[
+          styles.fab,
+          {
+            transform: [
+              {
+                scale: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.navigate("CreateOrEditPlan")}
+        >
+          <LinearGradient
+            colors={designSystem.gradients.accent.colors}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="add" size={28} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
       </Animated.View>
-    </View>
+    </LinearGradient>
   );
 };
 
-// 🎨 Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: plansColors.background,
-  },
-  content: {
-    flex: 1,
-    paddingTop: 60,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: plansColors.background,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
   },
 
   // Header
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: plansColors.text,
+    color: designSystem.colors.neutral.text.primary,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
   },
-  addButton: {
-    padding: 4,
+
+  // Featured Card
+  featuredCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: "hidden",
+    ...designSystem.shadows.lg,
+  },
+  featuredGradient: {
+    padding: 24,
+    alignItems: "center",
+  },
+  featuredTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  featuredSubtitle: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.8)",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  featuredButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  featuredButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
 
   // Search
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: plansColors.searchBg,
+    backgroundColor: designSystem.colors.background.card,
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     gap: 12,
+    ...designSystem.shadows.sm,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: plansColors.text,
+    color: designSystem.colors.neutral.text.primary,
   },
 
   // Filter Tabs
   filterTabs: {
-    flexDirection: "row",
+    marginBottom: 20,
+  },
+  filterTabsContent: {
     paddingHorizontal: 20,
-    marginBottom: 16,
     gap: 12,
   },
   filterTab: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: plansColors.searchBg,
+    backgroundColor: designSystem.colors.background.card,
     gap: 6,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: designSystem.colors.neutral.border,
   },
   filterTabActive: {
-    backgroundColor: plansColors.accent + "20",
-    borderWidth: 1,
-    borderColor: plansColors.accent + "40",
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    ...designSystem.shadows.md,
+  },
+  filterTabGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 6,
   },
   filterTabText: {
     fontSize: 14,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
     fontWeight: "500",
   },
   filterTabTextActive: {
-    color: plansColors.accent,
+    color: "#fff",
   },
 
   // Plan Card
   planCard: {
-    backgroundColor: plansColors.cardBg,
+    backgroundColor: designSystem.colors.background.card,
     marginHorizontal: 20,
     marginBottom: 16,
+    borderRadius: 20,
+    overflow: "hidden",
+    ...designSystem.shadows.md,
+  },
+  planCardHeader: {
+    height: 120,
     padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: plansColors.border,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  planIconContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 30,
+    padding: 16,
+  },
+  activeBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: designSystem.colors.secondary.main,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activeBadgeText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  planContent: {
+    padding: 20,
   },
   planHeader: {
     flexDirection: "row",
@@ -831,26 +977,26 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 20,
     fontWeight: "bold",
-    color: plansColors.text,
+    color: designSystem.colors.neutral.text.primary,
     marginBottom: 4,
   },
   planCreator: {
     fontSize: 14,
-    color: plansColors.subtext,
-  },
-  activeBadge: {
-    marginLeft: 8,
+    color: designSystem.colors.neutral.text.secondary,
   },
   tagsContainer: {
     marginBottom: 12,
     marginHorizontal: -4,
   },
   tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: 1,
     marginHorizontal: 4,
+    gap: 4,
   },
   tagText: {
     fontSize: 12,
@@ -858,7 +1004,7 @@ const styles = StyleSheet.create({
   },
   planDescription: {
     fontSize: 15,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
     lineHeight: 22,
     marginBottom: 16,
   },
@@ -874,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 13,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
   },
   planActions: {
     flexDirection: "row",
@@ -884,20 +1030,30 @@ const styles = StyleSheet.create({
   startButton: {
     flex: 1,
     marginRight: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  startButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    gap: 6,
   },
   startButtonText: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#fff",
   },
   quickActions: {
     flexDirection: "row",
     gap: 8,
   },
   iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: plansColors.searchBg,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: designSystem.colors.background.elevated,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -906,9 +1062,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 100,
   },
-  emptyListContent: {
-    flexGrow: 1,
-  },
 
   // Empty State
   emptyContainer: {
@@ -916,19 +1069,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-    paddingVertical: 60,
+    paddingBottom: 100,
+  },
+  emptyIconContainer: {
+    marginBottom: 24,
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: plansColors.text,
-    marginTop: 24,
+    color: designSystem.colors.neutral.text.primary,
     marginBottom: 8,
     textAlign: "center",
   },
   emptyText: {
     fontSize: 16,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
     textAlign: "center",
     marginBottom: 32,
     lineHeight: 24,
@@ -936,14 +1091,14 @@ const styles = StyleSheet.create({
   createButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: plansColors.accent,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 25,
     gap: 8,
+    ...designSystem.shadows.lg,
   },
   createButtonText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -957,15 +1112,31 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 18,
-    color: plansColors.subtext,
+    color: designSystem.colors.neutral.text.secondary,
     textAlign: "center",
     marginTop: 16,
     marginBottom: 16,
   },
   clearFiltersText: {
     fontSize: 16,
-    color: plansColors.accent,
+    color: designSystem.colors.primary.main,
     fontWeight: "600",
+  },
+
+  // FAB
+  fab: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    borderRadius: 28,
+    ...designSystem.shadows.xl,
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
