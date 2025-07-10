@@ -2,25 +2,6 @@
 // מערכת Theme מרכזית עם תמיכת RTL מלאה
 
 import { colors } from "./colors";
-import {
-  fontFamilies,
-  fontScale,
-  fontWeights,
-  lineHeights,
-  letterSpacing,
-  typography,
-  textVariants,
-  typographyUtils,
-} from "./typography";
-import {
-  rtlConfig,
-  rtlText,
-  rtlView,
-  rtlSafe,
-  rtlStyles,
-  rtlIcons,
-  rtlHelpers,
-} from "./rtl";
 
 export const theme = {
   // 🎨 צבעים
@@ -36,8 +17,28 @@ export const theme = {
     xxl: 48,
   },
 
-  // 🔤 טיפוגרפיה - עם RTL
-  typography: typography,
+  // 🔤 טיפוגרפיה מלאה
+  typography: {
+    h1: { fontSize: 32, fontWeight: "bold" as const, lineHeight: 40 },
+    h2: { fontSize: 28, fontWeight: "bold" as const, lineHeight: 36 },
+    h3: { fontSize: 24, fontWeight: "600" as const, lineHeight: 32 },
+    h4: { fontSize: 20, fontWeight: "600" as const, lineHeight: 28 },
+    body: { fontSize: 16, fontWeight: "400" as const, lineHeight: 24 },
+    bodyLarge: { fontSize: 18, fontWeight: "400" as const, lineHeight: 26 },
+    caption: { fontSize: 12, fontWeight: "400" as const, lineHeight: 16 },
+    small: { fontSize: 14, fontWeight: "400" as const, lineHeight: 20 },
+    fontSize: {
+      small: 12,
+      medium: 16,
+      large: 20,
+      xlarge: 24,
+    },
+    fontWeight: {
+      normal: "400",
+      medium: "500",
+      bold: "700",
+    },
+  },
 
   // 🎨 צללים
   shadows: {
@@ -96,33 +97,16 @@ export const theme = {
     xl: 1280,
   },
 
-  // 🔄 RTL Utilities
-  rtl: rtlStyles,
-  rtlHelpers: rtlHelpers,
-  rtlIcons: rtlIcons,
+  // 🔄 RTL Support (basic)
+  rtl: {
+    isRTL: false,
+    textAlign: "left",
+    flexDirection: "row",
+  },
 };
 
-// Export typography utilities separately
-export {
-  fontFamilies,
-  fontScale,
-  fontWeights,
-  lineHeights,
-  letterSpacing,
-  textVariants,
-  typographyUtils,
-};
-
-// Export RTL utilities separately
-export {
-  rtlConfig,
-  rtlText,
-  rtlView,
-  rtlSafe,
-  rtlStyles,
-  rtlIcons,
-  rtlHelpers,
-};
+// Export colors separately
+export { colors };
 
 // TypeScript Types
 export type Theme = typeof theme;

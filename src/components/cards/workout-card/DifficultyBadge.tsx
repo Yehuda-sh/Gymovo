@@ -4,7 +4,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { getDifficultyColor } from "../../../theme/design/fitness";
+import { designSystem } from "../../../theme/designSystem";
 
 /**
  * 🏷️ רכיב תווית קושי עם אייקון וצבע מותאם
@@ -27,19 +27,19 @@ export const DifficultyBadge: React.FC<DifficultyBadgeProps> = ({
     switch (difficulty) {
       case "beginner":
         return {
-          color: getDifficultyColor("beginner")?.color || "#4CAF50",
+          color: "#4CAF50",
           text: "מתחיל",
           icon: "leaf" as const,
         };
       case "intermediate":
         return {
-          color: getDifficultyColor("intermediate")?.color || "#FF9800",
+          color: "#FF9800",
           text: "בינוני",
           icon: "flash" as const,
         };
       case "advanced":
         return {
-          color: getDifficultyColor("advanced")?.color || "#F44336",
+          color: "#F44336",
           text: "מתקדם",
           icon: "flame" as const,
         };
