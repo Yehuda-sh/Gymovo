@@ -29,6 +29,7 @@ export const colors = {
   accent: "#00E676", // ירוק אנרגטי
   accentBlue: "#007AFF", // כחול (זהה לprimary)
   accentPurple: "#8B5CF6", // סגול
+  accentPink: "#FF6B9D", // ורוד עדין (חדש!)
   accentOrange: "#FF6B35", // כתום
 
   // סטטוסים

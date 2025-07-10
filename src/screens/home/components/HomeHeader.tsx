@@ -1,11 +1,12 @@
 // src/screens/home/components/HomeHeader.tsx
-// הדר דף הבית עם שלום ופרופיל - RTL מלא
+// הדר דף הבית עם שלום ופרופיל - RTL מלא + Responsive
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Alert, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { theme } from "../../../theme";
 import { User } from "../../../types/user";
+import { useResponsiveDimensions } from "../../../hooks/useDeviceInfo";
 
 interface HomeHeaderProps {
   user: User | null;
@@ -15,6 +16,9 @@ interface HomeHeaderProps {
  * Header component for the home screen with greeting and profile access
  */
 const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
+  const { isSmallDevice, headerFontSize, bodyFontSize, iconSize } =
+    useResponsiveDimensions();
+
   // 🔔 יצירת הודעה זמנית
   const handleNotifications = () => {
     Alert.alert("הודעות", "בקרוב...");
@@ -36,13 +40,43 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
     return "לילה טוב";
   };
 
+  // Dynamic styles for responsive design
+  const dynamicStyles = StyleSheet.create({
+    greeting: {
+      fontSize: headerFontSize,
+      fontWeight: "800",
+      color: theme.colors.text,
+      textAlign: "right",
+      marginBottom: isSmallDevice ? 4 : 6,
+      letterSpacing: -0.5,
+      lineHeight: isSmallDevice ? 32 : 36,
+    },
+    date: {
+      fontSize: bodyFontSize,
+      color: theme.colors.textSecondary,
+      textAlign: "right",
+      fontWeight: "500",
+      opacity: 0.8,
+    },
+    iconContainer: {
+      width: isSmallDevice ? 36 : 40,
+      height: isSmallDevice ? 36 : 40,
+      borderRadius: isSmallDevice ? 18 : 20,
+      backgroundColor: theme.colors.surface,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+  });
+
   return (
     <View style={styles.container}>
       <View style={styles.textContainer}>
-        <Text style={styles.greeting}>
+        <Text style={dynamicStyles.greeting}>
           {getGreeting()}, {user?.name || "אלוף"} 👋
         </Text>
-        <Text style={styles.date}>{currentDate}</Text>
+        <Text style={dynamicStyles.date}>{currentDate}</Text>
       </View>
 
       <TouchableOpacity
@@ -50,10 +84,10 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
         onPress={handleNotifications}
         activeOpacity={0.7}
       >
-        <View style={styles.iconContainer}>
+        <View style={dynamicStyles.iconContainer}>
           <Ionicons
             name="notifications-outline"
-            size={24}
+            size={iconSize}
             color={theme.colors.text}
           />
           {/* Notification badge - uncomment when needed
@@ -77,30 +111,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "flex-start",
   },
-  greeting: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: theme.colors.text,
-    textAlign: "right",
-    marginBottom: 4,
-  },
-  date: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    textAlign: "right",
-  },
   notificationButton: {
     padding: 8,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.surface,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   badge: {
     position: "absolute",

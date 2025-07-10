@@ -1,5 +1,5 @@
 // src/screens/home/HomeScreen.tsx
-// מסך הבית הראשי עם תיקוני RTL מלאים
+// מסך הבית הראשי עם תיקוני RTL מלאים + Responsive
 
 import * as Haptics from "expo-haptics";
 import React from "react";
@@ -25,6 +25,8 @@ import WeeklyStats from "./components/WeeklyStats";
 import QuickActionsSection from "./components/QuickActionsSection";
 import RecommendedPlanCard from "./components/RecommendedPlanCard";
 import RecentWorkoutsSection from "./components/RecentWorkoutsSection";
+import { useResponsiveDimensions } from "../../hooks/useDeviceInfo";
+import DevResponsiveInfo from "../../components/DevResponsiveInfo";
 
 // Force RTL
 I18nManager.allowRTL(true);
@@ -51,9 +53,36 @@ const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const { dashboardData, loading, refreshing, onRefresh } = useHomeData(user);
 
+  const { isSmallDevice, screenPadding, sectionSpacing, titleFontSize } =
+    useResponsiveDimensions();
+
   if (loading) {
     return <LoadingScreen />;
   }
+
+  // Dynamic styles for responsive design
+  const dynamicStyles = StyleSheet.create({
+    headerContainer: {
+      paddingHorizontal: screenPadding,
+      paddingVertical: isSmallDevice ? theme.spacing.sm : theme.spacing.md,
+    },
+    section: {
+      marginBottom: sectionSpacing,
+    },
+    sectionTitle: {
+      fontSize: titleFontSize,
+      fontWeight: "800",
+      color: theme.colors.text,
+      textAlign: "right",
+      marginBottom: isSmallDevice ? theme.spacing.md : theme.spacing.lg,
+      paddingHorizontal: screenPadding,
+      letterSpacing: -0.5,
+      lineHeight: isSmallDevice ? 28 : 32,
+    },
+    sectionContent: {
+      paddingHorizontal: screenPadding,
+    },
+  });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -71,27 +100,27 @@ const HomeScreen = () => {
         }
       >
         {/* Header */}
-        <View style={styles.headerContainer}>
+        <View style={dynamicStyles.headerContainer}>
           <HomeHeader user={user} />
         </View>
 
         {/* Weekly Stats Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>השבוע שלך</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>השבוע שלך</Text>
           <WeeklyStats dashboardData={dashboardData} />
         </View>
 
         {/* Quick Actions Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>פעולות מהירות</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>פעולות מהירות</Text>
           <QuickActionsSection dashboardData={dashboardData} />
         </View>
 
         {/* Today's Workout */}
         {dashboardData?.todaysWorkout && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>האימון להיום</Text>
-            <View style={styles.sectionContent}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>האימון להיום</Text>
+            <View style={dynamicStyles.sectionContent}>
               <RecommendedPlanCard
                 plan={dashboardData.todaysWorkout}
                 onPress={() => {
@@ -104,9 +133,9 @@ const HomeScreen = () => {
         )}
 
         {/* Recent Workouts */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>אימונים אחרונים</Text>
-          <View style={styles.sectionContent}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>אימונים אחרונים</Text>
+          <View style={dynamicStyles.sectionContent}>
             <RecentWorkoutsSection dashboardData={dashboardData} />
           </View>
         </View>
@@ -114,6 +143,9 @@ const HomeScreen = () => {
         {/* Bottom spacing for tab bar */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* רכיב פיתוח - מידע responsive */}
+      <DevResponsiveInfo />
     </View>
   );
 };
@@ -139,24 +171,6 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     fontSize: 16,
     color: theme.colors.textSecondary,
-  },
-  headerContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-  },
-  section: {
-    marginBottom: theme.spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: theme.colors.text,
-    textAlign: "right",
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  sectionContent: {
-    paddingHorizontal: theme.spacing.lg,
   },
   bottomSpacing: {
     height: 100,

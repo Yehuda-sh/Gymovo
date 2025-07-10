@@ -1,11 +1,12 @@
 // src/screens/home/components/WeeklyStats.tsx
-// רכיב סטטיסטיקות שבועיות עם תיקוני RTL מלאים
+// רכיב סטטיסטיקות שבועיות עם תיקוני RTL מלאים + Responsive
 
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { DashboardData } from "../types";
+import { useResponsiveDimensions } from "../../../hooks/useDeviceInfo";
 
 interface WeeklyStatsProps {
   dashboardData: DashboardData | null;
@@ -18,22 +19,17 @@ interface StatCardProps {
   color?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({
-  icon,
-  value,
-  label,
-  color = theme.colors.primary,
-}) => (
-  <View style={styles.statCard}>
-    <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
-      <Ionicons name={icon} size={24} color={color} />
-    </View>
-    <Text style={[styles.statValue, { color }]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
 const WeeklyStats: React.FC<WeeklyStatsProps> = ({ dashboardData }) => {
+  const {
+    isSmallDevice,
+    iconSize,
+    iconContainerSize,
+    titleFontSize,
+    bodyFontSize,
+    cardPadding,
+    cardGap,
+  } = useResponsiveDimensions();
+
   const stats = dashboardData?.weeklyStats || {
     completedWorkouts: 0,
     totalWeightLifted: 0,
@@ -59,9 +55,68 @@ const WeeklyStats: React.FC<WeeklyStatsProps> = ({ dashboardData }) => {
     return minutes.toString();
   };
 
+  // Dynamic styles based on screen size
+  const dynamicStyles = StyleSheet.create({
+    statCard: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      borderRadius: isSmallDevice
+        ? theme.borderRadius.lg
+        : theme.borderRadius.xl,
+      padding: cardPadding,
+      alignItems: "center",
+      minHeight: isSmallDevice ? 115 : 130,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    iconContainer: {
+      width: iconContainerSize,
+      height: iconContainerSize,
+      borderRadius: iconContainerSize / 2,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: isSmallDevice ? theme.spacing.sm : theme.spacing.md,
+    },
+    statValue: {
+      fontSize: isSmallDevice ? 22 : 26,
+      fontWeight: "800",
+      textAlign: "center",
+      marginBottom: isSmallDevice ? theme.spacing.xs : theme.spacing.sm,
+      letterSpacing: -0.5,
+    },
+    statLabel: {
+      fontSize: isSmallDevice ? 11 : 13,
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      fontWeight: "500",
+    },
+  });
+
+  const StatCard: React.FC<StatCardProps> = ({
+    icon,
+    value,
+    label,
+    color = theme.colors.primary,
+  }) => (
+    <View style={dynamicStyles.statCard}>
+      <View
+        style={[dynamicStyles.iconContainer, { backgroundColor: `${color}20` }]}
+      >
+        <Ionicons name={icon} size={iconSize} color={color} />
+      </View>
+      <Text style={[dynamicStyles.statValue, { color }]}>{value}</Text>
+      <Text style={dynamicStyles.statLabel}>{label}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.statsGrid}>
+      <View style={[styles.statsGrid, { gap: cardGap }]}>
         <StatCard
           icon="fitness"
           value={stats.completedWorkouts}
@@ -98,36 +153,6 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    alignItems: "center",
-    minHeight: 120,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginHorizontal: theme.spacing.xs / 2,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: theme.spacing.sm,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: theme.spacing.xs,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    textAlign: "center",
   },
 });
 

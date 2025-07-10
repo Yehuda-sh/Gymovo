@@ -1,4 +1,5 @@
 // src/navigation/AppTabs.tsx
+// ניווט טאבים responsive
 
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -15,6 +16,7 @@ import { UserState, useUserStore } from "../stores/userStore";
 import { colors } from "../theme/colors";
 import { RootStackParamList } from "../types/navigation";
 import { AppTabsParamList } from "../types/tabs";
+import { useResponsiveDimensions } from "../hooks/useDeviceInfo";
 
 const Tab = createBottomTabNavigator<AppTabsParamList>();
 
@@ -28,22 +30,63 @@ const CustomTabBarButton = ({
 }: {
   children: React.ReactNode;
   onPress: () => void;
-}) => (
-  <TouchableOpacity
-    style={styles.fabContainer}
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityLabel="התחל אימון חדש"
-  >
-    <View style={styles.fab}>{children}</View>
-  </TouchableOpacity>
-);
+}) => {
+  const { isSmallDevice, tabBarHeight } = useResponsiveDimensions();
+
+  const dynamicStyles = StyleSheet.create({
+    fabContainer: {
+      top: isSmallDevice ? -25 : -30,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    fab: {
+      width: isSmallDevice ? 56 : 60,
+      height: isSmallDevice ? 56 : 60,
+      borderRadius: isSmallDevice ? 28 : 30,
+      backgroundColor: colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+      elevation: 5,
+    },
+  });
+
+  return (
+    <TouchableOpacity
+      style={dynamicStyles.fabContainer}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="התחל אימון חדש"
+    >
+      <View style={dynamicStyles.fab}>{children}</View>
+    </TouchableOpacity>
+  );
+};
 
 // רכיב ניווט הטאבים הראשי של האפליקציה
 const AppTabs = () => {
   const status = useUserStore((state: UserState) => state.status);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isSmallDevice, tabBarHeight, tabIconSize, screenPadding } =
+    useResponsiveDimensions();
+
+  // Dynamic styles for responsive design
+  const dynamicStyles = StyleSheet.create({
+    tabBar: {
+      position: "absolute",
+      bottom: isSmallDevice ? 20 : 25,
+      left: screenPadding,
+      right: screenPadding,
+      elevation: 0,
+      backgroundColor: "#ffffff",
+      borderRadius: isSmallDevice ? 12 : 15,
+      height: tabBarHeight,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.1,
+      shadowRadius: 20,
+    },
+  });
 
   return (
     <Tab.Navigator
@@ -52,8 +95,11 @@ const AppTabs = () => {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: "#8e8e93",
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: dynamicStyles.tabBar,
         tabBarShowLabel: false, // מסתירים את הטקסט מתחת לאייקונים
+        tabBarIconStyle: {
+          marginTop: isSmallDevice ? 4 : 0,
+        },
       }}
     >
       <Tab.Screen
@@ -62,7 +108,7 @@ const AppTabs = () => {
         options={{
           tabBarAccessibilityLabel: "פרופיל אישי", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="person-outline" size={tabIconSize} color={color} />
           ),
         }}
       />
@@ -73,7 +119,7 @@ const AppTabs = () => {
         options={{
           tabBarAccessibilityLabel: "היסטוריית אימונים", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="barbell-outline" size={size} color={color} />
+            <Ionicons name="barbell-outline" size={tabIconSize} color={color} />
           ),
         }}
       />
@@ -83,7 +129,9 @@ const AppTabs = () => {
         name="StartWorkout"
         component={DummyComponent}
         options={{
-          tabBarIcon: () => <Ionicons name="add" size={32} color="white" />,
+          tabBarIcon: () => (
+            <Ionicons name="add" size={isSmallDevice ? 28 : 32} color="white" />
+          ),
           tabBarButton: (props) => (
             <CustomTabBarButton
               {...props}
@@ -99,7 +147,7 @@ const AppTabs = () => {
         options={{
           tabBarAccessibilityLabel: "תוכניות אימון", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list-outline" size={size} color={color} />
+            <Ionicons name="list-outline" size={tabIconSize} color={color} />
           ),
         }}
       />
@@ -111,7 +159,7 @@ const AppTabs = () => {
           // TODO: בעתיד, להוסיף תג עם מספר עדכונים, למשל 'tabBarBadge: 3'
           tabBarAccessibilityLabel: "מסך הבית", // שדרוג נגישות
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <Ionicons name="home-outline" size={tabIconSize} color={color} />
           ),
         }}
       />
@@ -120,30 +168,7 @@ const AppTabs = () => {
 };
 
 const styles = StyleSheet.create({
-  tabBar: {
-    position: "absolute",
-    bottom: 25,
-    left: 20,
-    right: 20,
-    elevation: 0,
-    backgroundColor: "#ffffff",
-    borderRadius: 15,
-    height: 70,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-  },
-  fabContainer: { top: -30, justifyContent: "center", alignItems: "center" },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 5,
-  },
+  // All styles are now dynamic and responsive
 });
 
 export default AppTabs;
