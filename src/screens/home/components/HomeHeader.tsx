@@ -1,19 +1,30 @@
 // src/screens/home/components/HomeHeader.tsx
-// הדר דף הבית עם שלום ופרופיל - RTL מלא + Responsive
+// הדר דף הבית עם שלום ופרופיל - עיצוב ישראלי RTL נכון
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Alert, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  Alert,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  I18nManager,
+} from "react-native";
 import { theme } from "../../../theme";
 import { User } from "../../../types/user";
 import { useResponsiveDimensions } from "../../../hooks/useDeviceInfo";
+
+// Force RTL
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
 
 interface HomeHeaderProps {
   user: User | null;
 }
 
 /**
- * Header component for the home screen with greeting and profile access
+ * Header component for the home screen with RTL support
  */
 const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
   const { isSmallDevice, headerFontSize, bodyFontSize, iconSize } =
@@ -34,29 +45,37 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "בוקר טוב";
-    if (hour < 17) return "צהריים טובים";
-    if (hour < 21) return "ערב טוב";
-    return "לילה טוב";
+    const userName = user?.name || "יקר";
+
+    if (hour < 12) return `בוקר טוב, ${userName}`;
+    if (hour < 17) return `צהריים טובים, ${userName}`;
+    if (hour < 21) return `ערב טוב, ${userName}`;
+    return `לילה טוב, ${userName}`;
   };
 
-  // Dynamic styles for responsive design
+  // Dynamic styles for RTL design
   const dynamicStyles = StyleSheet.create({
     greeting: {
-      fontSize: headerFontSize,
-      fontWeight: "800",
+      fontSize: isSmallDevice ? 26 : 30,
+      fontWeight: "900",
       color: theme.colors.text,
-      textAlign: "right",
+      textAlign: "right", // RTL - מיושר לימין
       marginBottom: isSmallDevice ? 4 : 6,
-      letterSpacing: -0.5,
-      lineHeight: isSmallDevice ? 32 : 36,
+      letterSpacing: -0.8,
+      lineHeight: isSmallDevice ? 34 : 38,
+      // הוספת צלליות לעומק
+      textShadowColor: "rgba(0, 0, 0, 0.1)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
     date: {
-      fontSize: bodyFontSize,
+      fontSize: isSmallDevice ? 15 : 17,
       color: theme.colors.textSecondary,
-      textAlign: "right",
-      fontWeight: "500",
-      opacity: 0.8,
+      textAlign: "right", // RTL - מיושר לימין
+      fontWeight: "600",
+      opacity: 0.85,
+      letterSpacing: -0.2,
+      lineHeight: isSmallDevice ? 20 : 24,
     },
     iconContainer: {
       width: isSmallDevice ? 36 : 40,
@@ -67,18 +86,23 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
       alignItems: "center",
       borderWidth: 1,
       borderColor: theme.colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
   });
 
   return (
     <View style={styles.container}>
+      {/* טקסט מימין - RTL */}
       <View style={styles.textContainer}>
-        <Text style={dynamicStyles.greeting}>
-          {getGreeting()}, {user?.name || "אלוף"} 👋
-        </Text>
+        <Text style={dynamicStyles.greeting}>{getGreeting()}</Text>
         <Text style={dynamicStyles.date}>{currentDate}</Text>
       </View>
 
+      {/* כפתור הודעות - משמאל */}
       <TouchableOpacity
         style={styles.notificationButton}
         onPress={handleNotifications}
@@ -90,11 +114,6 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
             size={iconSize}
             color={theme.colors.text}
           />
-          {/* Notification badge - uncomment when needed
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
-          */}
         </View>
       </TouchableOpacity>
     </View>
@@ -103,13 +122,15 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row-reverse",
+    flexDirection: "row-reverse", // RTL - מימין לשמאל
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    paddingVertical: theme.spacing.md,
   },
   textContainer: {
     flex: 1,
-    alignItems: "flex-start",
+    alignItems: "flex-end", // RTL - מיושר לימין
+    justifyContent: "flex-start",
   },
   notificationButton: {
     padding: 8,

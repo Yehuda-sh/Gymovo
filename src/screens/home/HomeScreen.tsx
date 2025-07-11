@@ -21,8 +21,9 @@ import { theme } from "../../theme";
 import { RootStackParamList } from "../../types/navigation";
 import { useHomeData } from "./hooks/useHomeData";
 import HomeHeader from "./components/HomeHeader";
-import WeeklyStats from "./components/WeeklyStats";
+import StatsButton from "./components/StatsButton";
 import QuickActionsSection from "./components/QuickActionsSection";
+import MotivationCard from "./components/MotivationCard";
 import RecommendedPlanCard from "./components/RecommendedPlanCard";
 import RecentWorkoutsSection from "./components/RecentWorkoutsSection";
 import { useResponsiveDimensions } from "../../hooks/useDeviceInfo";
@@ -64,20 +65,23 @@ const HomeScreen = () => {
   const dynamicStyles = StyleSheet.create({
     headerContainer: {
       paddingHorizontal: screenPadding,
-      paddingVertical: isSmallDevice ? theme.spacing.sm : theme.spacing.md,
+      paddingVertical: isSmallDevice ? theme.spacing.xs / 2 : theme.spacing.xs, // מקוצר לגריד
     },
     section: {
-      marginBottom: sectionSpacing,
+      marginBottom: isSmallDevice ? theme.spacing.sm : theme.spacing.md, // מקוצר דרסטית לגריד
     },
     sectionTitle: {
-      fontSize: titleFontSize,
-      fontWeight: "800",
+      fontSize: titleFontSize + 1, // מקוצר מ-+2
+      fontWeight: "900",
       color: theme.colors.text,
       textAlign: "right",
-      marginBottom: isSmallDevice ? theme.spacing.md : theme.spacing.lg,
+      marginBottom: isSmallDevice ? theme.spacing.sm : theme.spacing.md, // מקוצר דרסטית
       paddingHorizontal: screenPadding,
-      letterSpacing: -0.5,
-      lineHeight: isSmallDevice ? 28 : 32,
+      letterSpacing: -0.8,
+      lineHeight: isSmallDevice ? 24 : 28, // מקוצר מ-30/36
+      textShadowColor: "rgba(0, 0, 0, 0.1)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
     sectionContent: {
       paddingHorizontal: screenPadding,
@@ -104,11 +108,8 @@ const HomeScreen = () => {
           <HomeHeader user={user} />
         </View>
 
-        {/* Weekly Stats Section */}
-        <View style={dynamicStyles.section}>
-          <Text style={dynamicStyles.sectionTitle}>השבוע שלך</Text>
-          <WeeklyStats dashboardData={dashboardData} />
-        </View>
+        {/* Stats Button - Compact */}
+        <StatsButton dashboardData={dashboardData} />
 
         {/* Quick Actions Section */}
         <View style={dynamicStyles.section}>
@@ -116,9 +117,12 @@ const HomeScreen = () => {
           <QuickActionsSection dashboardData={dashboardData} />
         </View>
 
-        {/* Today's Workout */}
+        {/* Motivation Card - חזרה לפעילות! */}
+        <MotivationCard dashboardData={dashboardData} />
+
+        {/* Today's Workout - more compact */}
         {dashboardData?.todaysWorkout && (
-          <View style={dynamicStyles.section}>
+          <View style={{ marginBottom: theme.spacing.sm }}>
             <Text style={dynamicStyles.sectionTitle}>האימון להיום</Text>
             <View style={dynamicStyles.sectionContent}>
               <RecommendedPlanCard
@@ -132,12 +136,9 @@ const HomeScreen = () => {
           </View>
         )}
 
-        {/* Recent Workouts */}
-        <View style={dynamicStyles.section}>
-          <Text style={dynamicStyles.sectionTitle}>אימונים אחרונים</Text>
-          <View style={dynamicStyles.sectionContent}>
-            <RecentWorkoutsSection dashboardData={dashboardData} />
-          </View>
+        {/* Recent Workouts - compact */}
+        <View style={{ marginBottom: theme.spacing.xs }}>
+          <RecentWorkoutsSection dashboardData={dashboardData} />
         </View>
 
         {/* Bottom spacing for tab bar */}
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   bottomSpacing: {
-    height: 100,
+    height: 30, // מקוצר עוד יותר לגריד
   },
 });
 
