@@ -1,9 +1,18 @@
-// src/screens/auth/signup/components/SignupForm.tsx - פשוט ועובד
+// src/screens/auth/signup/components/SignupForm.tsx - צבעים מ-WelcomeScreen
 
 import React from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import Input from "../../../../components/common/Input";
 import { SignupFormProps } from "../types";
+
+// צבעים פשוטים וקלינים
+const welcomeColors = {
+  primary: "#FF6B35",
+  // הסרת כל הרקעים - רק קווי מסגרת
+  inputBorder: "rgba(255, 255, 255, 0.3)",
+  inputBorderActive: "#FF6B35",
+  inputBorderError: "#FF5252",
+};
 
 const SignupForm: React.FC<SignupFormProps> = ({
   email,
@@ -30,7 +39,11 @@ const SignupForm: React.FC<SignupFormProps> = ({
           iconName="mail-outline"
           placeholder="example@gmail.com"
           error={error && error.includes("מייל") ? error : undefined}
-          style={styles.inputField}
+          style={[
+            styles.inputField,
+            email.length > 0 && styles.inputFieldActive,
+            error && error.includes("מייל") && styles.inputFieldError,
+          ]}
         />
       </View>
 
@@ -44,7 +57,11 @@ const SignupForm: React.FC<SignupFormProps> = ({
           iconName="lock-closed-outline"
           placeholder="סיסמה חזקה"
           error={error && error.includes("סיסמה") ? error : undefined}
-          style={styles.inputField}
+          style={[
+            styles.inputField,
+            password.length > 0 && styles.inputFieldActive,
+            error && error.includes("סיסמה") && styles.inputFieldError,
+          ]}
         />
       </View>
 
@@ -59,7 +76,11 @@ const SignupForm: React.FC<SignupFormProps> = ({
           placeholder="25"
           maxLength={2}
           error={error && error.includes("גיל") ? error : undefined}
-          style={styles.inputField}
+          style={[
+            styles.inputField,
+            age.length > 0 && styles.inputFieldActive,
+            error && error.includes("גיל") && styles.inputFieldError,
+          ]}
         />
       </View>
     </Animated.View>
@@ -72,18 +93,36 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 18, // הקטנה מ-20
   },
   inputField: {
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderColor: "rgba(102, 126, 234, 0.4)",
-    borderWidth: 1.5,
-    borderRadius: 14,
+    backgroundColor: "transparent", // שקוף לגמרי
+    borderColor: welcomeColors.inputBorder,
+    borderWidth: 2,
+    borderRadius: 14, // עגול יותר
     color: "#ffffff",
     fontSize: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18, // יותר padding
     paddingVertical: 16,
-    minHeight: 60,
+    minHeight: 56, // קצת יותר נמוך
+  },
+  inputFieldActive: {
+    borderColor: welcomeColors.inputBorderActive,
+    backgroundColor: "transparent", // נשאר שקוף
+    shadowColor: welcomeColors.inputBorderActive,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputFieldError: {
+    borderColor: welcomeColors.inputBorderError,
+    backgroundColor: "transparent", // נשאר שקוף
+    shadowColor: welcomeColors.inputBorderError,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
   },
 });
 

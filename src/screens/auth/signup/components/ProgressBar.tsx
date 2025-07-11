@@ -1,21 +1,44 @@
-// src/screens/auth/signup/components/ProgressBar.tsx - מתוקן ללא שגיאות
+// src/screens/auth/signup/components/ProgressBar.tsx - ניגודיות מושלמת
 
 import React, { useRef, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  Animated, 
-  StyleSheet, 
-  Dimensions 
-} from "react-native";
+import { View, Text, Animated, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ProgressBarProps } from "../types";
 
 const { width } = Dimensions.get("window");
 
+// צבעים מתוקנים לניגודיות טובה
+const progressColors = {
+  // Current step - כתום בולט
+  current: "#FF6B35",
+  currentGlow: "rgba(255, 107, 53, 0.6)",
+  currentBg: "rgba(255, 107, 53, 0.2)",
+
+  // Completed step - לבן בהיר
+  completed: "#FFFFFF",
+  completedGlow: "rgba(255, 255, 255, 0.8)",
+  completedBg: "rgba(255, 255, 255, 0.2)",
+
+  // Future step - אפור בהיר שנראה על הרקע
+  future: "rgba(255, 255, 255, 0.4)",
+  futureBorder: "rgba(255, 255, 255, 0.3)",
+  futureBg: "rgba(255, 255, 255, 0.1)",
+
+  // Line colors
+  lineCompleted: "#FF6B35",
+  lineIncomplete: "rgba(255, 255, 255, 0.2)",
+
+  // Progress bar
+  progressTrack: "rgba(255, 255, 255, 0.2)",
+  progressFill: "#FF6B35",
+
+  // Text
+  text: "rgba(255, 255, 255, 0.9)",
+};
+
 /**
- * Progress Bar מתוקן עם ניגודיות משופרת - ללא שגיאות
+ * Progress Bar מתוקן עם ניגודיות מושלמת
  */
 const ProgressBar: React.FC<ProgressBarProps> = ({
   progressAnim,
@@ -45,22 +68,22 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       ])
     ).start();
 
-    // Pulse animation for active step
+    // Pulse animation for current step
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.15,
-          duration: 1000,
+          duration: 1200,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: 1200,
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [glowAnim, pulseAnim]); // תיקון dependencies
+  }, [glowAnim, pulseAnim]);
 
   // Animate progress when currentStep changes
   useEffect(() => {
@@ -69,13 +92,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       duration: 800,
       useNativeDriver: false,
     }).start();
-  }, [currentStep, progressAnim, progressPercentage]); // תיקון dependencies
-
-  // חישוב רוחב קו החיבור
-  const connectionLineWidth = width / totalSteps - 46;
+  }, [currentStep, progressAnim, progressPercentage]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 15 }]}>
       {/* Steps Indicators */}
       <View style={styles.stepsContainer}>
         {[...Array(totalSteps)].map((_, index) => {
@@ -90,40 +110,26 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
                 style={[
                   styles.stepIndicator,
                   {
-                    transform: isCurrent ? [{ scale: pulseAnim }] : [{ scale: 1 }],
+                    transform: isCurrent
+                      ? [{ scale: pulseAnim }]
+                      : [{ scale: 1 }],
                   },
                 ]}
               >
-                {/* Outer Glow Ring for Current Step */}
+                {/* Glow Effect for Current Step */}
                 {isCurrent && (
                   <Animated.View
                     style={[
-                      styles.outerGlow,
+                      styles.currentGlow,
                       {
                         opacity: glowAnim.interpolate({
                           inputRange: [0, 1],
-                          outputRange: [0.4, 0.8],
+                          outputRange: [0.2, 0.4],
                         }),
                       },
                     ]}
-                  >
-                    <LinearGradient
-                      colors={["#667eea", "#764ba2"]}
-                      style={styles.outerGlowGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    />
-                  </Animated.View>
+                  />
                 )}
-
-                {/* Middle Ring */}
-                <View
-                  style={[
-                    styles.middleRing,
-                    isCompleted && styles.middleRingCompleted,
-                    isCurrent && styles.middleRingCurrent,
-                  ]}
-                />
 
                 {/* Step Circle */}
                 <View
@@ -134,6 +140,17 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
                     isFuture && styles.stepFuture,
                   ]}
                 >
+                  {/* Background for better contrast */}
+                  <View
+                    style={[
+                      styles.stepBackground,
+                      isCompleted && styles.stepBackgroundCompleted,
+                      isCurrent && styles.stepBackgroundCurrent,
+                      isFuture && styles.stepBackgroundFuture,
+                    ]}
+                  />
+
+                  {/* Content */}
                   {isCompleted ? (
                     <Text style={styles.checkmark}>✓</Text>
                   ) : (
@@ -151,7 +168,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
                 {/* Connection Line */}
                 {index < totalSteps - 1 && (
-                  <View style={[styles.connectionLine, { width: connectionLineWidth }]}>
+                  <View style={styles.connectionLine}>
                     <View style={styles.lineBackground} />
                     <View
                       style={[
@@ -183,31 +200,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
             ]}
           >
             <LinearGradient
-              colors={["#667eea", "#764ba2", "#667eea"]}
+              colors={["#FF6B35", "#F7931E"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.progressGradient}
-            />
-            
-            {/* Moving Shimmer Effect */}
-            <Animated.View
-              style={[
-                styles.shimmer,
-                {
-                  opacity: glowAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.3, 0.7],
-                  }),
-                  transform: [
-                    {
-                      translateX: glowAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-50, 50],
-                      }),
-                    },
-                  ],
-                },
-              ]}
             />
           </Animated.View>
         </View>
@@ -223,16 +219,17 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 32,
-    paddingBottom: 20,
+    paddingHorizontal: 24, // הקטנה מ-32
+    paddingBottom: 15, // הקטנה מ-25
     alignItems: "center",
   },
   stepsContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 12, // הקטנה מ-20
     width: "100%",
+    paddingHorizontal: 10, // הקטנה מ-20
   },
   stepWrapper: {
     alignItems: "center",
@@ -243,79 +240,78 @@ const styles = StyleSheet.create({
     position: "relative",
     zIndex: 2,
   },
-  outerGlow: {
+  currentGlow: {
     position: "absolute",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    zIndex: 1,
-  },
-  outerGlowGradient: {
-    flex: 1,
-    borderRadius: 30,
-  },
-  middleRing: {
-    position: "absolute",
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    zIndex: 2,
-  },
-  middleRingCompleted: {
-    borderColor: "#667eea",
-    backgroundColor: "rgba(102, 126, 234, 0.2)",
-  },
-  middleRingCurrent: {
-    borderColor: "#667eea",
-    backgroundColor: "rgba(102, 126, 234, 0.1)",
+    width: 32, // התאמה לגודל החדש
+    height: 32, // התאמה לגודל החדש
+    borderRadius: 16, // התאמה לגודל החדש
+    backgroundColor: "rgba(255, 107, 53, 0.3)",
+    zIndex: 0,
   },
   stepCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32, // הקטנה מ-40
+    height: 32, // הקטנה מ-40
+    borderRadius: 16, // הקטנה מ-20
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    borderWidth: 2, // הקטנה מ-3
     zIndex: 3,
+    position: "relative",
+  },
+  stepBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 17,
+    zIndex: -1,
+  },
+  stepBackgroundCompleted: {
+    backgroundColor: progressColors.completedBg,
+  },
+  stepBackgroundCurrent: {
+    backgroundColor: progressColors.currentBg,
+  },
+  stepBackgroundFuture: {
+    backgroundColor: progressColors.futureBg,
   },
   stepCompleted: {
-    backgroundColor: "#667eea",
-    borderColor: "#ffffff",
+    backgroundColor: progressColors.completed,
+    borderColor: progressColors.completed,
   },
   stepCurrent: {
-    backgroundColor: "rgba(102, 126, 234, 0.3)",
-    borderColor: "#667eea",
+    backgroundColor: progressColors.current,
+    borderColor: "#FFFFFF",
+    borderWidth: 3,
   },
   stepFuture: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "transparent",
+    borderColor: progressColors.futureBorder,
   },
   stepNumber: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.5)",
+    fontSize: 14, // הקטנה מ-16
+    fontWeight: "900",
+    zIndex: 1,
   },
   stepNumberCurrent: {
-    color: "#667eea",
-    fontSize: 16,
+    color: "#FFFFFF",
   },
   stepNumberFuture: {
-    color: "rgba(255, 255, 255, 0.4)",
+    color: progressColors.future,
   },
   checkmark: {
-    fontSize: 18,
+    fontSize: 16, // הקטנה מ-18
     fontWeight: "900",
-    color: "#ffffff",
+    color: progressColors.current,
+    zIndex: 1,
   },
   connectionLine: {
     position: "absolute",
-    left: 46,
-    top: 22,
-    height: 3,
+    left: 32, // התאמה לגודל החדש
+    top: 15, // התאמה לגודל החדש
+    width: width / 3 - 64, // התאמה לגודל החדש
+    height: 2, // דק יותר
     zIndex: 1,
   },
   lineBackground: {
@@ -324,7 +320,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: progressColors.lineIncomplete,
     borderRadius: 2,
   },
   lineProgress: {
@@ -333,44 +329,35 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: "0%",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: progressColors.lineIncomplete,
     borderRadius: 2,
   },
   lineCompleted: {
     width: "100%",
-    backgroundColor: "#667eea",
+    backgroundColor: progressColors.lineCompleted,
   },
   progressContainer: {
     width: "100%",
-    marginBottom: 8,
+    marginBottom: 8, // הקטנה מ-12
   },
   progressTrack: {
-    height: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 3,
+    height: 6, // הקטנה מ-8
+    backgroundColor: progressColors.progressTrack,
+    borderRadius: 3, // הקטנה מ-4
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: "hidden",
   },
   progressGradient: {
     flex: 1,
   },
-  shimmer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 3,
-  },
   stepLabel: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-    fontWeight: "600",
+    fontSize: 15,
+    color: progressColors.text,
+    fontWeight: "700",
     textAlign: "center",
     marginTop: 4,
   },

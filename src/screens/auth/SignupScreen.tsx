@@ -1,4 +1,4 @@
-// src/screens/auth/SignupScreen.tsx - מחליף לגמרי את הקובץ הישן
+// src/screens/auth/SignupScreen.tsx - שומר על המבנה המודולרי + צבעים מ-WelcomeScreen
 
 import React, { useState } from "react";
 import {
@@ -13,46 +13,52 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-// Local imports
-import HeaderSection from "./signup/components/HeaderSection";
-import SignupForm from "./signup/components/SignupForm";
-import ActionButtons from "./signup/components/ActionButtons";
-import ErrorDisplay from "./signup/components/ErrorDisplay";
-import SecurityNote from "./signup/components/SecurityNote";
-import LoginPrompt from "./signup/components/LoginPrompt";
-import ProgressBar from "./signup/components/ProgressBar";
-import { useSignupAnimations } from "./signup/components/useSignupAnimations";
-import { validateSignupForm } from "./signup/components/ValidationUtils";
-import { RootStackParamList } from "../../types/navigation";
+// השמירה על הimports המודולריים שלך!
+import {
+  HeaderSection,
+  SignupForm,
+  ActionButtons,
+  ErrorDisplay,
+  SecurityNote,
+  LoginPrompt,
+  ProgressBar,
+  SignupScreenProps,
+  useSignupAnimations,
+  validateSignupForm,
+} from "./signup";
 
 const { height } = Dimensions.get("window");
 
-type SignupScreenProps = NativeStackScreenProps<RootStackParamList, "Signup">;
+// צבעים מ-WelcomeScreen
+const welcomeColors = {
+  background: "#1a1a2e",
+  surface: "#16213e",
+  primary: "#FF6B35",
+  secondary: "#F7931E",
+};
 
 /**
- * מסך הרשמה מלא ועובד - מחליף את הישן לגמרי
+ * מסך הרשמה - שומר על המבנה המודולרי + צבעים חדשים
  */
 const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const insets = useSafeAreaInsets();
 
-  // State management
+  // State management (זהה לקוד שלך)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [age, setAge] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Custom hooks for animations
+  // Custom hooks (זהה לקוד שלך)
   const animations = useSignupAnimations();
 
-  // Handlers
+  // Handlers (זהים לקוד שלך)
   const handleProceedToQuiz = async () => {
     setError(null);
     setIsLoading(true);
 
-    // Validation
     const validation = validateSignupForm(email, password, age);
     if (!validation.isValid) {
       setError(validation.error || "שגיאה בוולידציה");
@@ -61,7 +67,6 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
       return;
     }
 
-    // Simulate API call
     setTimeout(() => {
       animations.playSuccessAnimation(() => {
         navigation.navigate("Quiz", {
@@ -86,11 +91,14 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={welcomeColors.background}
+      />
 
-      {/* Background Gradient - זהה ל-WelcomeScreen */}
+      {/* Background Gradient - משופר עם צבעי WelcomeScreen */}
       <LinearGradient
-        colors={["#1a1a2e", "#16213e", "#0f3460"]}
+        colors={[welcomeColors.background, welcomeColors.surface, "#0f3460"]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -116,35 +124,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
         />
       </Animated.View>
 
-      {/* Floating Particles Background */}
-      <View style={styles.particlesContainer}>
-        {[...Array(12)].map((_, index) => (
-          <Animated.View
-            key={index}
-            style={[
-              styles.backgroundParticle,
-              {
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                opacity: animations.fadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.2],
-                }),
-                transform: [
-                  {
-                    translateY: animations.fadeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [20, -20],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          />
-        ))}
-      </View>
-
-      {/* Progress Bar - בחלק העליון */}
+      {/* Progress Bar - הרכיב שלך */}
       <ProgressBar
         progressAnim={animations.progressAnim}
         currentStep={1}
@@ -173,7 +153,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
               },
             ]}
           >
-            {/* Header Section - החלק החסר! */}
+            {/* Header Section - הרכיב שלך */}
             <View style={styles.headerWrapper}>
               <HeaderSection
                 fadeAnim={animations.fadeAnim}
@@ -182,7 +162,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
               />
             </View>
 
-            {/* Form Section */}
+            {/* Form Section - הרכיב שלך */}
             <View style={styles.formWrapper}>
               <SignupForm
                 email={email}
@@ -196,16 +176,16 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
               />
             </View>
 
-            {/* Error Display */}
+            {/* Error Display - הרכיב שלך */}
             <ErrorDisplay error={error} onDismiss={handleDismissError} />
 
-            {/* Security Note */}
+            {/* Security Note - הרכיב שלך */}
             <SecurityNote visible={true} />
 
             {/* Spacer */}
             <View style={styles.spacer} />
 
-            {/* Actions Section */}
+            {/* Actions Section - הרכיב שלך */}
             <View style={styles.actionsWrapper}>
               <ActionButtons
                 onNext={handleProceedToQuiz}
@@ -214,7 +194,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
               />
             </View>
 
-            {/* Login Prompt */}
+            {/* Login Prompt - הרכיב שלך */}
             <LoginPrompt onLoginPress={handleLogin} />
           </Animated.View>
         </ScrollView>
@@ -226,21 +206,10 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: welcomeColors.background,
   },
   glowOverlay: {
     ...StyleSheet.absoluteFillObject,
-  },
-  particlesContainer: {
-    ...StyleSheet.absoluteFillObject,
-    pointerEvents: "none",
-  },
-  backgroundParticle: {
-    position: "absolute",
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(102, 126, 234, 0.4)",
   },
   keyboardView: {
     flex: 1,
