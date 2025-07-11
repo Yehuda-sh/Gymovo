@@ -1,5 +1,5 @@
 // src/screens/profile/user/styles/profileStyles.ts
-// סטיילים עבור מסך פרופיל משתמש
+// סטיילים עבור מסך פרופיל משתמש - קומפקטי ומהיר
 
 import { StyleSheet } from "react-native";
 import { colors } from "../../../../theme/colors";
@@ -7,21 +7,24 @@ import { colors } from "../../../../theme/colors";
 export const profileStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#1a1a2e",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 30,
   },
   content: {
-    paddingTop: 60,
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    gap: 15,
   },
   errorText: {
     fontSize: 16,
-    color: colors.error,
+    color: "#ff7675",
     textAlign: "center",
     marginTop: 50,
+    fontWeight: "600",
   },
 });

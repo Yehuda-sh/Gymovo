@@ -1,11 +1,21 @@
 // src/screens/profile/user/components/AccountActions.tsx
-// רכיב כפתורי פעולות חשבון
+// פעולות חשבון קומפקטיות
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  I18nManager,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../theme/colors";
 import { AccountActionsProps } from "../types";
+
+// אכיפת RTL
+I18nManager.forceRTL(true);
 
 const AccountActions: React.FC<AccountActionsProps> = ({
   user,
@@ -13,49 +23,70 @@ const AccountActions: React.FC<AccountActionsProps> = ({
   onDeleteAccount,
 }) => {
   return (
-    <View style={styles.accountSection}>
-      <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-        <Ionicons name="log-out-outline" size={20} color="#fff" />
-        <Text style={styles.logoutText}>יציאה מהחשבון</Text>
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.actionButton} onPress={onLogout}>
+        <LinearGradient
+          colors={["#fd79a8", "#fdcb6e"]}
+          style={styles.buttonGradient}
+        >
+          <Ionicons name="log-out" size={18} color="#fff" />
+          <Text style={styles.buttonText}>יציאה מהחשבון</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
-      {!user.isGuest && (
-        <TouchableOpacity style={styles.deleteButton} onPress={onDeleteAccount}>
-          <Text style={styles.deleteText}>מחיקת חשבון</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.actionButton} onPress={onDeleteAccount}>
+        <View style={styles.deleteButton}>
+          <Ionicons name="trash" size={18} color="#ff7675" />
+          <Text style={styles.deleteButtonText}>מחיקת חשבון</Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  accountSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
+  container: {
+    gap: 10,
   },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
+  actionButton: {
     borderRadius: 12,
-    gap: 8,
-    marginBottom: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  logoutText: {
+  buttonGradient: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  buttonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    textAlign: "right",
   },
   deleteButton: {
+    flexDirection: "row-reverse",
     alignItems: "center",
+    paddingHorizontal: 16,
     paddingVertical: 12,
+    gap: 12,
+    backgroundColor: "rgba(255, 118, 117, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 118, 117, 0.3)",
   },
-  deleteText: {
-    color: colors.error,
+  deleteButtonText: {
+    flex: 1,
     fontSize: 14,
-    textDecorationLine: "underline",
+    fontWeight: "600",
+    color: "#ff7675",
+    textAlign: "right",
   },
 });
 

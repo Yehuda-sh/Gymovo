@@ -16,6 +16,7 @@ export interface QuizStatusCardProps {
   userId: string;
   onResumeQuiz: (progress: QuizProgress) => void;
   onStartNewQuiz: () => void;
+  refreshTrigger?: number; // טריגר לרענון הנתונים
 }
 
 export interface QuizResultsViewProps {

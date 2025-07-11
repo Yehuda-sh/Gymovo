@@ -1,10 +1,11 @@
 // src/screens/profile/ProfileScreen.tsx
-// מסך פרופיל מתקדם עם מערכת שאלון חכמה
+// מסך פרופיל קומפקטי ומהיר
 
 import React from "react";
 import { View, ScrollView, Text, Animated, RefreshControl } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Toast } from "../../components/common/Toast";
-import { clearAllData } from "../../data/storage";
+import { clearAllData } from "../../data/storage/utilities";
 import {
   clearQuizProgress,
   saveQuizProgress,
@@ -35,6 +36,7 @@ const ProfileScreen: React.FC = () => {
     handleClearQuiz,
     handleCreatePartialQuiz,
     handleClearAllData,
+    refreshTrigger,
   } = useProfileData();
 
   const { fadeAnim, slideAnim } = useProfileAnimations();
@@ -62,6 +64,15 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={profileStyles.container}>
+      {/* Header קומפקטי */}
+      <ProfileHeader
+        user={user}
+        getInitials={getInitials}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+      />
+
+      {/* תוכן העמוד */}
       <ScrollView
         style={profileStyles.scrollView}
         contentContainerStyle={profileStyles.scrollContent}
@@ -70,54 +81,44 @@ const ProfileScreen: React.FC = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={["#667eea"]}
+            tintColor="#667eea"
           />
         }
       >
-        <Animated.View
-          style={[
-            profileStyles.content,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <ProfileHeader
-            user={user}
-            getInitials={getInitials}
-            onRefresh={handleRefresh}
-            isRefreshing={isRefreshing}
-          />
-
+        <View style={profileStyles.content}>
+          {/* כרטיס שאלון */}
           {!user.isGuest && (
             <QuizStatusCard
               userId={user.id}
               onResumeQuiz={handleResumeQuiz}
               onStartNewQuiz={handleStartQuiz}
+              refreshTrigger={refreshTrigger}
             />
           )}
 
+          {/* פעולות מהירות */}
           <QuickActions
             onSettingsPress={handleSettingsPress}
             onGuidesPress={handleGuidesPress}
             onSupportPress={handleSupportPress}
           />
 
+          {/* פעולות חשבון */}
           <AccountActions
             user={user}
             onLogout={handleLogout}
             onDeleteAccount={handleDeleteAccount}
           />
 
+          {/* כלי פיתוח */}
           <DevTools
             user={user}
             onClearQuiz={handleClearQuiz}
             onCreatePartialQuiz={handleCreatePartialQuiz}
             onClearAllData={handleClearAllData}
           />
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );

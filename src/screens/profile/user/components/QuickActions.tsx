@@ -1,11 +1,21 @@
 // src/screens/profile/user/components/QuickActions.tsx
-// רכיב פעולות מהירות
+// פעולות מהירות קומפקטיות בפרופיל
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  I18nManager,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../theme/colors";
 import { QuickActionsProps } from "../types";
+
+// אכיפת RTL
+I18nManager.forceRTL(true);
 
 const QuickActions: React.FC<QuickActionsProps> = ({
   onSettingsPress,
@@ -13,100 +23,80 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   onSupportPress,
 }) => {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>פעולות מהירות</Text>
-
+    <View style={styles.container}>
       <TouchableOpacity style={styles.actionCard} onPress={onSettingsPress}>
-        <View style={styles.actionIcon}>
-          <Ionicons name="settings-outline" size={24} color={colors.text} />
-        </View>
-        <View style={styles.actionContent}>
+        <LinearGradient
+          colors={["#667eea", "#764ba2"]}
+          style={styles.cardGradient}
+        >
+          <Ionicons name="settings" size={20} color="#fff" />
           <Text style={styles.actionTitle}>הגדרות</Text>
-          <Text style={styles.actionSubtitle}>התאמה אישית ועדיפויות</Text>
-        </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors.textSecondary}
-        />
+          <Ionicons
+            name="chevron-back"
+            size={16}
+            color="rgba(255,255,255,0.7)"
+          />
+        </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.actionCard} onPress={onGuidesPress}>
-        <View style={styles.actionIcon}>
-          <Ionicons name="book-outline" size={24} color={colors.text} />
-        </View>
-        <View style={styles.actionContent}>
+        <LinearGradient
+          colors={["#f093fb", "#f5576c"]}
+          style={styles.cardGradient}
+        >
+          <Ionicons name="book" size={20} color="#fff" />
           <Text style={styles.actionTitle}>מדריכי אימון</Text>
-          <Text style={styles.actionSubtitle}>טיפים וטכניקות</Text>
-        </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors.textSecondary}
-        />
+          <Ionicons
+            name="chevron-back"
+            size={16}
+            color="rgba(255,255,255,0.7)"
+          />
+        </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.actionCard} onPress={onSupportPress}>
-        <View style={styles.actionIcon}>
-          <Ionicons name="help-circle-outline" size={24} color={colors.text} />
-        </View>
-        <View style={styles.actionContent}>
+        <LinearGradient
+          colors={["#4facfe", "#00f2fe"]}
+          style={styles.cardGradient}
+        >
+          <Ionicons name="help-circle" size={20} color="#fff" />
           <Text style={styles.actionTitle}>תמיכה</Text>
-          <Text style={styles.actionSubtitle}>שאלות נפוצות ועזרה</Text>
-        </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors.textSecondary}
-        />
+          <Ionicons
+            name="chevron-back"
+            size={16}
+            color="rgba(255,255,255,0.7)"
+          />
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 16,
+  container: {
+    gap: 10,
   },
   actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + "20",
-    justifyContent: "center",
+  cardGradient: {
+    flexDirection: "row-reverse",
     alignItems: "center",
-    marginRight: 16,
-  },
-  actionContent: {
-    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
   },
   actionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-    textAlign: "right",
-  },
-  actionSubtitle: {
+    flex: 1,
     fontSize: 14,
-    color: colors.textSecondary,
+    fontWeight: "600",
+    color: "#fff",
     textAlign: "right",
   },
 });

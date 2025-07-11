@@ -22,7 +22,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Share } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Components
 import Button from "../../../components/common/Button";
@@ -43,7 +43,7 @@ import {
 // Data & Services
 import { getDemoPlanForUser } from "../../../constants/demoUsers";
 import { getPlansByUserId, savePlan, deletePlan } from "../../../data/storage";
-import { fetchPublicPlans } from "../../../services/wgerApi";
+import { fetchPublicPlansWithFallback } from "../../../services/wgerApi";
 
 // Stores & Types
 import { useUserStore } from "../../../stores/userStore";
@@ -105,9 +105,9 @@ const PlansScreen = () => {
         }
       }
 
-      // Load public plans
+      // Load public plans (with fallback to demo plans)
       try {
-        const publicData = await fetchPublicPlans();
+        const publicData = await fetchPublicPlansWithFallback();
         setPublicPlans(publicData);
       } catch (error) {
         console.log("Could not load public plans:", error);

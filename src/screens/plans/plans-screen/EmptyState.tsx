@@ -10,7 +10,7 @@ import {
   Animated,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import LinearGradient from "react-native-linear-gradient";
+import { LinearGradient } from "expo-linear-gradient";
 import { designSystem } from "../../../theme/designSystem";
 import { EmptyStateProps } from "./utils";
 

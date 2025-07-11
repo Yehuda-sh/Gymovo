@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import LinearGradient from "react-native-linear-gradient";
+import { LinearGradient } from "expo-linear-gradient";
 import { designSystem } from "../../../theme/designSystem";
 import { Plan } from "../../../types/plan";
 import { getDifficultyGradient, getAnimationDelay } from "./utils";

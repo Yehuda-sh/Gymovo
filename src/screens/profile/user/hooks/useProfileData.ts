@@ -6,11 +6,16 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { Toast } from "../../../../components/common/Toast";
-import { clearAllData } from "../../../../data/storage";
+import { clearAllData } from "../../../../data/storage/utilities";
+import { savePlan } from "../../../../data/storage/plans";
+import { generatePlan, QuizAnswers } from "../../../../services/planGenerator";
 import {
   QuizProgress,
   clearQuizProgress,
   saveQuizProgress,
+  markQuizCompleted,
+  devMarkQuizCompleted,
+  devClearQuizOverride,
 } from "../../../../services/quizProgressService";
 import { useUserStore } from "../../../../stores/userStore";
 import { RootStackParamList } from "../../../../types/navigation";
@@ -18,18 +23,26 @@ import { ProfileDataHook } from "../types";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-export const useProfileData = (): ProfileDataHook => {
+export const useProfileData = (): ProfileDataHook & {
+  refreshTrigger: number;
+} => {
   const navigation = useNavigation<NavigationProp>();
   const userState = useUserStore((state) => state.user);
   const logout = useUserStore((state) => state.logout);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const triggerRefresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setIsRefreshing(false);
-  }, []);
+    triggerRefresh(); // הפעלת הטריגר לרענון הקומפוננטים
+  }, [triggerRefresh]);
 
   const handleStartQuiz = useCallback(() => {
     if (!userState) return;
@@ -110,30 +123,114 @@ export const useProfileData = (): ProfileDataHook => {
 
   // Dev Tools functions
   const handleClearQuiz = useCallback(async () => {
-    if (userState?.id) {
+    if (!userState?.id) return;
+
+    try {
+      // נסה לנקות override קודם (לכלי פיתוח)
+      await devClearQuizOverride(userState.id);
+
+      // ואז נקה את השאלון הרגיל (אם זה לא משתמש דמו)
       await clearQuizProgress(userState.id);
+
       Toast.show("התקדמות השאלון נמחקה", "success");
+
+      // רענון להצגת השינויים
+      triggerRefresh();
+    } catch (error) {
+      console.error("Failed to clear quiz:", error);
+      Toast.show("שגיאה בניקוי השאלון", "error");
     }
-  }, [userState]);
+  }, [userState, triggerRefresh]);
+
+  // פונקציה מתקדמת ליצירת שאלון חלקי אקראי
+  const generateRandomQuizAnswers = (): QuizAnswers => {
+    const goals = [
+      "strength",
+      "weight_loss",
+      "endurance",
+      "hypertrophy",
+    ] as const;
+    const experiences = ["beginner", "intermediate", "advanced"] as const;
+    const equipmentOptions = [
+      ["gym"],
+      ["home"],
+      ["gym", "dumbbells"],
+      ["dumbbells"],
+      ["minimal"],
+    ];
+    const workoutDaysOptions = [3, 4, 5, 6];
+    const timeOptions = [30, 45, 60, 75, 90];
+
+    return {
+      goal: goals[Math.floor(Math.random() * goals.length)],
+      experience: experiences[Math.floor(Math.random() * experiences.length)],
+      equipment:
+        equipmentOptions[Math.floor(Math.random() * equipmentOptions.length)],
+      workoutDays:
+        workoutDaysOptions[
+          Math.floor(Math.random() * workoutDaysOptions.length)
+        ],
+      timePerSession:
+        timeOptions[Math.floor(Math.random() * timeOptions.length)],
+      injuries: Math.random() > 0.8 ? ["knee"] : [], // 20% סיכוי לפציעה
+    };
+  };
 
   const handleCreatePartialQuiz = useCallback(async () => {
-    if (userState?.id) {
-      const partialProgress: QuizProgress = {
-        isCompleted: false,
-        currentQuestionId: "experience",
-        questionIndex: 4,
-        answers: {
-          goal: "hypertrophy",
-          experience: "intermediate",
-          equipment: ["gym"],
-          workoutDays: 4,
-        },
-        lastUpdated: new Date().toISOString(),
-      };
-      await saveQuizProgress(userState.id, partialProgress);
-      Toast.show("נוצר שאלון חלקי לבדיקה", "success");
+    if (!userState?.id) {
+      Toast.show("משתמש לא מחובר", "error");
+      return;
     }
-  }, [userState]);
+
+    try {
+      Toast.show("יוצר שאלון חדש ומפעיל אלגוריתם...", "info");
+
+      // שלב 1: יצירת תשובות אקראיות
+      const randomAnswers = generateRandomQuizAnswers();
+
+      // שלב 2: סימון השאלון כהושלם (עובד גם עם משתמשי דמו!)
+      const success = await devMarkQuizCompleted(userState.id, randomAnswers);
+
+      if (!success) {
+        Toast.show("שגיאה בשמירת השאלון", "error");
+        return;
+      }
+
+      // שלב 3: הפעלת האלגוריתם לבניית תוכנית
+      const newPlan = await generatePlan(randomAnswers, userState.id);
+
+      // שלב 4: שמירת התוכנית החדשה
+      await savePlan(userState.id, newPlan);
+
+      // שלב 5: רענון הפרופיל להצגת השינויים
+      triggerRefresh(); // שימוש ב-triggerRefresh במקום handleRefresh
+
+      // שלב 6: הצגת פרטי התוכנית החדשה
+      const goalNames = {
+        strength: "כוח",
+        weight_loss: "ירידה במשקל",
+        endurance: "סיבולת",
+        hypertrophy: "בניית שריר",
+      };
+
+      const experienceNames = {
+        beginner: "מתחיל",
+        intermediate: "בינוני",
+        advanced: "מתקדם",
+      };
+
+      Toast.show(
+        `נוצרה תוכנית חדשה!\n` +
+          `מטרה: ${goalNames[randomAnswers.goal]}\n` +
+          `רמה: ${experienceNames[randomAnswers.experience]}\n` +
+          `ימי אימון: ${randomAnswers.workoutDays}`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Error creating quiz and plan:", error);
+      Toast.show("שגיאה ביצירת השאלון והתוכנית", "error");
+    }
+  }, [userState, triggerRefresh]);
 
   const handleClearAllData = useCallback(async () => {
     await clearAllData();
@@ -152,5 +249,6 @@ export const useProfileData = (): ProfileDataHook => {
     handleClearQuiz,
     handleCreatePartialQuiz,
     handleClearAllData,
+    refreshTrigger,
   };
 };
