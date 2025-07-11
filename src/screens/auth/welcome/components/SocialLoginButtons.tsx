@@ -90,35 +90,37 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
         <View style={styles.dividerLine} />
       </View>
 
-      {/* כותרת */}
-      <View style={styles.titleContainer}>
-        <Text style={[styles.title, rtlStyles.text]}>התחבר במהירות:</Text>
-      </View>
-
-      {/* כפתורי התחברות */}
+      {/* כפתורי התחברות - קומפקטיים יותר */}
       <View style={styles.socialButtonsRow}>
         {/* כפתור Google */}
-        <Animated.View style={{ transform: [{ scale: googleScale }], flex: 1 }}>
+        <Animated.View
+          style={[
+            styles.buttonWrapper,
+            { transform: [{ scale: googleScale }] },
+          ]}
+        >
           <TouchableOpacity
             style={[styles.socialButton, styles.googleButton]}
             onPressIn={handleGooglePressIn}
             onPressOut={handleGooglePressOut}
             activeOpacity={1}
           >
-            <Ionicons name="logo-google" size={22} color="#fff" />
+            <Ionicons name="logo-google" size={18} color="#fff" />
             <Text style={styles.socialButtonText}>Google</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* כפתור Apple - תמיד מוצג */}
-        <Animated.View style={{ transform: [{ scale: appleScale }], flex: 1 }}>
+        {/* כפתור Apple */}
+        <Animated.View
+          style={[styles.buttonWrapper, { transform: [{ scale: appleScale }] }]}
+        >
           <TouchableOpacity
             style={[styles.socialButton, styles.appleButton]}
             onPressIn={handleApplePressIn}
             onPressOut={handleApplePressOut}
             activeOpacity={1}
           >
-            <Ionicons name="logo-apple" size={22} color="#fff" />
+            <Ionicons name="logo-apple" size={18} color="#fff" />
             <Text style={styles.socialButtonText}>Apple</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -130,8 +132,7 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingVertical: 16,
     width: "100%",
   },
   // קו מפריד
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   dividerLine: {
     flex: 1,
@@ -151,35 +152,31 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.5)",
     fontWeight: "500",
   },
-  titleContainer: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.7)",
-    textAlign: "center",
-    fontWeight: "500",
-  },
   socialButtonsRow: {
     flexDirection: "row",
-    gap: 16, // יותר רווח בין הכפתורים
-    paddingHorizontal: 0,
+    gap: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonWrapper: {
+    flex: 1,
+    height: 44, // קטן יותר
   },
   socialButton: {
-    flex: 1, // כל כפתור תופס חצי מהמקום
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16, // יותר גובה
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 8, // רווח נכון בין אייקון לטקסט
+    paddingVertical: 12, // קטן יותר
+    paddingHorizontal: 14,
+    borderRadius: 10, // פחות מעוגל
+    gap: 6, // פחות רווח
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-    minHeight: 50, // גובה מינימלי
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    height: 44, // גובה קטן יותר
   },
   googleButton: {
     backgroundColor: newColors.google,
@@ -188,7 +185,7 @@ const styles = StyleSheet.create({
     backgroundColor: newColors.apple,
   },
   socialButtonText: {
-    fontSize: 15, // גדול יותר
+    fontSize: 13, // קטן יותר
     fontWeight: "600",
     color: "#fff",
     textAlign: "center",

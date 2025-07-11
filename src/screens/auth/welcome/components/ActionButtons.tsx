@@ -131,10 +131,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         </TouchableOpacity>
       </Animated.View>
 
-      {/* טקסט עזרה - נוסח חדש */}
+      {/* טקסט עזרה - מעל הכפתורים */}
       <View style={styles.helpTextContainer}>
         <Text style={[styles.helpText, rtlStyles.text]}>
-          התחל בחינם • אין מחויבות • בטל בכל עת 💚
+          💚 התחל בחינם • אין מחויבות • בטל בכל עת
         </Text>
       </View>
     </Animated.View>
@@ -182,26 +182,25 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 0.5,
   },
-  // כפתור משני - עדין
+  // כפתור משני - עדין וקטן יותר
   secondaryButton: {
     backgroundColor: "transparent",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    paddingVertical: 12, // קטן יותר
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.25)",
   },
   secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
+    fontSize: 14, // קטן יותר
+    fontWeight: "500", // פחות בולט
+    color: "rgba(255, 255, 255, 0.8)",
     textAlign: "center",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  // טקסט עזרה
+  // טקסט עזרה - הסרתי לגמרי
   helpTextContainer: {
-    marginTop: 4, // פחות margin
-    paddingHorizontal: 12,
+    display: "none", // מסתיר את הטקסט לגמרי
   },
   helpText: {
     fontSize: 13,
