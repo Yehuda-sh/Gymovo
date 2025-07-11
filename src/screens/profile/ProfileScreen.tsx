@@ -22,6 +22,7 @@ import {
   useProfileAnimations,
 } from "./user";
 import { profileStyles } from "./user/styles";
+import { CleanDuplicatesHelper } from "../../components/dev/CleanDuplicatesHelper";
 
 const ProfileScreen: React.FC = () => {
   const {
@@ -118,6 +119,8 @@ const ProfileScreen: React.FC = () => {
             onCreatePartialQuiz={handleCreatePartialQuiz}
             onClearAllData={handleClearAllData}
           />
+
+          <CleanDuplicatesHelper />
         </View>
       </ScrollView>
     </View>
