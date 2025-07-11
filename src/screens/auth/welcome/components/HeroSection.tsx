@@ -1,36 +1,60 @@
-// src/screens/auth/welcome/components/HeroSection.tsx - רכיב Hero עם לוגו וכותרת מואנמים
+// src/screens/auth/welcome/components/HeroSection.tsx - עם לחיצה על לוגו
 
 import React from "react";
-import { View, Text, StyleSheet, Animated, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+  StyleSheet,
+} from "react-native";
 import { HeroSectionProps, welcomeColors } from "../types";
 
-// רכיב Hero עם אנימציות מרהיבות לחוויה מרגשת
-export const HeroSection: React.FC<HeroSectionProps> = ({
+// עדכון הטיפוס כדי לכלול את פונקציית הלחיצה
+interface HeroSectionWithTapProps extends HeroSectionProps {
+  onLogoPress?: () => void;
+}
+
+export const HeroSection: React.FC<HeroSectionWithTapProps> = ({
   fadeAnim,
   logoScale,
   titleSlide,
   subtitleSlide,
+  onLogoPress,
 }) => {
   return (
-    <View style={styles.logoSection}>
-      <Animated.View
-        style={[
-          styles.logoContainer,
-          {
-            transform: [{ scale: logoScale }],
-          },
-        ]}
+    <Animated.View style={[styles.heroContainer, { opacity: fadeAnim }]}>
+      {/* לוגו עם אפשרות לחיצה */}
+      <TouchableOpacity
+        onPress={onLogoPress}
+        activeOpacity={onLogoPress ? 0.8 : 1}
+        disabled={!onLogoPress}
+        style={styles.logoContainer}
       >
-        <View style={styles.logoGlow} />
-        <Text style={styles.logo}>💪</Text>
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.logoWrapper,
+            {
+              transform: [{ scale: logoScale }],
+            },
+          ]}
+        >
+          {/* לוגו - כרגע אייקון זמני */}
+          <View style={styles.logoIcon}>
+            <Text style={styles.logoEmoji}>💪</Text>
+          </View>
 
+          {/* אפקט זוהר עדין */}
+          <View style={styles.logoGlow} />
+        </Animated.View>
+      </TouchableOpacity>
+
+      {/* כותרת ראשית */}
       <Animated.View
         style={[
           styles.titleContainer,
           {
             transform: [{ translateY: titleSlide }],
-            opacity: fadeAnim,
           },
         ]}
       >
@@ -38,40 +62,60 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <View style={styles.accentLine} />
       </Animated.View>
 
+      {/* תת-כותרת */}
       <Animated.View
-        style={{
-          transform: [{ translateY: subtitleSlide }],
-          opacity: fadeAnim,
-        }}
+        style={[
+          styles.subtitleContainer,
+          {
+            transform: [{ translateY: subtitleSlide }],
+          },
+        ]}
       >
         <Text style={styles.subtitle}>התוכנית האישית שלך לחדר הכושר</Text>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  logoSection: {
-    flex: 1,
-    justifyContent: "center",
+  heroContainer: {
     alignItems: "center",
+    paddingVertical: 60,
   },
   logoContainer: {
-    marginBottom: 32,
+    marginBottom: 40,
+  },
+  logoWrapper: {
+    position: "relative",
     alignItems: "center",
+    justifyContent: "center",
+  },
+  logoIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: welcomeColors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: welcomeColors.logoGlow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  logoEmoji: {
+    fontSize: 48,
+    color: "#fff",
   },
   logoGlow: {
     position: "absolute",
-    width: 120,
-    height: 120,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: welcomeColors.logoGlow,
-    borderRadius: 60,
-    opacity: 0.2,
+    opacity: 0.1,
     top: -10,
-  },
-  logo: {
-    fontSize: 64,
-    textAlign: "center",
+    left: -10,
   },
   titleContainer: {
     alignItems: "center",
@@ -79,30 +123,26 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 48,
-    fontWeight: "800",
+    fontWeight: "700",
     color: welcomeColors.text,
-    marginBottom: 8,
+    textAlign: "center",
     letterSpacing: -1,
-    fontFamily: Platform.select({
-      ios: "Avenir-Heavy",
-      android: "sans-serif-condensed",
-    }),
   },
   accentLine: {
     width: 60,
     height: 4,
     backgroundColor: welcomeColors.accentLine,
     borderRadius: 2,
-    shadowColor: welcomeColors.accentLine,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 12,
+  },
+  subtitleContainer: {
+    paddingHorizontal: 40,
   },
   subtitle: {
     fontSize: 18,
     color: welcomeColors.subtitle,
     textAlign: "center",
+    lineHeight: 26,
     fontWeight: "400",
   },
 });

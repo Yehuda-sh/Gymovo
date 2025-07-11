@@ -1,4 +1,4 @@
-// src/screens/auth/welcome/types/index.ts
+// src/screens/auth/welcome/types/index.ts - מעודכן עם לחיצה על לוגו
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../types/navigation";
@@ -22,6 +22,7 @@ export interface HeroSectionProps {
   logoScale: any;
   titleSlide: any;
   subtitleSlide: any;
+  onLogoPress?: () => void; // 🆕 הוספת פונקציית לחיצה על לוגו
 }
 
 export interface ActionButtonsProps {
@@ -49,6 +50,15 @@ export interface DemoUserCardProps {
 
 export interface BackgroundGradientProps {
   visible?: boolean;
+}
+
+// 🆕 טיפוסים למודל Dev
+export interface DevModalProps {
+  visible: boolean;
+  onClose: () => void;
+  demoUsers: DemoUserData[];
+  onDemoLogin: (user: DemoUserData) => void;
+  onResetData: () => void;
 }
 
 // אובייקט הצבעים של Welcome
@@ -81,4 +91,10 @@ export const welcomeColors = {
   // Button colors
   guestButtonBorder: "#64748B",
   guestButtonBackground: "rgba(100, 116, 139, 0.1)",
+
+  // 🆕 Modal colors
+  modalOverlay: "rgba(0, 0, 0, 0.8)",
+  modalBackground: "#1a1a1a",
+  modalBorder: "#374151",
+  closeButton: "rgba(255, 255, 255, 0.1)",
 };
