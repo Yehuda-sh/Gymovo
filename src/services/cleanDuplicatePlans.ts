@@ -19,12 +19,20 @@ export interface DuplicateAnalysis {
 
 // ✅ יצירת מפתח ייחודי לתוכנית
 function createPlanKey(plan: Plan): string {
+  // בדיקה אם יש hash בתגיות
+  const hashTag = plan.tags?.find((tag) => tag.startsWith("quiz-hash:"));
+  if (hashTag) {
+    return hashTag;
+  }
+
+  // אחרת, יצירת מפתח לפי מאפיינים
   const parts = [
     plan.name,
     plan.weeklyGoal?.toString() || "0",
     plan.metadata?.goal || "",
     plan.metadata?.experience || "",
     plan.days?.length?.toString() || "0",
+    plan.creator || "",
   ];
 
   return parts.join("|").toLowerCase();

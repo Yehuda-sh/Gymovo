@@ -534,8 +534,25 @@ function generateUniqueId(): string {
   return `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// ✅ יצירת hash ייחודי לתשובות השאלון
+function createAnswersHash(answers: QuizAnswers): string {
+  const key = [
+    answers.goal,
+    answers.experience,
+    answers.workoutDays,
+    answers.equipment.sort().join(","),
+    answers.injuries?.sort().join(",") || "",
+    answers.timePerSession,
+  ].join("|");
+
+  return key;
+}
+
 // ✅ יצירת תוכנית אימון מהשאלון
-export function generatePlanFromQuiz(answers: QuizAnswers): Plan {
+export function generatePlanFromQuiz(
+  answers: QuizAnswers,
+  userId?: string
+): Plan {
   // בחירת תבנית לפי מספר ימי אימון
   const template =
     WORKOUT_TEMPLATES[answers.workoutDays as keyof typeof WORKOUT_TEMPLATES] ||
@@ -552,12 +569,15 @@ export function generatePlanFromQuiz(answers: QuizAnswers): Plan {
     return createWorkoutDay(dayTemplate, exercises, index + 1, answers);
   });
 
+  // יצירת hash מהתשובות לזיהוי תוכניות זהות
+  const answersHash = createAnswersHash(answers);
+
   // יצירת התוכנית
   const plan: Plan = {
     id: generateUniqueId(),
     name: generatePlanName(answers),
     description: generatePlanDescription(answers),
-    userId: "current_user", // יוחלף במזהה משתמש אמיתי
+    userId: userId || "current_user", // יוחלף במזהה משתמש אמיתי
     creator: "Gymovo AI",
     creatorType: "ai",
 
@@ -569,7 +589,13 @@ export function generatePlanFromQuiz(answers: QuizAnswers): Plan {
     days,
 
     // תיוג וקטגוריות
-    tags: [answers.goal, answers.experience, ...answers.equipment],
+    tags: [
+      "AI-generated",
+      answers.goal,
+      answers.experience,
+      ...answers.equipment,
+      `quiz-hash:${answersHash}`,
+    ],
     equipment: answers.equipment,
     location: answers.equipment.includes("gym") ? "gym" : "home",
 
@@ -652,6 +678,16 @@ function generatePlanDescription(answers: QuizAnswers): string {
 // ✅ מניעת כפילויות - בדיקה אם תוכנית דומה כבר קיימת
 export function isPlanDuplicate(newPlan: Plan, existingPlans: Plan[]): boolean {
   return existingPlans.some((existingPlan) => {
+    // בדיקת hash זהה בתגיות
+    const newHash = newPlan.tags?.find((tag) => tag.startsWith("quiz-hash:"));
+    const existingHash = existingPlan.tags?.find((tag) =>
+      tag.startsWith("quiz-hash:")
+    );
+
+    if (newHash && existingHash && newHash === existingHash) {
+      return true;
+    }
+
     // בדיקת שם זהה ומספר ימים זהה
     if (
       existingPlan.name === newPlan.name &&
@@ -672,6 +708,22 @@ export function isPlanDuplicate(newPlan: Plan, existingPlans: Plan[]): boolean {
 
     return false;
   });
+}
+
+// ✅ מחזיר תוכנית קיימת אם יש כזו עם אותן תשובות
+export function findExistingPlanByAnswers(
+  answers: QuizAnswers,
+  existingPlans: Plan[]
+): Plan | null {
+  const answersHash = createAnswersHash(answers);
+  const hashTag = `quiz-hash:${answersHash}`;
+
+  return (
+    existingPlans.find(
+      (plan) =>
+        plan.tags?.includes("AI-generated") && plan.tags?.includes(hashTag)
+    ) || null
+  );
 }
 
 // ✅ Export של פונקציות עזר לבדיקות
