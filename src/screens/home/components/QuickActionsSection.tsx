@@ -29,8 +29,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
  * Quick Action Card Component
  */
 const QuickActionCard: React.FC<{ action: QuickAction }> = ({ action }) => {
-  const { isSmallDevice, iconSize, iconContainerSize, cardPadding } =
-    useResponsiveDimensions();
+  const { isSmallDevice, iconSize } = useResponsiveDimensions();
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -165,7 +164,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       paddingVertical: theme.spacing.xs,
     },
     cardWrapper: {
-      marginHorizontal: isSmallDevice ? theme.spacing.sm : theme.spacing.md,
+      marginHorizontal: isSmallDevice ? theme.spacing.xs : theme.spacing.sm,
     },
   });
 
