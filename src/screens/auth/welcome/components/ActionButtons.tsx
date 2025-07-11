@@ -1,17 +1,30 @@
-// src/screens/auth/welcome/components/ActionButtons.tsx - כפתורים משופרים בסגנון ProfileScreen
+// src/screens/auth/welcome/components/ActionButtons.tsx - עם Touch Feedback
 
 import React, { useRef } from "react";
 import {
   View,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
   Text,
+  TouchableOpacity,
+  Animated,
+  StyleSheet,
+  I18nManager,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import { ActionButtonsProps } from "../types";
+import { rtlStyles } from "../../../../theme/rtl";
 import * as Haptics from "expo-haptics";
-import { ActionButtonsProps, welcomeColors } from "../types";
+
+// Force RTL
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
+
+// צבעים ישראליים
+const newColors = {
+  primary: "#FF6B35", // כתום חם ראשי
+  secondary: "#F7931E", // כתום זהוב
+  accent: "#FFD23F", // צהוב זהב
+  dark: "#2C1810", // חום כהה
+  glow: "rgba(255, 107, 53, 0.3)",
+};
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onSignup,
@@ -19,185 +32,183 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   buttonsSlide,
   fadeAnim,
 }) => {
-  // אנימציות לחיצה
-  const primaryScale = useRef(new Animated.Value(1)).current;
-  const secondaryScale = useRef(new Animated.Value(1)).current;
+  // אנימציות לכפתורים
+  const primaryButtonScale = useRef(new Animated.Value(1)).current;
+  const secondaryButtonScale = useRef(new Animated.Value(1)).current;
 
+  // Touch Feedback לכפתור ראשי
   const handlePrimaryPressIn = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Animated.spring(primaryScale, {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.spring(primaryButtonScale, {
       toValue: 0.95,
-      speed: 20,
-      bounciness: 5,
+      tension: 300,
+      friction: 10,
       useNativeDriver: true,
     }).start();
   };
 
   const handlePrimaryPressOut = () => {
-    Animated.spring(primaryScale, {
+    Animated.spring(primaryButtonScale, {
       toValue: 1,
-      speed: 20,
-      bounciness: 10,
+      tension: 300,
+      friction: 10,
       useNativeDriver: true,
     }).start();
+
+    // עיכוב קטן למראה מלוטש
+    setTimeout(() => {
+      onSignup();
+    }, 100);
   };
 
+  // Touch Feedback לכפתור משני
   const handleSecondaryPressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Animated.spring(secondaryScale, {
-      toValue: 0.95,
-      speed: 20,
-      bounciness: 5,
+    Animated.spring(secondaryButtonScale, {
+      toValue: 0.97,
+      tension: 300,
+      friction: 10,
       useNativeDriver: true,
     }).start();
   };
 
   const handleSecondaryPressOut = () => {
-    Animated.spring(secondaryScale, {
+    Animated.spring(secondaryButtonScale, {
       toValue: 1,
-      speed: 20,
-      bounciness: 10,
+      tension: 300,
+      friction: 10,
       useNativeDriver: true,
     }).start();
+
+    setTimeout(() => {
+      onLogin();
+    }, 100);
   };
 
   return (
     <Animated.View
       style={[
-        styles.buttonsSection,
+        styles.buttonsContainer,
+        rtlStyles.container,
         {
-          transform: [{ translateY: buttonsSlide }],
           opacity: fadeAnim,
+          transform: [{ translateY: buttonsSlide }],
         },
       ]}
     >
-      <View style={styles.primaryActions}>
-        {/* כפתור ראשי */}
-        <Animated.View
-          style={[
-            styles.primaryButtonWrapper,
-            {
-              transform: [{ scale: primaryScale }],
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={onSignup}
-            onPressIn={handlePrimaryPressIn}
-            onPressOut={handlePrimaryPressOut}
-            activeOpacity={1}
-          >
-            <LinearGradient
-              colors={["#667eea", "#764ba2"]}
-              style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={styles.primaryButtonText}>התחל עכשיו</Text>
-              <View style={styles.iconWrapper}>
-                <Ionicons name="arrow-back" size={20} color="#fff" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+      {/* מונה משתמשים */}
+      <View style={styles.socialProofContainer}>
+        <Text style={[styles.socialProofText, rtlStyles.text]}>
+          כבר 1,247 ישראלים השיגו את המטרות שלהם 🎯
+        </Text>
+      </View>
 
-        {/* כפתור משני */}
-        <Animated.View
-          style={[
-            styles.secondaryButtonWrapper,
-            {
-              transform: [{ scale: secondaryScale }],
-            },
-          ]}
+      {/* כפתור ראשי עם אנימציה */}
+      <Animated.View style={{ transform: [{ scale: primaryButtonScale }] }}>
+        <TouchableOpacity
+          style={[styles.primaryButton]}
+          onPressIn={handlePrimaryPressIn}
+          onPressOut={handlePrimaryPressOut}
+          activeOpacity={1} // נשלוט באנימציה בעצמנו
         >
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={onLogin}
-            onPressIn={handleSecondaryPressIn}
-            onPressOut={handleSecondaryPressOut}
-            activeOpacity={1}
-          >
-            <LinearGradient
-              colors={["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]}
-              style={styles.secondaryGradient}
-            >
-              <Text style={styles.secondaryButtonText}>יש לי חשבון</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+          <Text style={[styles.primaryButtonText, rtlStyles.text]}>
+            בואו נבנה את התוכנית שלך! 💪
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* כפתור משני עם אנימציה */}
+      <Animated.View style={{ transform: [{ scale: secondaryButtonScale }] }}>
+        <TouchableOpacity
+          style={[styles.secondaryButton]}
+          onPressIn={handleSecondaryPressIn}
+          onPressOut={handleSecondaryPressOut}
+          activeOpacity={1}
+        >
+          <Text style={[styles.secondaryButtonText, rtlStyles.text]}>
+            יש לי חשבון
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* טקסט עזרה - נוסח חדש */}
+      <View style={styles.helpTextContainer}>
+        <Text style={[styles.helpText, rtlStyles.text]}>
+          התחל בחינם • אין מחויבות • בטל בכל עת 💚
+        </Text>
       </View>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  buttonsSection: {
-    paddingTop: 32,
+  buttonsContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16, // פחות padding
+    gap: 16,
+    width: "100%",
+    alignItems: "stretch",
   },
-  primaryActions: {
-    gap: 12,
+  // Social Proof
+  socialProofContainer: {
+    marginBottom: 12, // פחות margin
+    paddingHorizontal: 12,
   },
-  primaryButtonWrapper: {
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+  socialProofText: {
+    fontSize: 14,
+    color: newColors.accent,
+    textAlign: "center",
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
+  // כפתור ראשי - כתום חם
   primaryButton: {
+    backgroundColor: newColors.primary,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
     borderRadius: 16,
-    overflow: "hidden",
-  },
-  buttonGradient: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    gap: 10,
+    shadowColor: newColors.glow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: newColors.secondary,
   },
   primaryButtonText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#fff",
+    textAlign: "center",
     letterSpacing: 0.5,
-    textShadowColor: "rgba(0,0,0,0.2)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
-  iconWrapper: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  secondaryButtonWrapper: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  // כפתור משני - עדין
   secondaryButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  secondaryGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderWidth: 1,
-    borderColor: "rgba(102,126,234,0.5)",
-    borderRadius: 16,
-    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
     letterSpacing: 0.3,
+  },
+  // טקסט עזרה
+  helpTextContainer: {
+    marginTop: 4, // פחות margin
+    paddingHorizontal: 12,
+  },
+  helpText: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.6)",
+    textAlign: "center",
+    lineHeight: 18,
+    opacity: 0.8,
   },
 });
 

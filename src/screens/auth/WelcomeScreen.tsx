@@ -1,4 +1,4 @@
-// src/screens/auth/WelcomeScreen.tsx - Dev Mode מוסתר עם 3 לחיצות על לוגו
+// src/screens/auth/WelcomeScreen.tsx - עם התחברות חברתית
 
 import React, { useCallback, useState, useRef } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   Animated,
   Text,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { clearAllData } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
@@ -17,7 +18,6 @@ import { User } from "../../types/user";
 import {
   BackgroundGradient,
   HeroSection,
-  ActionButtons,
   GuestButton,
   DevPanel,
   useWelcomeAnimations,
@@ -25,6 +25,8 @@ import {
   WelcomeScreenProps,
   DemoUserData,
 } from "./welcome";
+import SocialLoginButtons from "./welcome/components/SocialLoginButtons";
+import ActionButtons from "./welcome/components/ActionButtons";
 
 const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   const becomeGuest = useUserStore((state: UserState) => state.becomeGuest);
@@ -47,31 +49,15 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
   // 🎯 טיפול ב-3 לחיצות על הלוגו
   const handleLogoPress = useCallback(() => {
-    if (!__DEV__) return; // רק בסביבת פיתוח
+    if (!__DEV__) return;
 
     const newCount = logoTapCount + 1;
     setLogoTapCount(newCount);
 
-    // אנימציית לוגו קטנה בכל לחיצה
-    Animated.sequence([
-      Animated.timing(logoScale, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // אם הגענו ל-3 לחיצות
     if (newCount >= 3) {
       setShowDevModal(true);
       setLogoTapCount(0);
 
-      // אנימציית פתיחת המודל
       Animated.parallel([
         Animated.timing(modalOpacity, {
           toValue: 1,
@@ -87,7 +73,6 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
       ]).start();
     }
 
-    // איפוס הספירה אחרי 3 שניות
     if (tapTimeoutRef.current) {
       clearTimeout(tapTimeoutRef.current);
     }
@@ -115,6 +100,49 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
     });
   }, [modalOpacity, modalScale]);
 
+  // 🔐 התחברות חברתית
+  const handleGoogleLogin = useCallback(async () => {
+    try {
+      Alert.alert("Google Login", "מתחבר דרך Google...", [
+        { text: "בטל" },
+        {
+          text: "המשך",
+          onPress: () => {
+            // כאן תוסיף את הלוגיקה האמיתית של Google
+            console.log("Google login initiated");
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Main" }],
+            });
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error("Google login error:", error);
+    }
+  }, [navigation]);
+
+  const handleAppleLogin = useCallback(async () => {
+    try {
+      Alert.alert("Apple Login", "מתחבר דרך Apple...", [
+        { text: "בטל" },
+        {
+          text: "המשך",
+          onPress: () => {
+            // כאן תוסיף את הלוגיקה האמיתית של Apple
+            console.log("Apple login initiated");
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Main" }],
+            });
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error("Apple login error:", error);
+    }
+  }, [navigation]);
+
   // התחברות כמשתמש דמו
   const handleDemoLogin = useCallback(
     async (demoUser: DemoUserData) => {
@@ -129,7 +157,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
       };
 
       await loginAsDemoUser(userForStore);
-      closeDevModal(); // סגור את המודל
+      closeDevModal();
       navigation.reset({
         index: 0,
         routes: [{ name: "Main" }],
@@ -164,16 +192,16 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
       <BackgroundGradient />
 
       <View style={welcomeStyles.content}>
-        {/* לוגו וכותרת - עם אפשרות ללחיצה */}
+        {/* לוגו וכותרת */}
         <HeroSection
           fadeAnim={fadeAnim}
           logoScale={logoScale}
           titleSlide={titleSlide}
           subtitleSlide={subtitleSlide}
-          onLogoPress={handleLogoPress} // הוספת פונקציית לחיצה
+          onLogoPress={handleLogoPress}
         />
 
-        {/* כפתורי כניסה */}
+        {/* כפתורי כניסה רגילים */}
         <ActionButtons
           onSignup={() => navigation.navigate("Signup")}
           onLogin={() => navigation.navigate("Login")}
@@ -181,11 +209,18 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
           fadeAnim={fadeAnim}
         />
 
+        {/* כפתורי התחברות חברתית - אחרי הכפתורים הרגילים */}
+        <SocialLoginButtons
+          onGoogleLogin={handleGoogleLogin}
+          onAppleLogin={handleAppleLogin}
+          fadeAnim={fadeAnim}
+        />
+
         {/* כפתור אורח */}
         <GuestButton onGuestLogin={handleGuestLogin} />
       </View>
 
-      {/* 🔒 Dev Modal - מוצג רק אחרי 3 לחיצות */}
+      {/* 🔒 Dev Modal */}
       <Modal
         visible={showDevModal}
         transparent={true}
@@ -211,7 +246,6 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
               onPress={(e) => e.stopPropagation()}
               style={devModalStyles.modalContent}
             >
-              {/* כפתור סגירה */}
               <TouchableOpacity
                 style={devModalStyles.closeButton}
                 onPress={closeDevModal}
@@ -219,7 +253,6 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
                 <Text style={devModalStyles.closeButtonText}>✕</Text>
               </TouchableOpacity>
 
-              {/* תוכן Dev Panel */}
               <DevPanel
                 visible={true}
                 demoUsers={demoUsers as DemoUserData[]}
@@ -234,17 +267,16 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   );
 };
 
-// 🎨 סטיילים למודל Dev
 const devModalStyles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.8)",
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   modalContainer: {
-    width: "100%" as const,
+    width: "100%",
     maxWidth: 400,
   },
   modalContent: {
@@ -255,21 +287,21 @@ const devModalStyles = StyleSheet.create({
     borderColor: "#374151",
   },
   closeButton: {
-    position: "absolute" as const,
+    position: "absolute",
     top: 16,
     right: 16,
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 1,
   },
   closeButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600" as const,
+    fontWeight: "600",
   },
 });
 
