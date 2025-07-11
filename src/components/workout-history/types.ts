@@ -21,6 +21,14 @@ export interface WorkoutStats {
   averageRating: number;
 }
 
+// ממשק לכרטיס אימון
+export interface WorkoutCardProps {
+  workout: Workout;
+  onPress: () => void;
+  onLongPress: () => void;
+  index: number;
+}
+
 // פלטת צבעים מודרנית למסך ההיסטוריה - עיצוב אחיד ומקצועי
 export const modernColors = {
   primary: "#007AFF",
@@ -33,6 +41,7 @@ export const modernColors = {
   cardBg: "#FFFFFF",
   text: "#1C1C1E",
   textSecondary: "#8E8E93",
+  muted: "#8E8E93", // הוספת הצבע החסר
   border: "#E5E5EA",
   shadow: "#000000",
 };

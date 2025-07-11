@@ -71,9 +71,13 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const weeklyWorkouts = workouts.filter(
-      (w) => w.date && w.date >= weekAgo
-    ).length;
+    // ✅ תיקון: המרת תאריכים ל-Date objects
+    const weeklyWorkouts = workouts.filter((w) => {
+      if (!w.date) return false;
+      const workoutDate = w.date instanceof Date ? w.date : new Date(w.date);
+      return !isNaN(workoutDate.getTime()) && workoutDate >= weekAgo;
+    }).length;
+
     const totalDuration = workouts.reduce(
       (sum, w) => sum + (w.duration || 0),
       0
@@ -114,7 +118,13 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
       }
 
       if (filters.dateRange !== "all") {
-        filtered = filtered.filter((w) => w.date && w.date >= startDate);
+        // ✅ תיקון: המרת תאריכים לפני השוואה
+        filtered = filtered.filter((w) => {
+          if (!w.date) return false;
+          const workoutDate =
+            w.date instanceof Date ? w.date : new Date(w.date);
+          return !isNaN(workoutDate.getTime()) && workoutDate >= startDate;
+        });
       }
     }
 
@@ -130,11 +140,19 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
 
     // החלת מיון
     filtered.sort((a, b) => {
+      // ✅ תיקון: המרת תאריכים לפני מיון
+      const getDateValue = (workout: Workout): number => {
+        if (!workout.date) return 0;
+        const date =
+          workout.date instanceof Date ? workout.date : new Date(workout.date);
+        return !isNaN(date.getTime()) ? date.getTime() : 0;
+      };
+
       switch (sortBy) {
         case "date-desc":
-          return b.date!.getTime() - a.date!.getTime();
+          return getDateValue(b) - getDateValue(a);
         case "date-asc":
-          return a.date!.getTime() - b.date!.getTime();
+          return getDateValue(a) - getDateValue(b);
         case "rating-desc":
           return (b.rating || 0) - (a.rating || 0);
         case "rating-asc":
@@ -182,10 +200,11 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
           onPress: async () => {
             try {
               await Share.share({
-                message: `סיימתי אימון ${workout.name}! 💪\nזמן: ${workout.duration} דקות\nתרגילים: ${workout.completedExercises}/${workout.totalExercises}`,
+                message: `סיימתי אימון ${workout.name}!\n💪 ${workout.exercises.length} תרגילים\n⏱️ ${workout.duration} דקות`,
+                title: workout.name,
               });
             } catch (error) {
-              console.error(error);
+              console.error("Share error:", error);
             }
           },
         },
@@ -193,82 +212,76 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
           text: "מחק",
           style: "destructive",
           onPress: () => {
-            Alert.alert(
-              "מחיקת אימון",
-              "האם אתה בטוח שברצונך למחוק את האימון?",
-              [
-                { text: "ביטול", style: "cancel" },
-                {
-                  text: "מחק",
-                  style: "destructive",
-                  onPress: () => {
-                    Haptics.notificationAsync(
-                      Haptics.NotificationFeedbackType.Success
-                    );
-                    workoutStore.deleteWorkout(workout.id);
-                  },
+            Alert.alert("מחיקת אימון", "האם אתה בטוח?", [
+              { text: "ביטול", style: "cancel" },
+              {
+                text: "מחק",
+                style: "destructive",
+                onPress: () => {
+                  workoutStore.deleteWorkout(workout.id);
+                  console.log("Workout deleted");
                 },
-              ]
-            );
+              },
+            ]);
           },
         },
         { text: "ביטול", style: "cancel" },
       ]);
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [workoutStore]
   );
 
-  // מעבר למסך התחלת אימון חדש
+  // מעבר למסך התחלת אימון
   const handleStartWorkout = useCallback(() => {
     navigation.navigate("StartWorkout");
   }, [navigation]);
 
-  // החלפת אופן המיון בלחיצה על כפתור המיון
+  // טיפול בשינוי מיון
   const handleSortPress = useCallback(() => {
     const sortOptions: WorkoutSortBy[] = [
       "date-desc",
       "date-asc",
       "rating-desc",
-      "rating-asc",
       "duration-desc",
-      "duration-asc",
     ];
 
     const currentIndex = sortOptions.indexOf(sortBy);
     const nextIndex = (currentIndex + 1) % sortOptions.length;
     setSortBy(sortOptions[nextIndex]);
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [sortBy]);
 
-  // פונקציה להמרת סוג המיון לטקסט ידידותי
-  const getSortLabel = useCallback((sort: WorkoutSortBy) => {
+  // קבלת תווית למיון
+  const getSortLabel = useCallback((sort: WorkoutSortBy): string => {
     switch (sort) {
       case "date-desc":
-        return "חדש ביותר";
+        return "חדש לישן";
       case "date-asc":
-        return "ישן ביותר";
+        return "ישן לחדש";
       case "rating-desc":
         return "דירוג גבוה";
       case "rating-asc":
         return "דירוג נמוך";
       case "duration-desc":
-        return "ארוך ביותר";
+        return "ארוך לקצר";
       case "duration-asc":
-        return "קצר ביותר";
+        return "קצר לארוך";
       default:
-        return "מיון";
+        return "";
     }
   }, []);
 
-  // הסרת סינון ספציפי
-  const removeFilter = useCallback(
-    (key: keyof WorkoutHistoryFilters) => {
-      const newFilters = { ...filters };
+  // הסרת פילטר בודד
+  const removeFilter = useCallback((key: keyof WorkoutHistoryFilters) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
       delete newFilters[key];
-      setFilters(newFilters);
-    },
-    [filters]
-  );
+      return newFilters;
+    });
+  }, []);
 
   return {
     // State

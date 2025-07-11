@@ -1,11 +1,9 @@
 // src/components/workout-history/WorkoutCard.tsx
-// כרטיס אימון מתקדם עם אנימציות, מידע מפורט וחוויית משתמש מעולה
+// כרטיס אימון מעוצב עם אנימציות ומידע מפורט - מתוקן לתאריכים
 
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
 import { MotiView } from "moti";
-import React from "react";
+import React, { useRef } from "react";
 import {
   Animated,
   StyleSheet,
@@ -13,31 +11,29 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAnimatedValue } from "../../hooks/useAnimatedValue";
-import { Workout, modernColors } from "./types";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 
-interface WorkoutCardProps {
-  workout: Workout;
-  onPress: () => void;
-  onLongPress: () => void;
-  index: number;
-}
+import { WorkoutCardProps, modernColors } from "./types";
 
-// רכיב כרטיס האימון הראשי - מציג פרטי אימון עם אנימציות ואינטראקציות
-export const WorkoutCard = ({
+/**
+ * WorkoutCard Component - מציג אימון בודד עם עיצוב מודרני
+ * כולל אנימציות, סטטיסטיקות ופעולות משתמש
+ */
+export const WorkoutCard: React.FC<WorkoutCardProps> = ({
   workout,
   onPress,
   onLongPress,
-  index,
-}: WorkoutCardProps) => {
-  const scaleAnim = useAnimatedValue(1);
-  const rotateAnim = useAnimatedValue(0);
+  index = 0,
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  // אנימציה בעת לחיצה - מקטין וסובב קלות
+  // אנימציית לחיצה
   const handlePressIn = () => {
     Animated.parallel([
       Animated.spring(scaleAnim, {
-        toValue: 0.95,
+        toValue: 0.98,
         useNativeDriver: true,
       }),
       Animated.spring(rotateAnim, {
@@ -47,7 +43,6 @@ export const WorkoutCard = ({
     ]).start();
   };
 
-  // אנימציה בעת שחרור - חוזר למצב רגיל
   const handlePressOut = () => {
     Animated.parallel([
       Animated.spring(scaleAnim, {
@@ -61,7 +56,7 @@ export const WorkoutCard = ({
     ]).start();
   };
 
-  // פונקציה לפרמוט זמן אימון - מציגה שעות ודקות בצורה ברורה
+  // פרמוט זמן אימון
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -70,16 +65,24 @@ export const WorkoutCard = ({
       : `${mins} דק'`;
   };
 
-  // פונקציה לפרמוט תאריך - מציגה תאריכים יחסיים (היום, אתמול, וכו')
-  const formatDate = (date: Date) => {
+  // ✅ תיקון: פונקציה לפרמוט תאריך - מטפלת בכל סוגי התאריכים
+  const formatDate = (date: Date | string | number | undefined) => {
+    if (!date) return "ללא תאריך";
+
+    // המרה בטוחה לאובייקט Date
+    const dateObj = date instanceof Date ? date : new Date(date);
+
+    // בדיקה שהתאריך תקף
+    if (isNaN(dateObj.getTime())) return "תאריך לא תקין";
+
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffTime = Math.abs(now.getTime() - dateObj.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return "היום";
     if (diffDays === 1) return "אתמול";
     if (diffDays < 7) return `לפני ${diffDays} ימים`;
-    return date.toLocaleDateString("he-IL");
+    return dateObj.toLocaleDateString("he-IL");
   };
 
   return (
@@ -140,89 +143,90 @@ export const WorkoutCard = ({
               <View style={styles.cardTitleSection}>
                 <Text style={styles.workoutTitle}>{workout.name}</Text>
                 <Text style={styles.workoutDate}>
-                  {formatDate(workout.date!)}
+                  {formatDate(workout.date)}
                 </Text>
               </View>
-              <View style={styles.ratingBadge}>
-                <Ionicons name="star" size={14} color={modernColors.warning} />
-                <Text style={styles.ratingText}>{workout.rating || "—"}</Text>
-              </View>
+              {workout.rating && (
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Text style={styles.ratingText}>{workout.rating}</Text>
+                </View>
+              )}
             </View>
 
-            {/* שורת הסטטיסטיקות */}
             <View style={styles.statsRow}>
-              <View style={styles.statChip}>
+              <View style={styles.statItem}>
                 <Ionicons
                   name="time-outline"
                   size={16}
-                  color={modernColors.primary}
+                  color={modernColors.muted}
                 />
-                <Text style={styles.statChipText}>
+                <Text style={styles.statValue}>
                   {formatDuration(workout.duration || 0)}
                 </Text>
               </View>
-              <View style={styles.statChip}>
+
+              <View style={styles.statItem}>
                 <Ionicons
                   name="barbell-outline"
                   size={16}
-                  color={modernColors.primary}
+                  color={modernColors.muted}
                 />
-                <Text style={styles.statChipText}>
-                  {workout.totalVolume ? `${workout.totalVolume} ק"ג` : "—"}
+                <Text style={styles.statValue}>
+                  {workout.exercises.length} תרגילים
                 </Text>
               </View>
-              <View style={styles.statChip}>
-                <Ionicons
-                  name="flash-outline"
-                  size={16}
-                  color={modernColors.primary}
-                />
-                <Text style={styles.statChipText}>
-                  {workout.completedExercises}/{workout.totalExercises}
-                </Text>
-              </View>
+
+              {workout.totalVolume && (
+                <View style={styles.statItem}>
+                  <Ionicons
+                    name="analytics-outline"
+                    size={16}
+                    color={modernColors.muted}
+                  />
+                  <Text style={styles.statValue}>
+                    {Math.round(workout.totalVolume)}kg
+                  </Text>
+                </View>
+              )}
             </View>
 
-            {/* תצוגה מקדימה של הערות */}
-            {workout.notes && (
-              <Text style={styles.notesPreview} numberOfLines={1}>
-                💭 {workout.notes}
-              </Text>
+            {/* נקודות עיקריות לשיפור */}
+            {workout.personalRecords && workout.personalRecords.length > 0 && (
+              <View style={styles.highlightBadge}>
+                <Ionicons name="trophy" size={12} color="#FFD700" />
+                <Text style={styles.highlightText}>
+                  {workout.personalRecords.length} שיאים אישיים!
+                </Text>
+              </View>
             )}
           </View>
-
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={modernColors.textSecondary}
-            style={styles.chevron}
-          />
         </TouchableOpacity>
       </Animated.View>
     </MotiView>
   );
 };
 
-// סטיילים לכרטיס האימון - עיצוב מודרני עם הצללות ואנימציות
+// סטיילים למרכיב WorkoutCard
 const styles = StyleSheet.create({
   workoutCard: {
-    backgroundColor: modernColors.cardBg,
+    backgroundColor: modernColors.surface,
     borderRadius: 16,
     marginHorizontal: 20,
-    shadowColor: modernColors.shadow,
-    shadowOffset: { width: 0, height: 4 },
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
     overflow: "hidden",
   },
   progressIndicator: {
     height: 4,
-    backgroundColor: modernColors.surface,
+    backgroundColor: "rgba(0, 200, 81, 0.1)",
   },
   progressBar: {
     height: "100%",
-    borderRadius: 2,
   },
   cardContent: {
     padding: 16,
@@ -238,18 +242,18 @@ const styles = StyleSheet.create({
   },
   workoutTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "600",
     color: modernColors.text,
     marginBottom: 4,
   },
   workoutDate: {
     fontSize: 14,
-    color: modernColors.textSecondary,
+    color: modernColors.muted,
   },
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: modernColors.surface,
+    backgroundColor: "rgba(255, 215, 0, 0.1)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -258,36 +262,35 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 12,
     fontWeight: "600",
-    color: modernColors.text,
+    color: "#FFD700",
   },
   statsRow: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 8,
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
-  statChip: {
+  statItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: modernColors.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
     gap: 4,
   },
-  statChipText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: modernColors.text,
-  },
-  notesPreview: {
+  statValue: {
     fontSize: 14,
-    color: modernColors.textSecondary,
-    fontStyle: "italic",
+    color: modernColors.muted,
   },
-  chevron: {
-    position: "absolute",
-    right: 16,
-    top: "50%",
-    marginTop: -10,
+  highlightBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 215, 0, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    gap: 6,
+  },
+  highlightText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFD700",
   },
 });
