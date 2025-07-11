@@ -27,6 +27,7 @@ import MotivationCard from "./components/MotivationCard";
 import RecommendedPlanCard from "./components/RecommendedPlanCard";
 import RecentWorkoutsSection from "./components/RecentWorkoutsSection";
 import { useResponsiveDimensions } from "../../hooks/useDeviceInfo";
+// eslint-disable-next-line import/no-named-as-default
 import DevResponsiveInfo from "../../components/DevResponsiveInfo";
 
 // Force RTL
@@ -54,7 +55,7 @@ const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const { dashboardData, loading, refreshing, onRefresh } = useHomeData(user);
 
-  const { isSmallDevice, screenPadding, sectionSpacing, titleFontSize } =
+  const { isSmallDevice, screenPadding, titleFontSize } =
     useResponsiveDimensions();
 
   if (loading) {
