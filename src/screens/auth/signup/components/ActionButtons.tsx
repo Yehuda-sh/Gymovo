@@ -1,4 +1,4 @@
-// src/screens/auth/login/components/ActionButtons.tsx - עם Button מתקדם
+// src/screens/auth/signup/components/ActionButtons.tsx - גרסה סופית עם Button החדש
 
 import React from "react";
 import { StyleSheet, View, Text } from "react-native";
@@ -6,59 +6,46 @@ import Button from "../../../../components/common/Button";
 import { ActionButtonsProps } from "../types";
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
-  isLoading,
-  onLogin,
+  onNext,
   onBack,
+  isLoading = false,
 }) => {
-  // אם טוען - נציג הודעת טעינה מיוחדת
-  if (isLoading) {
-    return (
-      <View style={styles.actionsSection}>
-        <Button
-          title="מתחבר..."
-          onPress={() => {}} // לא פעיל
-          variant="primary"
-          size="large"
-          loading={true}
-          disabled={true}
-          hapticFeedback="none"
-          glowEffect={false}
-          style={styles.loadingButton}
-        />
-
-        <Text style={styles.loadingMessage}>מאמת את הפרטים שלך... 🔐</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.actionsSection}>
-      {/* כפתור התחברות ראשי */}
+      {/* כפתור המשך ראשי - עם העיצוב החדש */}
       <Button
-        title="התחבר"
-        onPress={onLogin}
+        title={isLoading ? "רושם..." : "המשך לשאלון"}
+        onPress={onNext}
         variant="primary"
         size="large"
-        icon="log-in-outline"
+        icon={isLoading ? undefined : "arrow-back"} // RTL - חץ לשמאל
         iconPosition="left"
-        hapticFeedback="medium"
+        disabled={isLoading}
+        loading={isLoading}
+        hapticFeedback="heavy"
         glowEffect={true}
-        pulseAnimation={true}
-        style={styles.loginButton}
+        pulseAnimation={!isLoading}
+        style={styles.nextButton}
       />
 
-      {/* כפתור חזור */}
+      {/* כפתור חזור משני */}
       <Button
         title="חזור"
         onPress={onBack}
         variant="outline"
         size="large"
-        icon="chevron-forward" // RTL
+        icon="chevron-forward" // RTL - חץ ימינה לחזור
         iconPosition="right"
+        disabled={isLoading}
         hapticFeedback="light"
         glowEffect={false}
         style={styles.backButton}
       />
+
+      {/* הודעת מצב בזמן טעינה */}
+      {isLoading && (
+        <Text style={styles.loadingMessage}>מעבד את הפרטים שלך... ⚡</Text>
+      )}
     </View>
   );
 };
@@ -67,23 +54,29 @@ const styles = StyleSheet.create({
   actionsSection: {
     width: "100%",
     gap: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
-  loginButton: {
-    marginBottom: 4,
+  nextButton: {
+    // הסגנון מגיע מרכיב Button
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    elevation: 10,
   },
   backButton: {
-    // העיצוב מגיע מהרכיב Button
-  },
-  loadingButton: {
-    marginBottom: 16,
+    // הסגנון מגיע מרכיב Button
+    borderColor: "rgba(255, 255, 255, 0.4)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
   loadingMessage: {
     textAlign: "center",
-    color: "rgba(255, 255, 255, 0.7)",
-    fontSize: 15,
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
     fontWeight: "500",
-    letterSpacing: -0.3,
+    marginTop: 8,
+    letterSpacing: -0.2,
   },
 });
 

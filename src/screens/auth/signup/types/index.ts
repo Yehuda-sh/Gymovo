@@ -1,4 +1,4 @@
-// src/screens/auth/signup/types/index.ts
+// src/screens/auth/signup/types/index.ts - עם הוספת isLoading
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../types/navigation";
@@ -51,6 +51,7 @@ export interface SecurityNoteProps {
 export interface ActionButtonsProps {
   onNext: () => void;
   onBack: () => void;
+  isLoading?: boolean; // הוספה חדשה
 }
 
 export interface LoginPromptProps {
@@ -70,12 +71,14 @@ export interface SignupResult {
   data?: SignupData;
 }
 
-// אובייקט הצבעים של Signup
+// אובייקט הצבעים של Signup - מעודכן
 export const signupColors = {
-  // יורש מהצבעים הכלליים
-  primary: "#00ff88",
-  background: "#000000",
-  surface: "#262626",
+  // צבעים בסיסיים
+  primary: "#667eea",
+  secondary: "#764ba2",
+  accent: "#00ff88",
+  background: "#1a1a2e",
+  surface: "#16213e",
   text: "#ffffff",
   textSecondary: "#cccccc",
   textMuted: "#888888",
@@ -83,17 +86,74 @@ export const signupColors = {
   border: "#333333",
 
   // צבעים ספציפיים לSignup
-  overlay: "rgba(0, 0, 0, 0.85)",
-  inputBackground: "rgba(0, 0, 0, 0.6)",
-  inputBorder: "rgba(0, 255, 136, 0.4)",
-  logoGlow: "rgba(0, 255, 136, 0.2)",
-  errorBackground: "rgba(239, 68, 68, 0.1)",
-  errorBorder: "rgba(239, 68, 68, 0.3)",
+  overlay: "rgba(0, 0, 0, 0.6)",
+
+  // Input colors - משופרים
+  inputBackground: "rgba(0, 0, 0, 0.7)",
+  inputBorder: "rgba(102, 126, 234, 0.4)",
+  inputBorderActive: "#667eea",
+  inputBorderError: "#ff3366",
+  inputText: "#ffffff",
+  inputLabel: "rgba(255, 255, 255, 0.8)",
+  inputPlaceholder: "rgba(255, 255, 255, 0.4)",
+
+  // Logo and effects
+  logoGlow: "rgba(102, 126, 234, 0.3)",
+  primaryGlow: "rgba(102, 126, 234, 0.4)",
+
+  // Error states
+  errorBackground: "rgba(255, 51, 102, 0.1)",
+  errorBorder: "rgba(255, 51, 102, 0.3)",
+  errorText: "#ff3366",
+
+  // Security note
   securityBackground: "rgba(0, 255, 136, 0.1)",
   securityBorder: "rgba(0, 255, 136, 0.3)",
-  progressBackground: "rgba(255, 255, 255, 0.2)",
+  securityText: "rgba(255, 255, 255, 0.9)",
+
+  // Progress
+  progressBackground: "rgba(255, 255, 255, 0.1)",
+  progressActive: "#667eea",
+  progressText: "rgba(255, 255, 255, 0.8)",
+
+  // Login prompt
   loginText: "rgba(255, 255, 255, 0.7)",
-  subtitle: "rgba(255, 255, 255, 0.7)",
-  securityText: "rgba(255, 255, 255, 0.8)",
-  progressText: "rgba(255, 255, 255, 0.7)",
+  loginLink: "#667eea",
+
+  // Status indicators
+  success: "#00ff88",
+  warning: "#FFD23F",
+  info: "#667eea",
 };
+
+// פונקציות עזר לצבעים
+export const getInputColors = (hasValue: boolean, hasError: boolean) => ({
+  border: hasError
+    ? signupColors.inputBorderError
+    : hasValue
+    ? signupColors.inputBorderActive
+    : signupColors.inputBorder,
+  label: hasError
+    ? signupColors.errorText
+    : hasValue
+    ? signupColors.inputBorderActive
+    : signupColors.inputLabel,
+  text: signupColors.inputText,
+});
+
+// טיפוסי אנימציה
+export interface AnimationControls {
+  fadeAnim: any;
+  slideAnim: any;
+  headerScale: any;
+  formSlide: any;
+  keyboardOffset: any;
+  progressAnim: any;
+  shakeAnim: any;
+  successAnim: any;
+  buttonPulse: any;
+  playShakeAnimation: () => void;
+  playSuccessAnimation: (callback?: () => void) => void;
+  startEntryAnimations: () => void;
+  resetAnimations: () => void;
+}
