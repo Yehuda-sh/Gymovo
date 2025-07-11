@@ -31,7 +31,7 @@ const CustomTabBarButton = ({
   children: React.ReactNode;
   onPress: () => void;
 }) => {
-  const { isSmallDevice, tabBarHeight } = useResponsiveDimensions();
+  const { isSmallDevice } = useResponsiveDimensions();
 
   const dynamicStyles = StyleSheet.create({
     fabContainer: {
@@ -47,6 +47,10 @@ const CustomTabBarButton = ({
       justifyContent: "center",
       alignItems: "center",
       elevation: 5,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
     },
   });
 
@@ -106,8 +110,8 @@ const AppTabs = () => {
         name="Profile"
         component={status === "guest" ? GuestProfileScreen : ProfileScreen}
         options={{
-          tabBarAccessibilityLabel: "פרופיל אישי", // שדרוג נגישות
-          tabBarIcon: ({ color, size }) => (
+          tabBarAccessibilityLabel: "פרופיל אישי",
+          tabBarIcon: ({ color }) => (
             <Ionicons name="person-outline" size={tabIconSize} color={color} />
           ),
         }}
@@ -117,8 +121,8 @@ const AppTabs = () => {
         name="Workouts"
         component={WorkoutsScreen}
         options={{
-          tabBarAccessibilityLabel: "היסטוריית אימונים", // שדרוג נגישות
-          tabBarIcon: ({ color, size }) => (
+          tabBarAccessibilityLabel: "היסטוריית אימונים",
+          tabBarIcon: ({ color }) => (
             <Ionicons name="barbell-outline" size={tabIconSize} color={color} />
           ),
         }}
@@ -135,7 +139,7 @@ const AppTabs = () => {
           tabBarButton: (props) => (
             <CustomTabBarButton
               {...props}
-              onPress={() => navigation.navigate("StartWorkout")} // שינוי כאן!
+              onPress={() => navigation.navigate("StartWorkout")}
             />
           ),
         }}
@@ -145,8 +149,8 @@ const AppTabs = () => {
         name="Plans"
         component={PlansScreen}
         options={{
-          tabBarAccessibilityLabel: "תוכניות אימון", // שדרוג נגישות
-          tabBarIcon: ({ color, size }) => (
+          tabBarAccessibilityLabel: "תוכניות אימון",
+          tabBarIcon: ({ color }) => (
             <Ionicons name="list-outline" size={tabIconSize} color={color} />
           ),
         }}
@@ -156,9 +160,8 @@ const AppTabs = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          // TODO: בעתיד, להוסיף תג עם מספר עדכונים, למשל 'tabBarBadge: 3'
-          tabBarAccessibilityLabel: "מסך הבית", // שדרוג נגישות
-          tabBarIcon: ({ color, size }) => (
+          tabBarAccessibilityLabel: "מסך הבית",
+          tabBarIcon: ({ color }) => (
             <Ionicons name="home-outline" size={tabIconSize} color={color} />
           ),
         }}
@@ -166,9 +169,5 @@ const AppTabs = () => {
     </Tab.Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  // All styles are now dynamic and responsive
-});
 
 export default AppTabs;
