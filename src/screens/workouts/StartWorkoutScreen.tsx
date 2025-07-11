@@ -416,7 +416,7 @@ const StartWorkoutScreen = () => {
   // Handle create plan
   const handleCreatePlan = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("CreateOrEditPlan", {});
+    navigation.navigate("CreateOrEditPlan", {}); // תיקון הניווט
   };
 
   // Refresh handler

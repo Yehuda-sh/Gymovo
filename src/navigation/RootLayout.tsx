@@ -5,6 +5,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import Toast from "react-native-toast-message";
+import { GestureHandlerRootView } from "react-native-gesture-handler"; // הוספנו!
 
 // 🛡️ רכיבי אבטחה וטיפול בשגיאות
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
@@ -49,22 +50,24 @@ const RootLayout: React.FC = () => {
 
   // 🎯 הרכיב הראשי עם כל ה-providers הנדרשים
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <DialogProvider>
-          <NavigationContainer>
-            {status === "loading" ? (
-              <SplashScreen message="טוען נתונים..." showLogo={false} />
-            ) : status === "authenticated" || status === "guest" ? (
-              <AppStack />
-            ) : (
-              <AuthStack />
-            )}
-            <Toast />
-          </NavigationContainer>
-        </DialogProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <DialogProvider>
+            <NavigationContainer>
+              {status === "loading" ? (
+                <SplashScreen message="טוען נתונים..." showLogo={false} />
+              ) : status === "authenticated" || status === "guest" ? (
+                <AppStack />
+              ) : (
+                <AuthStack />
+              )}
+              <Toast />
+            </NavigationContainer>
+          </DialogProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 };
 
