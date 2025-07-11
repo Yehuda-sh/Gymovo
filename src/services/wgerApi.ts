@@ -5,7 +5,7 @@ import { Plan } from "../types/plan";
 
 const WGER_API_URL = "https://wger.de/api/v2";
 
-// תיקון 1: הוספת fetch עם retry ו-timeout
+// הוספת fetch עם retry ו-timeout
 const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -41,7 +41,7 @@ const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
   throw new Error("Max retries exceeded");
 };
 
-// תיקון 2: שיפור generatePlanDefaults
+// שיפור generatePlanDefaults
 const generatePlanDefaults = (source: "wger" | "local" = "wger") => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -55,7 +55,7 @@ const generatePlanDefaults = (source: "wger" | "local" = "wger") => ({
   durationWeeks: 4,
 });
 
-// תיקון 3: Type guard משופר
+// Type guard משופר
 const isValidPlan = (plan: any): plan is Plan => {
   return (
     plan &&
@@ -67,7 +67,7 @@ const isValidPlan = (plan: any): plan is Plan => {
   );
 };
 
-// תוכניות בסיס (לא דמו!) - זמינות לכל המשתמשים
+// תוכניות בסיס - 3 בלבד, זמינות לכל המשתמשים
 const getBasePlans = (): Plan[] => {
   return [
     {
@@ -106,46 +106,10 @@ const getBasePlans = (): Plan[] => {
       durationWeeks: 16,
       tags: ["base-plan", "strength", "5x5"],
     },
-    {
-      ...generatePlanDefaults("local"),
-      id: "base-plan-upper-lower",
-      name: "Upper/Lower Split",
-      description: "פיצול פלג גוף עליון/תחתון 4x בשבוע",
-      creator: "Gymovo Team",
-      difficulty: "intermediate",
-      days: [],
-      targetMuscleGroups: ["Full Body"],
-      durationWeeks: 10,
-      tags: ["base-plan", "intermediate", "upper-lower"],
-    },
-    {
-      ...generatePlanDefaults("local"),
-      id: "base-plan-home",
-      name: "אימון ביתי ללא ציוד",
-      description: "תוכנית מלאה עם משקל גוף בלבד",
-      creator: "Gymovo Team",
-      difficulty: "beginner",
-      days: [],
-      targetMuscleGroups: ["Full Body"],
-      durationWeeks: 6,
-      tags: ["base-plan", "home", "bodyweight"],
-    },
-    {
-      ...generatePlanDefaults("local"),
-      id: "base-plan-advanced",
-      name: "תוכנית מתקדמים 6 ימים",
-      description: "PPL כפול לספורטאים מנוסים",
-      creator: "Gymovo Team",
-      difficulty: "advanced",
-      days: [],
-      targetMuscleGroups: ["Full Body"],
-      durationWeeks: 12,
-      tags: ["base-plan", "advanced", "high-volume"],
-    },
   ];
 };
 
-// תיקון 4: fetchPublicPlans - מחזיר תוכניות בסיס
+// fetchPublicPlans - מחזיר תוכניות בסיס
 export const fetchPublicPlans = async (): Promise<Plan[]> => {
   console.log("🔍 Loading base workout plans");
   return getBasePlans();
@@ -188,7 +152,7 @@ export const fetchPublicPlans = async (): Promise<Plan[]> => {
   */
 };
 
-// 🆕 פונקציה חדשה: fetchPublicPlansWithFallback
+// פונקציה חדשה: fetchPublicPlansWithFallback
 export const fetchPublicPlansWithFallback = async (): Promise<Plan[]> => {
   // מחזיר ישירות תוכניות בסיס
   return getBasePlans();
@@ -290,10 +254,43 @@ const getFallbackExercises = (): Exercise[] => [
     ],
     difficulty: "beginner",
   },
-  // ... עוד תרגילי fallback כמו שהיו
+  {
+    id: "fallback-3",
+    name: "מתח רחב",
+    description: "תרגיל מעולה לחיזוק הגב",
+    category: "גב",
+    equipment: ["Pull-up bar"],
+    targetMuscleGroups: ["גב"],
+    instructions: [
+      "אחוז במוט באחיזה רחבה ומשוך את הגוף למעלה עד שהסנטר מעל המוט.",
+    ],
+    difficulty: "advanced",
+  },
+  {
+    id: "fallback-4",
+    name: "לחיצת כתפיים",
+    description: "תרגיל לפיתוח כתפיים חזקות",
+    category: "כתפיים",
+    equipment: ["Dumbbell"],
+    targetMuscleGroups: ["כתפיים"],
+    instructions: ["החזק משקולות בגובה הכתפיים ולחץ למעלה עד יישור הידיים."],
+    difficulty: "intermediate",
+  },
+  {
+    id: "fallback-5",
+    name: "כפיפות בטן",
+    description: "תרגיל קלאסי לחיזוק שרירי הבטן",
+    category: "ליבה",
+    equipment: ["Bodyweight"],
+    targetMuscleGroups: ["ליבה"],
+    instructions: [
+      "שכב על הגב עם ברכיים כפופות. הרם את פלג הגוף העליון לכיוון הברכיים.",
+    ],
+    difficulty: "beginner",
+  },
 ];
 
-// תיקון 5: fetchAllExercises - משתמש רק בתרגילי fallback
+// fetchAllExercises - משתמש רק בתרגילי fallback
 export const fetchAllExercises = async (): Promise<Exercise[]> => {
   console.log("🏋️ Using fallback exercises (API temporarily disabled)");
   return getFallbackExercises();
@@ -326,5 +323,39 @@ export const fetchAllExercises = async (): Promise<Exercise[]> => {
           ? [cleanInstructions(ex.description)]
           : [],
         difficulty: "intermediate" as const,
-      }));  */
+      }));
+
+    if (exercises.length < 50) {
+      exercises.push(...getFallbackExercises());
+    }
+
+    console.log(`✅ Total exercises: ${exercises.length}`);
+    return exercises;
+  } catch (error) {
+    console.error("❌ Failed to fetch exercises:", error);
+    return getFallbackExercises();
+  }
+  */
+};
+
+// fetchExerciseInfoById - מחזיר null כי אין API
+export const fetchExerciseInfoById = async (
+  exerciseId: string
+): Promise<Exercise | null> => {
+  console.log(`🔍 Exercise API disabled, returning null for ID: ${exerciseId}`);
+
+  // מנסה למצוא בתרגילי fallback
+  const fallbackExercises = getFallbackExercises();
+  const found = fallbackExercises.find((ex) => ex.id === exerciseId);
+
+  return found || null;
+};
+
+// ייצוא נוסף של פונקציות עזר
+export {
+  generatePlanDefaults,
+  isValidPlan,
+  mapCategory,
+  mapEquipment,
+  getMuscleGroup,
 };

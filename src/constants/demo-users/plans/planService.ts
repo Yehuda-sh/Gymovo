@@ -1,60 +1,36 @@
 // src/constants/demo-users/plans/planService.ts
-// 🎯 שירות תוכניות אימון למשתמשי דמו
+// 🎯 שירות תוכניות אימון למשתמשי דמו - גרסה נקייה
 
 import { Plan } from "../../../types/plan";
-import { aviPlan } from "./aviPlan";
-import { mayaPlan } from "./mayaPlan";
-import { yoniPlan } from "./yoniPlan";
 
 /**
- * 📋 מאפה מבוסס מפתח למציאת תוכניות לפי משתמש
- * מבטיח ביצועים מהירים וארגון נקי
- */
-const plansByUserId: { [key: string]: Plan } = {
-  "demo-user-avi": aviPlan,
-  "demo-user-maya": mayaPlan,
-  "demo-user-yoni": yoniPlan,
-};
-
-/**
- * 🔍 מחזיר תוכנית אימון מותאמת למשתמש דמו ספציפי
+ * 🔍 מחזיר תוכנית אימון מותאמת למשתמש דמו
+ *
+ * עכשיו מחזיר null - משתמשי דמו ישתמשו בתוכניות הבסיס
+ * או יקבלו תוכנית AI אישית מהשאלון
  *
  * @param userId - מזהה המשתמש
- * @returns תוכנית אימון או null אם לא נמצאה
- *
- * @example
- * ```typescript
- * const aviPlan = getDemoPlanForUser("demo-user-avi");
- * console.log(aviPlan?.name); // "Push/Pull/Legs - אבי"
- * ```
+ * @returns null - אין יותר תוכניות דמו מובנות
  */
 export function getDemoPlanForUser(userId: string): Plan | null {
-  if (!userId?.trim()) {
-    console.warn("⚠️ getDemoPlanForUser: userId is required");
-    return null;
-  }
-
-  const plan = plansByUserId[userId];
-
-  if (!plan && __DEV__) {
-    console.log(`📋 No demo plan found for user: ${userId}`);
-  }
-
-  return plan || null;
+  // משתמשי דמו יקבלו תוכניות כמו כל משתמש רגיל:
+  // 1. גישה ל-3 תוכניות הבסיס
+  // 2. אפשרות למלא שאלון ולקבל תוכנית AI אישית
+  return null;
 }
 
 /**
  * 📊 מחזיר רשימת כל מזהי המשתמשים שיש להם תוכניות
  */
 export function getAvailablePlanUserIds(): string[] {
-  return Object.keys(plansByUserId);
+  return []; // אין יותר תוכניות דמו מובנות
 }
 
 /**
  * 📋 מחזיר את כל התוכניות הזמינות כמערך
  */
 export function getAllDemoPlans(): Plan[] {
-  return Object.values(plansByUserId);
+  return []; // אין יותר תוכניות דמו מובנות
 }
 
 /**
@@ -63,14 +39,12 @@ export function getAllDemoPlans(): Plan[] {
 export function getDemoPlansByDifficulty(
   difficulty: "beginner" | "intermediate" | "advanced"
 ): Plan[] {
-  return getAllDemoPlans().filter((plan) => plan.difficulty === difficulty);
+  return []; // אין יותר תוכניות דמו מובנות
 }
 
 /**
  * 🏷️ חיפוש תוכניות לפי טאגים
  */
 export function getDemoPlansByTags(tags: string[]): Plan[] {
-  return getAllDemoPlans().filter((plan) =>
-    plan.tags?.some((tag) => tags.includes(tag))
-  );
+  return []; // אין יותר תוכניות דמו מובנות
 }

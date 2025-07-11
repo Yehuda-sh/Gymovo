@@ -1,5 +1,5 @@
 // src/screens/plans/plans-screen/PlansScreen.tsx
-// מסך תוכניות האימון הראשי - גרסה מודולרית ומורפקטרת
+// מסך תוכניות - 3 תוכניות בסיס + תוכנית AI אישית
 
 import React, {
   useCallback,
@@ -18,14 +18,11 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { Share } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-
-// Components
-import Button from "../../../components/common/Button";
 
 // Local components
 import {
@@ -37,13 +34,12 @@ import {
   FilterType,
   createEntranceAnimation,
   filterPlansBySearch,
-  getScreenDimensions,
 } from "./index";
 
 // Data & Services
-import { getDemoPlanForUser } from "../../../constants/demoUsers";
-import { getPlansByUserId, savePlan, deletePlan } from "../../../data/storage";
+import { getPlansByUserId, deletePlan } from "../../../data/storage";
 import { fetchPublicPlansWithFallback } from "../../../services/wgerApi";
+import { loadQuizProgress } from "../../../services/quizProgressService";
 
 // Stores & Types
 import { useUserStore } from "../../../stores/userStore";
@@ -51,16 +47,13 @@ import { useNavigation } from "@react-navigation/native";
 import { designSystem } from "../../../theme/designSystem";
 import { Plan } from "../../../types/plan";
 
-const { width } = getScreenDimensions();
-
-// מסך תוכניות אימון ראשי עם רכיבים מודולריים
 const PlansScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useUserStore((state) => state.user);
 
   // State
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [publicPlans, setPublicPlans] = useState<Plan[]>([]);
+  const [userPlans, setUserPlans] = useState<Plan[]>([]);
+  const [basePlans, setBasePlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,70 +64,70 @@ const PlansScreen = () => {
   const slideAnim = useRef(new Animated.Value(50)).current;
   const headerScale = useRef(new Animated.Value(0.8)).current;
 
-  // Load plans
-  useEffect(() => {
-    loadPlans();
-    animateEntrance();
-  }, []);
-
   // הפעלת אנימציית כניסה
-  const animateEntrance = () => {
+  const animateEntrance = useCallback(() => {
     createEntranceAnimation(fadeAnim, slideAnim, headerScale).start();
-  };
+  }, [fadeAnim, slideAnim, headerScale]);
 
-  // טעינת תוכניות מכל המקורות
+  // טעינת תוכניות - רק בסיס + AI אישית
   const loadPlans = useCallback(async () => {
     try {
       setIsLoading(true);
 
-      // Load user plans
+      // 1. טען תוכניות בסיס (3 בלבד)
+      const publicData = await fetchPublicPlansWithFallback();
+      setBasePlans(publicData);
+
+      // 2. טען רק תוכניות AI של המשתמש (לא תוכניות ידניות)
       if (user?.id) {
-        const userPlans = await getPlansByUserId(user.id);
+        const allUserPlans = await getPlansByUserId(user.id);
 
-        // Add demo plan if exists
-        const demoPlan = getDemoPlanForUser(user.id);
-        if (demoPlan) {
-          const allUserPlans = [...userPlans];
-          const exists = allUserPlans.some((p) => p.id === demoPlan.id);
-          if (!exists) {
-            allUserPlans.push(demoPlan);
-          }
-          setPlans(allUserPlans);
-        } else {
-          setPlans(userPlans);
+        // סנן רק תוכניות שנוצרו ע"י AI (מהשאלון)
+        const aiPlans = allUserPlans.filter(
+          (plan) =>
+            plan.tags?.includes("AI-generated") || plan.creator === "Gymovo AI"
+        );
+
+        // בדוק אם המשתמש השלים שאלון
+        const quizProgress = await loadQuizProgress(user.id);
+        if (quizProgress?.isCompleted && aiPlans.length === 0) {
+          // אם השלים שאלון אבל אין תוכנית AI - כנראה נמחקה
+          console.log("User completed quiz but no AI plan found");
         }
-      }
 
-      // Load public plans (with fallback to demo plans)
-      try {
-        const publicData = await fetchPublicPlansWithFallback();
-        setPublicPlans(publicData);
-      } catch (error) {
-        console.log("Could not load public plans:", error);
+        setUserPlans(aiPlans);
       }
     } catch (error) {
       console.error("Error loading plans:", error);
-      console.error("Failed to load plans:", error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [user?.id]);
 
+  // Load plans
+  useEffect(() => {
+    loadPlans();
+    animateEntrance();
+  }, [loadPlans, animateEntrance]);
+
   // סינון תוכניות לפי הגדרות המשתמש
   const filteredPlans = useMemo(() => {
-    let allPlans: Plan[] = [];
+    let plansToShow: Plan[] = [];
 
     if (selectedFilter === "all") {
-      allPlans = [...plans, ...publicPlans];
+      // הצג תוכניות בסיס + תוכנית AI אישית
+      plansToShow = [...basePlans, ...userPlans];
     } else if (selectedFilter === "mine") {
-      allPlans = plans;
+      // הצג רק תוכנית AI אישית
+      plansToShow = userPlans;
     } else {
-      allPlans = publicPlans;
+      // הצג רק תוכניות בסיס
+      plansToShow = basePlans;
     }
 
-    return filterPlansBySearch(allPlans, searchQuery);
-  }, [plans, publicPlans, selectedFilter, searchQuery]);
+    return filterPlansBySearch(plansToShow, searchQuery);
+  }, [basePlans, userPlans, selectedFilter, searchQuery]);
 
   // רענון רשימת התוכניות
   const handleRefresh = () => {
@@ -142,24 +135,34 @@ const PlansScreen = () => {
     loadPlans();
   };
 
-  // מחיקת תוכנית עם אישור
+  // מחיקת תוכנית - רק תוכניות AI אישיות
   const handleDeletePlan = async (planId: string) => {
-    Alert.alert("מחיקת תוכנית", "האם אתה בטוח שברצונך למחוק תוכנית זו?", [
-      { text: "ביטול", style: "cancel" },
-      {
-        text: "מחק",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deletePlan(planId, user?.id || "");
-            console.log("Plan deleted successfully");
-            loadPlans();
-          } catch (error) {
-            console.error("Error deleting plan:", error);
-          }
+    const planToDelete = userPlans.find((p) => p.id === planId);
+    if (!planToDelete) {
+      Alert.alert("שגיאה", "לא ניתן למחוק תוכניות בסיס");
+      return;
+    }
+
+    Alert.alert(
+      "מחיקת תוכנית AI",
+      "האם אתה בטוח? תצטרך למלא שאלון מחדש כדי לקבל תוכנית חדשה",
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "מחק",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deletePlan(planId, user?.id || "");
+              console.log("AI plan deleted successfully");
+              loadPlans();
+            } catch (error) {
+              console.error("Error deleting plan:", error);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   // שיתוף תוכנית
@@ -180,135 +183,163 @@ const PlansScreen = () => {
     navigation.navigate("CreateOrEditPlan", { planId: plan.id });
   };
 
-  // יצירת תוכנית חדשה
+  // יצירת תוכנית חדשה - הפנה לשאלון
   const handleCreatePlan = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("CreateOrEditPlan");
+
+    Alert.alert(
+      "יצירת תוכנית מותאמת אישית",
+      "תוכניות מותאמות נוצרות על ידי מילוי שאלון קצר. האם תרצה למלא את השאלון?",
+      [
+        { text: "לא עכשיו", style: "cancel" },
+        {
+          text: "מלא שאלון",
+          onPress: () => {
+            navigation.navigate("Quiz", {
+              signupData: {
+                email: user?.email || "",
+                password: "",
+                age: user?.age || 25,
+                name: user?.name,
+              },
+            });
+          },
+        },
+      ]
+    );
   };
 
   // רינדור פריט תוכנית
-  const renderPlan = ({ item, index }: { item: Plan; index: number }) => (
-    <PlanCard
-      plan={item}
-      index={index}
-      onPress={() => handlePlanPress(item)}
-      onShare={() => handleSharePlan(item)}
-      onDelete={
-        selectedFilter === "mine" || plans.includes(item)
-          ? () => handleDeletePlan(item.id)
-          : undefined
-      }
-    />
-  );
+  const renderPlan = ({ item, index }: { item: Plan; index: number }) => {
+    const isAIPlan = userPlans.some((p) => p.id === item.id);
 
-  if (isLoading) {
+    return (
+      <PlanCard
+        plan={item}
+        index={index}
+        onPress={() => handlePlanPress(item)}
+        onShare={() => handleSharePlan(item)}
+        onDelete={isAIPlan ? () => handleDeletePlan(item.id) : undefined}
+      />
+    );
+  };
+
+  if (isLoading && !isRefreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator
-          size="large"
-          color={designSystem.colors.primary.main}
-        />
-        <Text style={styles.loadingText}>טוען תוכניות...</Text>
+        <ActivityIndicator size="large" color="#2E86FF" />
       </View>
     );
   }
 
+  const totalPlans = filteredPlans.length;
+  const hasAIPlan = userPlans.length > 0;
+
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {/* כותרת */}
+    <View style={styles.container}>
       <Animated.View
         style={[
           styles.header,
           {
+            opacity: fadeAnim,
             transform: [{ scale: headerScale }],
           },
         ]}
       >
-        <Text style={styles.headerTitle}>תוכניות האימון שלי</Text>
-        <Text style={styles.headerSubtitle}>
-          {filteredPlans.length} תוכניות זמינות
-        </Text>
+        <LinearGradient
+          colors={["#2E86FF", "#1968DB"]}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.title}>תוכניות האימון שלי</Text>
+          <Text style={styles.subtitle}>
+            {hasAIPlan
+              ? `3 תוכניות בסיס + תוכנית AI אישית`
+              : `3 תוכניות בסיס זמינות`}
+          </Text>
+        </LinearGradient>
       </Animated.View>
 
-      {/* שורת חיפוש */}
-      <SearchBar
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="חפש תוכנית אימון..."
-      />
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
 
-      {/* פילטרים */}
-      <FilterTabs selected={selectedFilter} onSelect={setSelectedFilter} />
+        <FilterTabs selected={selectedFilter} onSelect={setSelectedFilter} />
 
-      {/* רשימת תוכניות */}
-      <FlatList
-        data={filteredPlans}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPlan}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={designSystem.colors.primary.main}
-            colors={[designSystem.colors.primary.main]}
-          />
-        }
-        ListEmptyComponent={<EmptyState onCreatePlan={handleCreatePlan} />}
-      />
+        <FlatList
+          data={filteredPlans}
+          renderItem={renderPlan}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={[designSystem.colors.primary.main]}
+            />
+          }
+          ListEmptyComponent={<EmptyState onCreatePlan={handleCreatePlan} />}
+        />
 
-      {/* כפתור יצירה צף */}
-      <TouchableOpacity style={styles.fab} onPress={handleCreatePlan}>
-        <LinearGradient
-          colors={designSystem.gradients.primary.colors}
-          style={styles.fabGradient}
-        >
-          <Ionicons name="add" size={28} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
-    </Animated.View>
+        {!hasAIPlan && (
+          <TouchableOpacity style={styles.fab} onPress={handleCreatePlan}>
+            <LinearGradient
+              colors={["#2E86FF", "#1968DB"]}
+              style={styles.fabGradient}
+            >
+              <Ionicons name="add" size={28} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designSystem.colors.background.primary,
+    backgroundColor: "#f5f5f5",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: designSystem.colors.background.primary,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: designSystem.colors.neutral.text.secondary,
   },
   header: {
+    marginBottom: 16,
+  },
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
-  headerTitle: {
-    fontSize: 28,
+  title: {
+    fontSize: 32,
     fontWeight: "bold",
-    color: designSystem.colors.neutral.text.primary,
-    marginBottom: 4,
+    color: "#fff",
+    textAlign: "right",
+    marginBottom: 8,
   },
-  headerSubtitle: {
+  subtitle: {
     fontSize: 16,
-    color: designSystem.colors.neutral.text.secondary,
+    color: "rgba(255,255,255,0.8)",
+    textAlign: "right",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
   listContent: {
     paddingBottom: 100,
@@ -316,14 +347,18 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     bottom: 20,
-    right: 20,
-    borderRadius: 28,
-    ...designSystem.shadows.xl,
+    alignSelf: "center",
+    borderRadius: 30,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   fabGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
   },
