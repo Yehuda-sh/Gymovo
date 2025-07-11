@@ -1,9 +1,15 @@
-// src/screens/auth/signup/components/ActionButtons.tsx - גרסה סופית עם Button החדש
+// src/screens/auth/signup/components/ActionButtons.tsx - עם isLoading תמיכה
 
 import React from "react";
 import { StyleSheet, View, Text } from "react-native";
 import Button from "../../../../components/common/Button";
-import { ActionButtonsProps } from "../types";
+
+// Props interface
+interface ActionButtonsProps {
+  onNext: () => void;
+  onBack: () => void;
+  isLoading?: boolean;
+}
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
   onNext,

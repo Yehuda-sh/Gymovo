@@ -1,4 +1,4 @@
-// src/screens/auth/SignupScreen.tsx - עיצוב משופר על בסיס WelcomeScreen
+// src/screens/auth/SignupScreen.tsx - מחליף לגמרי את הקובץ הישן
 
 import React, { useState } from "react";
 import {
@@ -13,25 +13,26 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import {
-  HeaderSection,
-  SignupForm,
-  ActionButtons,
-  ErrorDisplay,
-  SecurityNote,
-  LoginPrompt,
-  ProgressBar,
-  SignupScreenProps,
-  useSignupAnimations,
-  validateSignupForm,
-} from "./signup";
+// Local imports
+import HeaderSection from "./signup/components/HeaderSection";
+import SignupForm from "./signup/components/SignupForm";
+import ActionButtons from "./signup/components/ActionButtons";
+import ErrorDisplay from "./signup/components/ErrorDisplay";
+import SecurityNote from "./signup/components/SecurityNote";
+import LoginPrompt from "./signup/components/LoginPrompt";
+import ProgressBar from "./signup/components/ProgressBar";
+import { useSignupAnimations } from "./signup/components/useSignupAnimations";
+import { validateSignupForm } from "./signup/components/ValidationUtils";
+import { RootStackParamList } from "../../types/navigation";
 
 const { height } = Dimensions.get("window");
 
+type SignupScreenProps = NativeStackScreenProps<RootStackParamList, "Signup">;
+
 /**
- * מסך הרשמה משופר עם עיצוב זהה ל-WelcomeScreen
- * כולל רקע גרדיאנט, אנימציות מתקדמות ו-UX מלוטש
+ * מסך הרשמה מלא ועובד - מחליף את הישן לגמרי
  */
 const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const insets = useSafeAreaInsets();
@@ -56,7 +57,6 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
     if (!validation.isValid) {
       setError(validation.error || "שגיאה בוולידציה");
       setIsLoading(false);
-      // Shake animation
       animations.playShakeAnimation();
       return;
     }
@@ -116,7 +116,35 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
         />
       </Animated.View>
 
-      {/* Progress Bar */}
+      {/* Floating Particles Background */}
+      <View style={styles.particlesContainer}>
+        {[...Array(12)].map((_, index) => (
+          <Animated.View
+            key={index}
+            style={[
+              styles.backgroundParticle,
+              {
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: animations.fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.2],
+                }),
+                transform: [
+                  {
+                    translateY: animations.fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, -20],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        ))}
+      </View>
+
+      {/* Progress Bar - בחלק העליון */}
       <ProgressBar
         progressAnim={animations.progressAnim}
         currentStep={1}
@@ -145,24 +173,28 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
               },
             ]}
           >
-            {/* Header Section */}
-            <HeaderSection
-              fadeAnim={animations.fadeAnim}
-              slideAnim={animations.slideAnim}
-              headerScale={animations.headerScale}
-            />
+            {/* Header Section - החלק החסר! */}
+            <View style={styles.headerWrapper}>
+              <HeaderSection
+                fadeAnim={animations.fadeAnim}
+                slideAnim={animations.slideAnim}
+                headerScale={animations.headerScale}
+              />
+            </View>
 
             {/* Form Section */}
-            <SignupForm
-              email={email}
-              password={password}
-              age={age}
-              error={error}
-              onEmailChange={setEmail}
-              onPasswordChange={setPassword}
-              onAgeChange={setAge}
-              formSlide={animations.formSlide}
-            />
+            <View style={styles.formWrapper}>
+              <SignupForm
+                email={email}
+                password={password}
+                age={age}
+                error={error}
+                onEmailChange={setEmail}
+                onPasswordChange={setPassword}
+                onAgeChange={setAge}
+                formSlide={animations.formSlide}
+              />
+            </View>
 
             {/* Error Display */}
             <ErrorDisplay error={error} onDismiss={handleDismissError} />
@@ -174,11 +206,13 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
             <View style={styles.spacer} />
 
             {/* Actions Section */}
-            <ActionButtons
-              onNext={handleProceedToQuiz}
-              onBack={handleBack}
-              isLoading={isLoading}
-            />
+            <View style={styles.actionsWrapper}>
+              <ActionButtons
+                onNext={handleProceedToQuiz}
+                onBack={handleBack}
+                isLoading={isLoading}
+              />
+            </View>
 
             {/* Login Prompt */}
             <LoginPrompt onLoginPress={handleLogin} />
@@ -197,21 +231,41 @@ const styles = StyleSheet.create({
   glowOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
+  particlesContainer: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: "none",
+  },
+  backgroundParticle: {
+    position: "absolute",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(102, 126, 234, 0.4)",
+  },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 32,
-    paddingTop: 120, // מקום לprogress bar
+    paddingHorizontal: 24,
   },
   content: {
     flex: 1,
     justifyContent: "center",
-    minHeight: height * 0.8,
+    minHeight: height * 0.9,
+  },
+  headerWrapper: {
+    marginBottom: 32,
+    marginTop: 20,
+  },
+  formWrapper: {
+    marginBottom: 24,
+  },
+  actionsWrapper: {
+    marginTop: 8,
   },
   spacer: {
-    minHeight: 20,
+    minHeight: 16,
   },
 });
 
