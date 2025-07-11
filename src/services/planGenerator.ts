@@ -1,4 +1,4 @@
-// src/services/planGenerator.ts - ✅ All errors fixed
+// src/services/planGenerator.ts - ✅ תיקון מלא לבעיית הכפילויות
 
 import { Plan, PlanDay, PlanExercise } from "../types/plan";
 
@@ -22,53 +22,68 @@ interface ExerciseTemplate {
   restTime?: number;
 }
 
-// ✅ Fixed exercise database with correct spelling
+// ✅ מאגר תרגילים מורחב ומסודר
 const exerciseDatabase = {
   chest: [
     {
-      id: "push_up",
-      name: "שכיבות סמיכה",
+      id: "bench_press",
+      name: "לחיצת חזה במוט",
       muscleGroup: "חזה",
-      sets: 3,
-      reps: 12,
+      sets: 4,
+      reps: 8,
     },
-    {
-      id: "chest_press",
-      name: "דחיפת חזה",
-      muscleGroup: "חזה",
-      sets: 3,
-      reps: 10,
-    },
-    {
-      id: "chest_flies",
-      name: "Chest Flies",
-      muscleGroup: "חזה",
-      sets: 3,
-      reps: 12,
-    }, // ✅ Fixed spelling
     {
       id: "incline_press",
-      name: "דחיפה בזווית",
+      name: "לחיצה בשיפוע חיובי",
       muscleGroup: "חזה",
       sets: 3,
       reps: 10,
     },
     {
       id: "dumbbell_press",
-      name: "דחיפת דמבלים",
+      name: "לחיצת דמבלים",
       muscleGroup: "חזה",
       sets: 3,
       reps: 10,
     },
+    {
+      id: "chest_flies",
+      name: "פתיחת חזה",
+      muscleGroup: "חזה",
+      sets: 3,
+      reps: 12,
+    },
+    {
+      id: "push_up",
+      name: "שכיבות סמיכה",
+      muscleGroup: "חזה",
+      sets: 3,
+      reps: 15,
+    },
+    {
+      id: "cable_crossover",
+      name: "כבלים מצליבים",
+      muscleGroup: "חזה",
+      sets: 3,
+      reps: 12,
+    },
+    {
+      id: "decline_press",
+      name: "לחיצה בשיפוע שלילי",
+      muscleGroup: "חזה",
+      sets: 3,
+      reps: 10,
+    },
+    { id: "dips", name: "מקבילים", muscleGroup: "חזה", sets: 3, reps: 10 },
   ],
 
   back: [
-    { id: "pull_up", name: "Pull-up", muscleGroup: "גב", sets: 3, reps: 8 }, // ✅ Fixed spelling
+    { id: "pull_up", name: "מתח", muscleGroup: "גב", sets: 4, reps: 8 },
     {
       id: "bent_over_row",
-      name: "חתירה",
+      name: "חתירה עם מוט",
       muscleGroup: "גב",
-      sets: 3,
+      sets: 4,
       reps: 10,
     },
     {
@@ -78,7 +93,7 @@ const exerciseDatabase = {
       sets: 3,
       reps: 12,
     },
-    { id: "deadlift", name: "דדליפט", muscleGroup: "גב", sets: 3, reps: 8 },
+    { id: "deadlift", name: "דדליפט", muscleGroup: "גב", sets: 4, reps: 6 },
     {
       id: "cable_row",
       name: "חתירת כבל",
@@ -86,125 +101,175 @@ const exerciseDatabase = {
       sets: 3,
       reps: 12,
     },
-  ],
-
-  legs: [
-    { id: "squat", name: "סקוואט", muscleGroup: "רגליים", sets: 3, reps: 12 },
-    { id: "lunge", name: "לונג'ים", muscleGroup: "רגליים", sets: 3, reps: 10 },
+    { id: "t_bar_row", name: "חתירת T", muscleGroup: "גב", sets: 3, reps: 10 },
     {
-      id: "leg_press",
-      name: "דחיפת רגליים",
-      muscleGroup: "רגליים",
-      sets: 3,
-      reps: 12,
-    },
-    {
-      id: "calf_raise",
-      name: "הרמת עקבים",
-      muscleGroup: "רגליים",
+      id: "shrugs",
+      name: "כיווצי כתפיים",
+      muscleGroup: "גב",
       sets: 3,
       reps: 15,
     },
     {
+      id: "face_pulls",
+      name: "משיכות לפנים",
+      muscleGroup: "גב",
+      sets: 3,
+      reps: 15,
+    },
+  ],
+
+  legs: [
+    { id: "squat", name: "סקוואט", muscleGroup: "רגליים", sets: 4, reps: 8 },
+    {
+      id: "leg_press",
+      name: "לחיצת רגליים",
+      muscleGroup: "רגליים",
+      sets: 4,
+      reps: 12,
+    },
+    { id: "lunge", name: "לאנג'ים", muscleGroup: "רגליים", sets: 3, reps: 10 },
+    {
+      id: "romanian_deadlift",
+      name: "דדליפט רומני",
+      muscleGroup: "רגליים",
+      sets: 3,
+      reps: 10,
+    },
+    {
       id: "leg_curl",
-      name: "כיפוף רגליים",
+      name: "כפיפת ברכיים",
       muscleGroup: "רגליים",
       sets: 3,
       reps: 12,
     },
     {
       id: "leg_extension",
-      name: "הארכת רגליים",
+      name: "פשיטת ברכיים",
       muscleGroup: "רגליים",
       sets: 3,
       reps: 12,
+    },
+    {
+      id: "calf_raise",
+      name: "הרמות עקבים",
+      muscleGroup: "רגליים",
+      sets: 4,
+      reps: 20,
+    },
+    {
+      id: "bulgarian_split",
+      name: "בולגרי ספליט",
+      muscleGroup: "רגליים",
+      sets: 3,
+      reps: 10,
     },
   ],
 
   shoulders: [
     {
       id: "shoulder_press",
-      name: "דחיפת כתפיים",
+      name: "לחיצת כתפיים",
       muscleGroup: "כתפיים",
-      sets: 3,
-      reps: 10,
+      sets: 4,
+      reps: 8,
     },
     {
       id: "lateral_raise",
-      name: "הרמה צידית",
+      name: "הרמות צד",
       muscleGroup: "כתפיים",
       sets: 3,
       reps: 12,
     },
     {
       id: "front_raise",
-      name: "הרמה קדמית",
+      name: "הרמות קדמיות",
       muscleGroup: "כתפיים",
       sets: 3,
       reps: 12,
     },
     {
       id: "rear_delt_fly",
-      name: "זבוב אחורי",
+      name: "פתיחה אחורית",
       muscleGroup: "כתפיים",
       sets: 3,
-      reps: 12,
+      reps: 15,
+    },
+    {
+      id: "arnold_press",
+      name: "לחיצת ארנולד",
+      muscleGroup: "כתפיים",
+      sets: 3,
+      reps: 10,
     },
     {
       id: "upright_row",
       name: "חתירה זקופה",
       muscleGroup: "כתפיים",
       sets: 3,
-      reps: 10,
+      reps: 12,
     },
   ],
 
   arms: [
     {
       id: "bicep_curl",
-      name: "סיבוב ביצפס",
-      muscleGroup: "זרועות",
+      name: "כפיפת מרפקים",
+      muscleGroup: "יד קדמית",
       sets: 3,
       reps: 12,
     },
     {
-      id: "tricep_dip",
-      name: "דיפס טריצפס",
-      muscleGroup: "זרועות",
+      id: "hammer_curl",
+      name: "פטיש",
+      muscleGroup: "יד קדמית",
+      sets: 3,
+      reps: 12,
+    },
+    {
+      id: "tricep_pushdown",
+      name: "פשיטת מרפקים",
+      muscleGroup: "יד אחורית",
+      sets: 3,
+      reps: 12,
+    },
+    {
+      id: "preacher_curl",
+      name: "כפיפה בספסל מטיף",
+      muscleGroup: "יד קדמית",
       sets: 3,
       reps: 10,
     },
     {
-      id: "hammer_curl",
-      name: "סיבוב פטיש",
-      muscleGroup: "זרועות",
+      id: "overhead_extension",
+      name: "פשיטה מעל הראש",
+      muscleGroup: "יד אחורית",
       sets: 3,
       reps: 12,
     },
     {
-      id: "tricep_extension",
-      name: "הארכת טריצפס",
-      muscleGroup: "זרועות",
+      id: "cable_curl",
+      name: "כפיפת כבל",
+      muscleGroup: "יד קדמית",
       sets: 3,
-      reps: 12,
+      reps: 15,
     },
     {
       id: "close_grip_press",
-      name: "דחיפה צרה",
-      muscleGroup: "זרועות",
+      name: "לחיצה אחיזה צרה",
+      muscleGroup: "יד אחורית",
       sets: 3,
       reps: 10,
     },
   ],
 
   core: [
-    { id: "plank", name: "פלאנק", muscleGroup: "ליבה", sets: 3, reps: 30 },
+    { id: "plank", name: "פלאנק", muscleGroup: "ליבה", sets: 3, reps: 60 },
     {
       id: "crunches",
-      name: "קראנצ'ים",
+      name: "כפיפות בטן",
       muscleGroup: "ליבה",
       sets: 3,
-      reps: 15,
+      reps: 20,
     },
     {
       id: "russian_twist",
@@ -214,319 +279,405 @@ const exerciseDatabase = {
       reps: 20,
     },
     {
-      id: "mountain_climber",
-      name: "מטפס הרים",
+      id: "leg_raise",
+      name: "הרמות רגליים",
+      muscleGroup: "ליבה",
+      sets: 3,
+      reps: 15,
+    },
+    {
+      id: "dead_bug",
+      name: "חיפושית מתה",
+      muscleGroup: "ליבה",
+      sets: 3,
+      reps: 10,
+    },
+    {
+      id: "bicycle_crunch",
+      name: "אופניים",
       muscleGroup: "ליבה",
       sets: 3,
       reps: 20,
     },
-    { id: "dead_bug", name: "חרק מת", muscleGroup: "ליבה", sets: 3, reps: 12 },
     {
-      id: "bicycle_crunch",
-      name: "קראנץ' אופניים",
+      id: "cable_crunch",
+      name: "כפיפות כבל",
       muscleGroup: "ליבה",
       sets: 3,
-      reps: 20,
+      reps: 15,
     },
   ],
 };
 
-// ✅ Helper functions
-const generateId = (): string => {
-  return Math.random().toString(36).substr(2, 9);
+// ✅ תבניות אימון לכל מספר ימי אימון
+const WORKOUT_TEMPLATES = {
+  2: {
+    name: "Upper/Lower Split",
+    days: [
+      {
+        name: "יום עליון",
+        muscleGroups: ["chest", "back", "shoulders", "arms"],
+      },
+      { name: "יום תחתון", muscleGroups: ["legs", "core"] },
+    ],
+  },
+  3: {
+    name: "Push/Pull/Legs",
+    days: [
+      { name: "Push - דחיפה", muscleGroups: ["chest", "shoulders", "arms"] },
+      { name: "Pull - משיכה", muscleGroups: ["back", "arms"] },
+      { name: "Legs - רגליים", muscleGroups: ["legs", "core"] },
+    ],
+  },
+  4: {
+    name: "Upper/Lower x2",
+    days: [
+      { name: "עליון א'", muscleGroups: ["chest", "back"] },
+      { name: "תחתון א'", muscleGroups: ["legs"] },
+      { name: "עליון ב'", muscleGroups: ["shoulders", "arms"] },
+      { name: "תחתון ב' + ליבה", muscleGroups: ["legs", "core"] },
+    ],
+  },
+  5: {
+    name: "Push/Pull/Legs/Upper/Lower",
+    days: [
+      { name: "Push - דחיפה", muscleGroups: ["chest", "shoulders"] },
+      { name: "Pull - משיכה", muscleGroups: ["back"] },
+      { name: "Legs - רגליים", muscleGroups: ["legs"] },
+      { name: "Upper - עליון", muscleGroups: ["chest", "back", "shoulders"] },
+      { name: "Arms & Core", muscleGroups: ["arms", "core"] },
+    ],
+  },
+  6: {
+    name: "Push/Pull/Legs x2",
+    days: [
+      { name: "Push א'", muscleGroups: ["chest", "shoulders"] },
+      { name: "Pull א'", muscleGroups: ["back"] },
+      { name: "Legs א'", muscleGroups: ["legs"] },
+      { name: "Push ב'", muscleGroups: ["chest", "arms"] },
+      { name: "Pull ב'", muscleGroups: ["back", "arms"] },
+      { name: "Legs ב' + ליבה", muscleGroups: ["legs", "core"] },
+    ],
+  },
+  7: {
+    name: "מפוצל מלא",
+    days: [
+      { name: "חזה", muscleGroups: ["chest"] },
+      { name: "גב", muscleGroups: ["back"] },
+      { name: "רגליים", muscleGroups: ["legs"] },
+      { name: "כתפיים", muscleGroups: ["shoulders"] },
+      { name: "ידיים", muscleGroups: ["arms"] },
+      { name: "רגליים ב'", muscleGroups: ["legs"] },
+      { name: "ליבה ותיקונים", muscleGroups: ["core", "shoulders"] },
+    ],
+  },
 };
 
-const generatePlanName = (answers: QuizAnswers): string => {
-  const goalNames = {
-    strength: "תוכנית לבניית כוח",
-    weight_loss: "תוכנית לירידה במשקל",
-    endurance: "תוכנית לשיפור סיבולת",
-    hypertrophy: "תוכנית לבניית שריר",
-  };
+// ✅ פונקציית ערבוב מערך (Fisher-Yates shuffle)
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
-  return goalNames[answers.goal] || "תוכנית אימון מותאמת";
-};
+// ✅ בחירת תרגילים לפי קבוצת שרירים
+function selectExercisesForMuscleGroups(
+  muscleGroups: string[],
+  answers: QuizAnswers,
+  exercisesPerGroup: number = 3
+): ExerciseTemplate[] {
+  const selectedExercises: ExerciseTemplate[] = [];
 
-const generatePlanDescription = (answers: QuizAnswers): string => {
-  const experienceText = {
-    beginner: "מתחילים",
-    intermediate: "בינוניים",
-    advanced: "מתקדמים",
-  };
+  muscleGroups.forEach((group) => {
+    const groupExercises =
+      exerciseDatabase[group as keyof typeof exerciseDatabase] || [];
+    const filteredExercises = filterExercisesByEquipment(
+      groupExercises,
+      answers.equipment
+    );
+    const shuffled = shuffleArray(filteredExercises);
+    const selected = shuffled.slice(0, exercisesPerGroup);
 
-  const goalText = {
-    strength: "בניית כוח",
-    weight_loss: "ירידה במשקל",
-    endurance: "שיפור סיבולת",
-    hypertrophy: "בניית שריר",
-  };
+    // התאמה לרמת ניסיון
+    const adjusted = selected.map((ex) =>
+      adjustExerciseForExperience(ex, answers.experience)
+    );
+    selectedExercises.push(...adjusted);
+  });
 
-  return `תוכנית אימון מותאמת אישית לרמת ${
-    experienceText[answers.experience]
-  } עם מטרת ${
-    goalText[answers.goal]
-  }. נוצרה על בסיס השאלון האישי שלך ומותאמת לציוד הזמין לך.`;
-};
+  // ערבוב סדר התרגילים ביום
+  return shuffleArray(selectedExercises);
+}
 
-const isBodyweightExercise = (exerciseId: string): boolean => {
+// ✅ סינון תרגילים לפי ציוד זמין
+function filterExercisesByEquipment(
+  exercises: ExerciseTemplate[],
+  equipment: string[]
+): ExerciseTemplate[] {
   const bodyweightExercises = [
     "push_up",
     "pull_up",
-    "squat",
-    "lunge",
+    "dips",
     "plank",
     "crunches",
-    "mountain_climber",
-    "tricep_dip",
-    "russian_twist",
-    "dead_bug",
-    "bicycle_crunch",
+    "lunge",
   ];
-  return bodyweightExercises.includes(exerciseId);
-};
 
-const selectExercisesForGoal = (
-  goal: QuizAnswers["goal"],
-  experience: QuizAnswers["experience"],
-  equipment: string[]
-): ExerciseTemplate[] => {
-  const allExercises = Object.values(exerciseDatabase).flat();
-
-  // Filter by available equipment
-  const availableExercises = allExercises.filter((exercise) => {
+  return exercises.filter((exercise) => {
+    // אם יש חדר כושר מלא - כל התרגילים זמינים
     if (equipment.includes("gym") || equipment.includes("full_gym"))
       return true;
-    if (
-      (equipment.includes("home") || equipment.includes("minimal")) &&
-      isBodyweightExercise(exercise.id)
-    )
-      return true;
-    if (
-      equipment.includes("dumbbells") &&
-      [
-        "bicep_curl",
-        "hammer_curl",
-        "shoulder_press",
-        "chest_press",
-        "dumbbell_press",
-      ].includes(exercise.id)
-    )
-      return true;
+
+    // אם יש רק ציוד ביתי
+    if (equipment.includes("home") || equipment.includes("minimal")) {
+      return bodyweightExercises.includes(exercise.id);
+    }
+
+    // אם יש משקולות
+    if (equipment.includes("dumbbells")) {
+      return (
+        exercise.name.includes("דמבל") || exercise.name.includes("משקולות")
+      );
+    }
+
     return false;
   });
+}
 
-  // Select exercises based on goal
-  const goalFilteredExercises = availableExercises.filter((exercise) => {
-    switch (goal) {
-      case "strength":
-        return [
-          "squat",
-          "deadlift",
-          "chest_press",
-          "pull_up",
-          "shoulder_press",
-        ].includes(exercise.id);
-      case "weight_loss":
-        return true; // All exercises are good for weight loss
-      case "hypertrophy":
-        return exercise.reps >= 8 && exercise.reps <= 15;
-      case "endurance":
-        return exercise.reps >= 12;
-      default:
-        return true;
-    }
-  });
+// ✅ התאמת תרגיל לרמת ניסיון
+function adjustExerciseForExperience(
+  exercise: ExerciseTemplate,
+  experience: QuizAnswers["experience"]
+): ExerciseTemplate {
+  const adjusted = { ...exercise };
 
-  // Adjust for experience level
-  return goalFilteredExercises.map((exercise) => {
-    const adjusted = { ...exercise };
+  switch (experience) {
+    case "beginner":
+      adjusted.sets = Math.max(2, exercise.sets - 1);
+      adjusted.reps = Math.max(8, exercise.reps - 2);
+      break;
+    case "advanced":
+      adjusted.sets = Math.min(5, exercise.sets + 1);
+      adjusted.reps = exercise.reps + 2;
+      break;
+    default: // intermediate
+      // שומרים כמו שהוא
+      break;
+  }
 
-    switch (experience) {
-      case "beginner":
-        adjusted.sets = Math.max(2, exercise.sets - 1);
-        adjusted.reps = Math.max(8, exercise.reps - 2);
-        break;
-      case "advanced":
-        adjusted.sets = exercise.sets + 1;
-        adjusted.reps = exercise.reps + 2;
-        break;
-      default: // intermediate
-        // Keep as is
-        break;
-    }
+  return adjusted;
+}
 
-    return adjusted;
-  });
-};
-
-const createWorkoutDay = (
-  dayNumber: number,
+// ✅ יצירת יום אימון
+function createWorkoutDay(
+  dayTemplate: { name: string; muscleGroups: string[] },
   exercises: ExerciseTemplate[],
+  dayNumber: number,
   answers: QuizAnswers
-): PlanDay => {
-  const dayNames = [
-    "יום עליון",
-    "יום תחתון",
-    "יום דחיפה",
-    "יום משיכה",
-    "יום מלא",
-    "יום ליבה",
-    "יום כוח",
-  ];
-
-  const dayExercises: PlanExercise[] = exercises.map((exercise, index) => ({
-    id: `${exercise.id}_day${dayNumber}_${index}`,
+): PlanDay {
+  const planExercises: PlanExercise[] = exercises.map((exercise, index) => ({
+    id: `${exercise.id}_day${dayNumber}_${Date.now()}_${index}`,
     name: exercise.name,
     muscleGroup: exercise.muscleGroup,
     sets: exercise.sets,
     reps: exercise.reps,
     weight: exercise.weight,
-    restTime: exercise.restTime || (answers.goal === "strength" ? 180 : 90),
+    restTime: getRestTimeForGoal(answers.goal),
+    order: index + 1,
   }));
 
   return {
-    id: generateId(),
-    name: dayNames[dayNumber - 1] || `יום ${dayNumber}`,
-    exercises: dayExercises,
-    estimatedDuration: exercises.length * 5 + 15, // Rough estimate
-    targetMuscleGroups: [...new Set(exercises.map((e) => e.muscleGroup))],
+    id: `day_${dayNumber}_${Date.now()}`,
+    name: dayTemplate.name,
+    description: `אימון מותאם ל${dayTemplate.muscleGroups.join(", ")}`,
+    exercises: planExercises,
+    targetMuscleGroups: dayTemplate.muscleGroups,
     difficulty: answers.experience,
-  };
-};
-
-const createWorkoutSplit = (answers: QuizAnswers): PlanDay[] => {
-  const allExercises = selectExercisesForGoal(
-    answers.goal,
-    answers.experience,
-    answers.equipment
-  );
-
-  const days: PlanDay[] = [];
-  const exercisesPerDay = Math.ceil(allExercises.length / answers.workoutDays);
-
-  // Group exercises by muscle groups for better split
-  const exercisesByMuscle = {
-    upper: allExercises.filter((e) =>
-      ["חזה", "גב", "כתפיים", "זרועות"].includes(e.muscleGroup)
+    order: dayNumber,
+    estimatedDuration: calculateDayDuration(
+      planExercises.length,
+      answers.timePerSession
     ),
-    lower: allExercises.filter((e) => ["רגליים"].includes(e.muscleGroup)),
-    core: allExercises.filter((e) => ["ליבה"].includes(e.muscleGroup)),
   };
+}
 
-  for (let i = 0; i < answers.workoutDays; i++) {
-    let dayExercises: ExerciseTemplate[];
-
-    if (answers.workoutDays <= 3) {
-      // Full body workouts
-      dayExercises = [
-        ...exercisesByMuscle.upper.slice(i * 2, (i + 1) * 2),
-        ...exercisesByMuscle.lower.slice(i * 1, (i + 1) * 1),
-        ...exercisesByMuscle.core.slice(i * 1, (i + 1) * 1),
-      ].filter(Boolean);
-    } else {
-      // Split routine
-      if (i % 2 === 0) {
-        dayExercises = exercisesByMuscle.upper.slice(0, exercisesPerDay);
-      } else {
-        dayExercises = [
-          ...exercisesByMuscle.lower,
-          ...exercisesByMuscle.core,
-        ].slice(0, exercisesPerDay);
-      }
-    }
-
-    if (dayExercises.length > 0) {
-      days.push(createWorkoutDay(i + 1, dayExercises, answers));
-    }
+// ✅ חישוב זמן מנוחה לפי יעד
+function getRestTimeForGoal(goal: QuizAnswers["goal"]): number {
+  switch (goal) {
+    case "strength":
+      return 180; // 3 דקות
+    case "hypertrophy":
+      return 90; // 1.5 דקות
+    case "endurance":
+      return 45; // 45 שניות
+    case "weight_loss":
+      return 60; // דקה
+    default:
+      return 90;
   }
+}
 
-  return days;
-};
+// ✅ חישוב משך יום אימון
+function calculateDayDuration(
+  exerciseCount: number,
+  targetTime: number
+): number {
+  const estimatedMinutes = exerciseCount * 5; // 5 דקות לתרגיל בממוצע
+  return Math.min(estimatedMinutes, targetTime);
+}
 
-// ✅ Main function with all required fields
-export const generatePlan = async (
-  answers: QuizAnswers,
-  userId?: string
-): Promise<Plan> => {
-  try {
-    const planDays = createWorkoutSplit(answers);
+// ✅ יצירת מזהה ייחודי
+function generateUniqueId(): string {
+  return `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
-    // ✅ Fixed: Include all required Plan fields
-    const plan: Plan = {
-      id: generateId(),
-      name: generatePlanName(answers),
-      description: generatePlanDescription(answers),
-      creator: "Gymovo AI",
-      difficulty: answers.experience,
-      days: planDays,
-      targetMuscleGroups: [
-        ...new Set(planDays.flatMap((day) => day.targetMuscleGroups || [])),
-      ],
-      durationWeeks: 8, // Default 8-week program
-      metadata: {
-        goal: answers.goal,
-        experience: answers.experience,
-        equipment: answers.equipment,
-        injuries: answers.injuries,
-        generatedAt: new Date().toISOString(),
-        version: "1.0",
-      },
-      // ✅ Required fields that were missing
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: userId || "temp-user-id",
-      isActive: true,
-      rating: 0,
-      weeklyGoal: answers.workoutDays,
-      tags: [answers.goal, answers.experience, "AI-generated"],
-    };
+// ✅ יצירת תוכנית אימון מהשאלון
+export function generatePlanFromQuiz(answers: QuizAnswers): Plan {
+  // בחירת תבנית לפי מספר ימי אימון
+  const template =
+    WORKOUT_TEMPLATES[answers.workoutDays as keyof typeof WORKOUT_TEMPLATES] ||
+    WORKOUT_TEMPLATES[3];
 
-    return plan;
-  } catch (error) {
-    console.error("Failed to generate plan:", error);
-    throw new Error("שגיאה ביצירת התוכנית. נסה שוב.");
-  }
-};
+  // יצירת ימי אימון
+  const days: PlanDay[] = template.days.map((dayTemplate, index) => {
+    const exercises = selectExercisesForMuscleGroups(
+      dayTemplate.muscleGroups,
+      answers,
+      Math.floor(8 / dayTemplate.muscleGroups.length) // 8 תרגילים ליום בממוצע
+    );
 
-// ✅ Additional utility functions
-export const validateQuizAnswers = (answers: Partial<QuizAnswers>): boolean => {
-  const required: (keyof QuizAnswers)[] = [
-    "goal",
-    "experience",
-    "equipment",
-    "workoutDays",
-    "timePerSession",
-  ];
-
-  return required.every((key) => {
-    const value = answers[key];
-    if (key === "equipment") {
-      return Array.isArray(value) && value.length > 0;
-    }
-    return value !== undefined && value !== null;
+    return createWorkoutDay(dayTemplate, exercises, index + 1, answers);
   });
-};
 
-export const getRecommendedWorkoutDays = (
-  experience: QuizAnswers["experience"],
-  goal: QuizAnswers["goal"]
-): number => {
-  if (experience === "beginner") return 3;
-  if (goal === "strength" && experience === "advanced") return 5;
-  if (goal === "weight_loss") return 4;
-  return 4; // Default
-};
+  // יצירת התוכנית
+  const plan: Plan = {
+    id: generateUniqueId(),
+    name: generatePlanName(answers),
+    description: generatePlanDescription(answers),
+    userId: "current_user", // יוחלף במזהה משתמש אמיתי
+    creator: "Gymovo AI",
+    creatorType: "ai",
 
-export const getEstimatedCaloriesBurn = (
-  timePerSession: number,
-  goal: QuizAnswers["goal"]
-): number => {
-  const baseCaloriesPerMinute = {
-    strength: 6,
-    weight_loss: 8,
-    endurance: 7,
-    hypertrophy: 6,
+    // מאפייני תוכנית
+    difficulty: answers.experience,
+    mainGoal: answers.goal,
+    durationWeeks: 8, // ברירת מחדל
+    weeklyGoal: answers.workoutDays,
+    days,
+
+    // תיוג וקטגוריות
+    tags: [answers.goal, answers.experience, ...answers.equipment],
+    equipment: answers.equipment,
+    location: answers.equipment.includes("gym") ? "gym" : "home",
+
+    // חותמות זמן
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+
+    // מטא דאטה
+    metadata: {
+      generatedAt: new Date().toISOString(),
+      generatedBy: "AI",
+      goal: answers.goal,
+      experience: answers.experience,
+      equipment: answers.equipment,
+      injuries: answers.injuries,
+      preferences: {
+        timePerSession: answers.timePerSession,
+      },
+    },
+
+    // סטטוס
+    isActive: true,
+    isTemplate: false,
+    rating: 5,
   };
 
-  return timePerSession * (baseCaloriesPerMinute[goal] || 7);
+  return plan;
+}
+
+// ✅ יצירת שם תוכנית
+function generatePlanName(answers: QuizAnswers): string {
+  const goalNames = {
+    strength: "תוכנית כוח",
+    hypertrophy: "תוכנית נפח שריר",
+    weight_loss: "תוכנית הרזיה",
+    endurance: "תוכנית סיבולת",
+  };
+
+  const experienceNames = {
+    beginner: "למתחילים",
+    intermediate: "למתקדמים",
+    advanced: "למקצוענים",
+  };
+
+  const template =
+    WORKOUT_TEMPLATES[answers.workoutDays as keyof typeof WORKOUT_TEMPLATES];
+
+  return `${goalNames[answers.goal]} ${experienceNames[answers.experience]} - ${
+    template?.name || `${answers.workoutDays} ימים`
+  }`;
+}
+
+// ✅ יצירת תיאור תוכנית
+function generatePlanDescription(answers: QuizAnswers): string {
+  const template =
+    WORKOUT_TEMPLATES[answers.workoutDays as keyof typeof WORKOUT_TEMPLATES];
+
+  return `תוכנית ${template?.name || "מותאמת אישית"} ל-${
+    answers.workoutDays
+  } ימי אימון בשבוע. 
+התוכנית מיועדת ל${
+    answers.goal === "strength"
+      ? "פיתוח כוח"
+      : answers.goal === "hypertrophy"
+      ? "בניית מסת שריר"
+      : answers.goal === "weight_loss"
+      ? "ירידה במשקל"
+      : "שיפור סיבולת"
+  } 
+ומותאמת ל${
+    answers.experience === "beginner"
+      ? "מתחילים"
+      : answers.experience === "intermediate"
+      ? "מתאמנים מתקדמים"
+      : "מתאמנים מנוסים"
+  }. 
+כל אימון מתוכנן לכ-${answers.timePerSession} דקות.`;
+}
+
+// ✅ מניעת כפילויות - בדיקה אם תוכנית דומה כבר קיימת
+export function isPlanDuplicate(newPlan: Plan, existingPlans: Plan[]): boolean {
+  return existingPlans.some((existingPlan) => {
+    // בדיקת שם זהה ומספר ימים זהה
+    if (
+      existingPlan.name === newPlan.name &&
+      existingPlan.days?.length === newPlan.days?.length
+    ) {
+      return true;
+    }
+
+    // בדיקת מטא-דאטה זהה
+    if (existingPlan.metadata && newPlan.metadata) {
+      const sameMeta =
+        existingPlan.metadata.goal === newPlan.metadata.goal &&
+        existingPlan.metadata.experience === newPlan.metadata.experience &&
+        existingPlan.weeklyGoal === newPlan.weeklyGoal;
+
+      if (sameMeta) return true;
+    }
+
+    return false;
+  });
+}
+
+// ✅ Export של פונקציות עזר לבדיקות
+export const testHelpers = {
+  shuffleArray,
+  selectExercisesForMuscleGroups,
+  filterExercisesByEquipment,
+  adjustExerciseForExperience,
 };
