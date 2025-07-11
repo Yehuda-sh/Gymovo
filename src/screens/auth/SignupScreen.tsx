@@ -1,203 +1,104 @@
-// src/screens/auth/SignupScreen.tsx - שומר על המבנה המודולרי + צבעים מ-WelcomeScreen
-
+// src/screens/auth/SignupScreen.tsx
 import React, { useState } from "react";
 import {
   View,
   StatusBar,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Dimensions,
   StyleSheet,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// השמירה על הimports המודולריים שלך!
 import {
   HeaderSection,
   SignupForm,
   ActionButtons,
-  ErrorDisplay,
-  SecurityNote,
-  LoginPrompt,
   ProgressBar,
-  SignupScreenProps,
   useSignupAnimations,
-  validateSignupForm,
 } from "./signup";
 
-const { height } = Dimensions.get("window");
-
-// צבעים מ-WelcomeScreen
-const welcomeColors = {
+const colors = {
   background: "#1a1a2e",
   surface: "#16213e",
-  primary: "#FF6B35",
-  secondary: "#F7931E",
+  gradientDark: "#0f3460",
 };
 
-/**
- * מסך הרשמה - שומר על המבנה המודולרי + צבעים חדשים
- */
-const SignupScreen = ({ navigation }: SignupScreenProps) => {
-  const insets = useSafeAreaInsets();
+interface SignupScreenProps {
+  navigation: any;
+}
 
-  // State management (זהה לקוד שלך)
+const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [age, setAge] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep] = useState(1);
+  const totalSteps = 3;
 
-  // Custom hooks (זהה לקוד שלך)
+  // אנימציות
   const animations = useSignupAnimations();
 
-  // Handlers (זהים לקוד שלך)
-  const handleProceedToQuiz = async () => {
-    setError(null);
-    setIsLoading(true);
-
-    const validation = validateSignupForm(email, password, age);
-    if (!validation.isValid) {
-      setError(validation.error || "שגיאה בוולידציה");
-      setIsLoading(false);
-      animations.playShakeAnimation();
-      return;
-    }
-
-    setTimeout(() => {
-      animations.playSuccessAnimation(() => {
-        navigation.navigate("Quiz", {
-          signupData: { email, password, age: parseInt(age, 10) },
-        });
-      });
-      setIsLoading(false);
-    }, 1500);
+  const handleNext = () => {
+    // לוגיקת המשך
+    console.log("Next step");
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
-  const handleLogin = () => {
-    navigation.navigate("Login");
-  };
-
-  const handleDismissError = () => {
-    setError(null);
-  };
-
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={welcomeColors.background}
-      />
+      <StatusBar barStyle="light-content" />
 
-      {/* Background Gradient - משופר עם צבעי WelcomeScreen */}
+      {/* רקע גרדיינט */}
       <LinearGradient
-        colors={[welcomeColors.background, welcomeColors.surface, "#0f3460"]}
+        colors={[colors.background, colors.surface, colors.gradientDark]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Glow Effect */}
-      <Animated.View
-        style={[
-          styles.glowOverlay,
-          {
-            opacity: animations.fadeAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.05, 0.15],
-            }),
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={["#667eea", "#764ba2"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+      {/* Header Fixed עם Progress */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <ProgressBar
+          progressAnim={animations.fadeAnim}
+          currentStep={currentStep}
+          totalSteps={totalSteps}
         />
-      </Animated.View>
-
-      {/* Progress Bar - הרכיב שלך */}
-      <ProgressBar
-        progressAnim={animations.progressAnim}
-        currentStep={1}
-        totalSteps={3}
-      />
+      </View>
 
       {/* Main Content */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + 20 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View
-            style={[
-              styles.content,
-              {
-                opacity: animations.fadeAnim,
-                transform: [{ translateY: animations.keyboardOffset }],
-              },
-            ]}
-          >
-            {/* Header Section - הרכיב שלך */}
-            <View style={styles.headerWrapper}>
-              <HeaderSection
-                fadeAnim={animations.fadeAnim}
-                slideAnim={animations.slideAnim}
-                headerScale={animations.headerScale}
-              />
-            </View>
+        <View style={styles.content}>
+          <HeaderSection
+            fadeAnim={animations.fadeAnim}
+            slideAnim={animations.slideAnim}
+            headerScale={animations.headerScale}
+          />
 
-            {/* Form Section - הרכיב שלך */}
-            <View style={styles.formWrapper}>
-              <SignupForm
-                email={email}
-                password={password}
-                age={age}
-                error={error}
-                onEmailChange={setEmail}
-                onPasswordChange={setPassword}
-                onAgeChange={setAge}
-                formSlide={animations.formSlide}
-              />
-            </View>
+          <SignupForm
+            email={email}
+            password={password}
+            age={age}
+            error={null}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onAgeChange={setAge}
+            formSlide={animations.fadeAnim}
+          />
 
-            {/* Error Display - הרכיב שלך */}
-            <ErrorDisplay error={error} onDismiss={handleDismissError} />
-
-            {/* Security Note - הרכיב שלך */}
-            <SecurityNote visible={true} />
-
-            {/* Spacer */}
-            <View style={styles.spacer} />
-
-            {/* Actions Section - הרכיב שלך */}
-            <View style={styles.actionsWrapper}>
-              <ActionButtons
-                onNext={handleProceedToQuiz}
-                onBack={handleBack}
-                isLoading={isLoading}
-              />
-            </View>
-
-            {/* Login Prompt - הרכיב שלך */}
-            <LoginPrompt onLoginPress={handleLogin} />
-          </Animated.View>
-        </ScrollView>
+          <ActionButtons
+            onNext={handleNext}
+            onBack={handleBack}
+            isLoading={false}
+          />
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -206,35 +107,25 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: welcomeColors.background,
+    backgroundColor: colors.background,
   },
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: 24,
+    paddingBottom: 10,
   },
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  },
   content: {
     flex: 1,
+    paddingHorizontal: 24,
     justifyContent: "center",
-    minHeight: height * 0.9,
-  },
-  headerWrapper: {
-    marginBottom: 32,
-    marginTop: 20,
-  },
-  formWrapper: {
-    marginBottom: 24,
-  },
-  actionsWrapper: {
-    marginTop: 8,
-  },
-  spacer: {
-    minHeight: 16,
+    paddingTop: 100,
   },
 });
 

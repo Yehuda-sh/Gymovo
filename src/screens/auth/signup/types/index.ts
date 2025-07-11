@@ -7,6 +7,21 @@ export type SignupScreenProps = NativeStackScreenProps<
   RootStackParamList,
   "Signup"
 >;
+// צבעים מ-WelcomeScreen
+export const welcomeColors = {
+  primary: "#FF6B35",
+  secondary: "#F7931E",
+  background: "#000000",
+  surface: "#1a1a1a",
+  text: "#FFFFFF",
+  textSecondary: "#94A3B8",
+  textMuted: "#64748B",
+  logoGlow: "#3B82F6",
+  accentLine: "#3B82F6",
+  gradientTop: "#0a0a0a",
+  gradientBottom: "#1a1a1a",
+  guestButtonBorder: "#64748B",
+};
 
 // נתוני הרשמה
 export interface SignupData {
