@@ -7,9 +7,11 @@ import {
   Platform,
   Animated,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { supabase } from "../../lib/supabase";
 
 import {
   HeaderSection,
@@ -35,14 +37,77 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [age, setAge] = useState("");
   const [currentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const totalSteps = 3;
 
   // אנימציות
   const animations = useSignupAnimations();
 
-  const handleNext = () => {
-    // לוגיקת המשך
-    console.log("Next step");
+  const handleNext = async () => {
+    // בדיקת תקינות
+    if (!email || !password) {
+      Alert.alert("שגיאה", "נא למלא את כל השדות");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("שגיאה", "הסיסמה חייבת להכיל לפחות 6 תווים");
+      return;
+    }
+
+    if (!age || parseInt(age) < 16 || parseInt(age) > 100) {
+      Alert.alert("שגיאה", "נא להזין גיל תקין (16-100)");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 1. יצירת משתמש ב-Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.toLowerCase().trim(),
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // 2. יצירת פרופיל
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: authData.user.id,
+          email: authData.user.email!,
+          name: email.split("@")[0], // שם זמני
+          age: parseInt(age),
+        });
+
+        if (profileError) throw profileError;
+
+        // 3. הצלחה! נווט למסך הראשי
+        Alert.alert("ברוכים הבאים! 🎉", "נרשמת בהצלחה לGymovo");
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main" }],
+        });
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+
+      // תרגום שגיאות נפוצות
+      let errorMessage = "שגיאה בהרשמה";
+
+      if (error.message?.includes("already registered")) {
+        errorMessage = "כתובת האימייל כבר רשומה במערכת";
+      } else if (error.message?.includes("Invalid email")) {
+        errorMessage = "כתובת אימייל לא תקינה";
+      } else if (error.message?.includes("Password")) {
+        errorMessage = "הסיסמה חלשה מדי";
+      }
+
+      Alert.alert("שגיאה", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -96,7 +161,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
           <ActionButtons
             onNext={handleNext}
             onBack={handleBack}
-            isLoading={false}
+            isLoading={loading}
           />
         </View>
       </KeyboardAvoidingView>

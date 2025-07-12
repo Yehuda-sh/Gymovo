@@ -36,4 +36,12 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+
+
+# Supabase config (temporary)
+src/config/supabase.config.ts
+.env
+
+
 app-example
+
