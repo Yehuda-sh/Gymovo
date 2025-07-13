@@ -13,9 +13,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../types/navigation";
 import { useGuestUser } from "../stores/userStore";
 
 const { width } = Dimensions.get("window");
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface GuestUserBannerProps {
   variant?: "minimal" | "full" | "warning";
@@ -26,11 +30,11 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
   variant = "minimal",
   onDismiss,
 }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { isGuest, daysUntilExpiry } = useGuestUser();
   const [isVisible, setIsVisible] = useState(true);
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(-100);
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(-100)).current;
 
   // אם לא אורח, אל תציג
   if (!isGuest || !isVisible) return null;
@@ -74,7 +78,7 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
 
   const handleSignup = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("ConvertGuest" as never); // או כל מסך הרשמה שיש לך
+    navigation.navigate("ConvertGuest"); // תוקן - הוסרנו את ה-"as never"
   };
 
   // קבע את הצבע לפי כמות הימים שנותרו
@@ -425,3 +429,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export default GuestUserBanner;
