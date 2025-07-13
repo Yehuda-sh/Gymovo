@@ -1,5 +1,5 @@
 // src/screens/plans/plans-screen/utils.ts
-// פונקציות עזר וקבועים למסך תוכניות האימון
+// פונקציות עזר וקבועים למסך תוכניות האימון - גרסה מתוקנת
 
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../types/navigation";
@@ -9,8 +9,8 @@ import { Animated, Dimensions } from "react-native";
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// מצב הפילטר הנוכחי במסך
-export type FilterType = "all" | "mine" | "public";
+// מצב הפילטר הנוכחי במסך - עדכון לתמיכה ב-recommended
+export type FilterType = "all" | "mine" | "recommended";
 
 // מידע על פילטר בודד
 export interface FilterInfo {
@@ -33,22 +33,29 @@ export interface SearchBarProps {
   placeholder?: string;
 }
 
-// פרמטרים לרכיב פילטרים
+// פרמטרים לרכיב פילטרים - תיקון לתמיכה בממשק הנכון
 export interface FilterTabsProps {
-  selected: FilterType;
-  onSelect: (filter: FilterType) => void;
+  selectedFilter: FilterType;
+  onFilterChange: (filter: FilterType) => void;
+  counts: {
+    all: number;
+    mine: number;
+    recommended: number;
+  };
 }
 
-// פרמטרים לרכיב EmptyState
+// פרמטרים לרכיב EmptyState - תיקון לתמיכה בממשק הנכון
 export interface EmptyStateProps {
-  onCreatePlan: () => void;
+  message: string;
+  actionText?: string;
+  onAction?: () => void;
 }
 
-// קבועים
+// קבועים - עדכון לתמיכה ב-recommended
 export const filtersList: FilterInfo[] = [
   { id: "all", label: "הכל", icon: "apps" },
   { id: "mine", label: "שלי", icon: "person" },
-  { id: "public", label: "ציבוריות", icon: "globe" },
+  { id: "recommended", label: "מומלצות", icon: "star" },
 ];
 
 // פונקציות עזר
@@ -69,16 +76,16 @@ export const getDifficultyGradient = (difficulty?: string): string[] => {
 
 // עיכוב אנימציה לפי אינדקס
 export const getAnimationDelay = (index: number): number => {
-  return index * 150;
+  return Math.min(index * 100, 800); // הגבלה למקסימום 800ms
 };
 
 // יצירת אנימציית לחיצה
 export const createPressAnimation = (scaleAnim: Animated.Value) => {
   return Animated.sequence([
-         Animated.spring(scaleAnim, {
-       toValue: 0.95,
-       useNativeDriver: true,
-     }),
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }),
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -126,11 +133,28 @@ export const filterPlansBySearch = (
     (plan) =>
       plan.name.toLowerCase().includes(query) ||
       plan.description?.toLowerCase().includes(query) ||
-      plan.tags?.some((tag) => tag.toLowerCase().includes(query))
+      plan.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
+      plan.targetMuscleGroups?.some((muscle) =>
+        muscle.toLowerCase().includes(query)
+      )
   );
 };
 
 // קבלת ממדי מסך
 export const getScreenDimensions = () => {
   return Dimensions.get("window");
+};
+
+// קבלת טקסט סטטוס לתוכנית
+export const getPlanStatusText = (plan: Plan): string => {
+  if (plan.isActive) return "פעיל";
+  if (plan.isCompleted) return "הושלם";
+  return "לא פעיל";
+};
+
+// קבלת צבע סטטוס לתוכנית
+export const getPlanStatusColor = (plan: Plan): string => {
+  if (plan.isActive) return designSystem.colors.secondary.main;
+  if (plan.isCompleted) return designSystem.colors.semantic.success;
+  return designSystem.colors.neutral.text.tertiary;
 };

@@ -73,6 +73,7 @@ export interface Plan {
   id: string;
   name: string;
   description?: string;
+  isAiGenerated?: boolean;
 
   // 👤 בעלות ויצירה
   userId: string;
