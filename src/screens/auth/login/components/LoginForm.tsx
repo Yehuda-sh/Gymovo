@@ -1,4 +1,4 @@
-// src/screens/auth/login/components/LoginForm.tsx - טופס מעוצב בהשראת Welcome
+// src/screens/auth/login/components/LoginForm.tsx - תיקון סופי ללא כפילויות
 
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useEffect, useState } from "react";
@@ -9,17 +9,15 @@ import {
   View,
   TextInput,
   Text,
-  Platform,
   Dimensions,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LoginFormProps } from "../types";
-import { loginColors } from "../styles/loginStyles";
 
-const { height } = Dimensions.get("window");
-const isSmallDevice = height < 700;
+const { width } = Dimensions.get("window");
 
 const LoginForm: React.FC<LoginFormProps> = ({
   email,
@@ -39,24 +37,39 @@ const LoginForm: React.FC<LoginFormProps> = ({
   // Animation refs
   const emailFocusAnim = useRef(new Animated.Value(0)).current;
   const passwordFocusAnim = useRef(new Animated.Value(0)).current;
-  const emailShakeAnim = useRef(new Animated.Value(0)).current;
-  const passwordShakeAnim = useRef(new Animated.Value(0)).current;
+  const emailIconRotate = useRef(new Animated.Value(0)).current;
+  const passwordIconScale = useRef(new Animated.Value(1)).current;
+  const errorShakeAnim = useRef(new Animated.Value(0)).current;
 
   // Focus animations
   useEffect(() => {
-    Animated.spring(emailFocusAnim, {
+    Animated.timing(emailFocusAnim, {
       toValue: emailFocused ? 1 : 0,
-      speed: 20,
-      bounciness: 10,
+      duration: 300,
       useNativeDriver: true,
     }).start();
+
+    if (emailFocused) {
+      Animated.spring(emailIconRotate, {
+        toValue: 1,
+        speed: 20,
+        bounciness: 10,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.spring(emailIconRotate, {
+        toValue: 0,
+        speed: 20,
+        bounciness: 10,
+        useNativeDriver: true,
+      }).start();
+    }
   }, [emailFocused]);
 
   useEffect(() => {
-    Animated.spring(passwordFocusAnim, {
+    Animated.timing(passwordFocusAnim, {
       toValue: passwordFocused ? 1 : 0,
-      speed: 20,
-      bounciness: 10,
+      duration: 300,
       useNativeDriver: true,
     }).start();
   }, [passwordFocused]);
@@ -65,61 +78,89 @@ const LoginForm: React.FC<LoginFormProps> = ({
   useEffect(() => {
     if (error) {
       Animated.sequence([
-        Animated.timing(emailShakeAnim, {
+        Animated.timing(errorShakeAnim, {
           toValue: 10,
-          duration: 50,
+          duration: 100,
           useNativeDriver: true,
         }),
-        Animated.timing(emailShakeAnim, {
+        Animated.timing(errorShakeAnim, {
           toValue: -10,
-          duration: 50,
+          duration: 100,
           useNativeDriver: true,
         }),
-        Animated.timing(emailShakeAnim, {
+        Animated.timing(errorShakeAnim, {
           toValue: 10,
-          duration: 50,
+          duration: 100,
           useNativeDriver: true,
         }),
-        Animated.timing(emailShakeAnim, {
+        Animated.timing(errorShakeAnim, {
           toValue: 0,
-          duration: 50,
+          duration: 100,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [error]);
 
-  const handleTogglePassword = () => {
+  // Toggle password visibility
+  const handleTogglePasswordVisibility = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Animated.sequence([
+      Animated.timing(passwordIconScale, {
+        toValue: 0.8,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(passwordIconScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
     onTogglePassword();
   };
 
-  const handleFocus = (field: "email" | "password") => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (field === "email") {
-      setEmailFocused(true);
-    } else {
-      setPasswordFocused(true);
-    }
+  const getPasswordStrengthColor = () => {
+    if (password.length < 6) return ["#ff3366", "#ff5252"];
+    if (password.length < 10) return ["#FFB74D", "#F57C00"];
+    return ["#00E676", "#00B248"];
   };
+
+  const getPasswordStrengthText = () => {
+    if (password.length === 0) return "";
+    if (password.length < 6) return "חלשה";
+    if (password.length < 10) return "בינונית";
+    return "חזקה";
+  };
+
+  const passwordStrengthPercentage = Math.min(
+    (password.length / 12) * 100,
+    100
+  );
+
+  // קביעת האם להציג placeholder
+  const shouldShowEmailPlaceholder = !emailFocused && !email;
+  const shouldShowPasswordPlaceholder = !passwordFocused && !password;
 
   return (
     <Animated.View
       style={[
-        styles.formSection,
+        styles.container,
         {
-          transform: [{ translateY: formSlide }],
+          transform: [
+            { translateY: formSlide },
+            { translateX: errorShakeAnim },
+          ],
         },
       ]}
     >
       {/* Email Input */}
-      <View style={styles.inputContainer}>
+      <View style={styles.inputWrapper}>
         <Animated.View
           style={[
-            styles.inputWrapper,
+            styles.inputContainer,
             {
               transform: [
-                { translateX: emailShakeAnim },
                 {
                   scale: emailFocusAnim.interpolate({
                     inputRange: [0, 1],
@@ -130,64 +171,106 @@ const LoginForm: React.FC<LoginFormProps> = ({
             },
           ]}
         >
-          <BlurView
-            intensity={80}
-            tint="dark"
+          {/* Animated border gradient */}
+          <Animated.View
             style={[
-              styles.inputBackground,
-              emailFocused && styles.inputFocused,
-              error && styles.inputError,
+              styles.inputBorderGradient,
+              {
+                opacity: emailFocusAnim,
+              },
             ]}
           >
-            <TextInput
-              style={styles.input}
-              placeholder="אימייל"
-              placeholderTextColor={loginColors.textMuted}
-              value={email}
-              onChangeText={onEmailChange}
-              onFocus={() => handleFocus("email")}
-              onBlur={() => setEmailFocused(false)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isLoading}
-              returnKeyType="next"
+            <LinearGradient
+              colors={["#667eea", "#764ba2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradientBorder}
             />
-            <Animated.View
-              style={[
-                styles.inputIcon,
-                {
-                  transform: [
-                    {
-                      scale: emailFocusAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.2],
-                      }),
-                    },
-                  ],
-                },
+          </Animated.View>
+
+          <BlurView intensity={20} style={styles.inputBlur}>
+            <LinearGradient
+              colors={[
+                emailFocused ? "rgba(102,126,234,0.1)" : "rgba(0,0,0,0.4)",
+                emailFocused ? "rgba(118,75,162,0.1)" : "rgba(0,0,0,0.3)",
               ]}
+              style={styles.inputGradient}
             >
-              <Ionicons
-                name="mail-outline"
-                size={22}
-                color={
-                  emailFocused ? loginColors.primary : loginColors.textMuted
-                }
+              {/* Email icon */}
+              <Animated.View
+                style={[
+                  styles.inputIcon,
+                  {
+                    transform: [
+                      {
+                        rotate: emailIconRotate.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "360deg"],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={emailFocused ? "#667eea" : "rgba(255,255,255,0.5)"}
+                />
+              </Animated.View>
+
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={onEmailChange}
+                placeholder={shouldShowEmailPlaceholder ? "אימייל" : ""}
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
+                textAlign="right"
               />
-            </Animated.View>
+
+              {/* Email validation icon */}
+              {email.length > 0 && (
+                <Animated.View
+                  style={[
+                    styles.validationIcon,
+                    {
+                      opacity: emailFocusAnim,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      email.includes("@") && email.includes(".")
+                        ? "checkmark-circle"
+                        : "close-circle"
+                    }
+                    size={20}
+                    color={
+                      email.includes("@") && email.includes(".")
+                        ? "#00b894"
+                        : "#ff7675"
+                    }
+                  />
+                </Animated.View>
+              )}
+            </LinearGradient>
           </BlurView>
         </Animated.View>
       </View>
 
       {/* Password Input */}
-      <View style={styles.inputContainer}>
+      <View style={styles.inputWrapper}>
         <Animated.View
           style={[
-            styles.inputWrapper,
+            styles.inputContainer,
             {
               transform: [
-                { translateX: passwordShakeAnim },
                 {
                   scale: passwordFocusAnim.interpolate({
                     inputRange: [0, 1],
@@ -198,122 +281,183 @@ const LoginForm: React.FC<LoginFormProps> = ({
             },
           ]}
         >
-          <BlurView
-            intensity={80}
-            tint="dark"
+          {/* Animated border gradient */}
+          <Animated.View
             style={[
-              styles.inputBackground,
-              passwordFocused && styles.inputFocused,
-              error && styles.inputError,
+              styles.inputBorderGradient,
+              {
+                opacity: passwordFocusAnim,
+              },
             ]}
           >
-            <TextInput
-              style={styles.input}
-              placeholder="סיסמה"
-              placeholderTextColor={loginColors.textMuted}
-              value={password}
-              onChangeText={onPasswordChange}
-              onFocus={() => handleFocus("password")}
-              onBlur={() => setPasswordFocused(false)}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isLoading}
-              returnKeyType="go"
+            <LinearGradient
+              colors={["#667eea", "#764ba2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradientBorder}
             />
-            <Animated.View
-              style={[
-                styles.inputIcon,
-                {
-                  transform: [
-                    {
-                      scale: passwordFocusAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.2],
-                      }),
-                    },
-                  ],
-                },
+          </Animated.View>
+
+          <BlurView intensity={20} style={styles.inputBlur}>
+            <LinearGradient
+              colors={[
+                passwordFocused ? "rgba(102,126,234,0.1)" : "rgba(0,0,0,0.4)",
+                passwordFocused ? "rgba(118,75,162,0.1)" : "rgba(0,0,0,0.3)",
               ]}
+              style={styles.inputGradient}
             >
-              <Ionicons
-                name="lock-closed-outline"
-                size={22}
-                color={
-                  passwordFocused ? loginColors.primary : loginColors.textMuted
-                }
+              {/* Lock icon */}
+              <View style={styles.inputIcon}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={passwordFocused ? "#667eea" : "rgba(255,255,255,0.5)"}
+                />
+              </View>
+
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={onPasswordChange}
+                placeholder={shouldShowPasswordPlaceholder ? "סיסמה" : ""}
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                secureTextEntry={!showPassword}
+                editable={!isLoading}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                textAlign="right"
               />
-            </Animated.View>
-            <TouchableOpacity
-              style={styles.passwordToggle}
-              onPress={handleTogglePassword}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={showPassword ? "eye-outline" : "eye-off-outline"}
-                size={22}
-                color={loginColors.textMuted}
-              />
-            </TouchableOpacity>
+
+              {/* Eye button */}
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={handleTogglePasswordVisibility}
+                disabled={isLoading}
+              >
+                <Animated.View
+                  style={{
+                    transform: [{ scale: passwordIconScale }],
+                  }}
+                >
+                  <LinearGradient
+                    colors={
+                      showPassword
+                        ? ["#667eea", "#764ba2"]
+                        : ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]
+                    }
+                    style={styles.eyeButtonGradient}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye" : "eye-off"}
+                      size={18}
+                      color="#fff"
+                    />
+                  </LinearGradient>
+                </Animated.View>
+              </TouchableOpacity>
+            </LinearGradient>
           </BlurView>
         </Animated.View>
+
+        {/* Password strength indicator */}
+        {password.length > 0 && (
+          <View style={styles.passwordStrength}>
+            <View style={styles.strengthBar}>
+              <LinearGradient
+                colors={
+                  getPasswordStrengthColor() as [string, string, ...string[]]
+                }
+                style={[
+                  styles.strengthFill,
+                  { width: `${passwordStrengthPercentage}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.strengthText}>{getPasswordStrengthText()}</Text>
+          </View>
+        )}
       </View>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  formSection: {
-    width: "100%",
-    marginBottom: isSmallDevice ? 16 : 24,
-  },
-  inputContainer: {
-    marginBottom: isSmallDevice ? 14 : 18,
+  container: {
+    marginTop: 20,
   },
   inputWrapper: {
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    marginBottom: 16,
   },
-  inputBackground: {
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 14,
+  inputContainer: {
+    position: "relative",
+    borderRadius: 16,
     overflow: "hidden",
   },
-  inputFocused: {
-    borderColor: loginColors.primary,
-    borderWidth: 1.5,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  inputBorderGradient: {
+    position: "absolute",
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 18,
+    zIndex: -1,
   },
-  inputError: {
-    borderColor: loginColors.danger,
-    borderWidth: 2,
+  gradientBorder: {
+    flex: 1,
+    borderRadius: 18,
   },
-  input: {
-    height: isSmallDevice ? 52 : 56,
-    paddingHorizontal: 52,
-    fontSize: isSmallDevice ? 15 : 16,
-    color: loginColors.text,
-    fontWeight: "500",
-    textAlign: "right",
+  inputBlur: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  inputGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "ios" ? 16 : 12,
+    borderRadius: 16,
   },
   inputIcon: {
-    position: "absolute",
-    right: 18,
-    top: isSmallDevice ? 15 : 17,
+    marginLeft: 12,
   },
-  passwordToggle: {
-    position: "absolute",
-    left: 14,
-    top: isSmallDevice ? 11 : 13,
-    padding: 6,
-    zIndex: 1,
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#fff",
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
+  },
+  eyeButton: {
+    marginRight: 8,
+  },
+  eyeButtonGradient: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  validationIcon: {
+    marginRight: 8,
+  },
+  passwordStrength: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  strengthBar: {
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  strengthFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  strengthText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 4,
+    textAlign: "right",
   },
 });
 

@@ -1,41 +1,131 @@
-// src/screens/auth/login/components/ForgotPasswordLink.tsx - גרסה קומפקטית
+// src/screens/auth/login/components/ForgotPasswordLink.tsx - מעוצב לרקע גרדיאנט
 
-import React from "react";
-import { Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
-import { loginColors } from "../styles/loginStyles";
-
-const { height } = Dimensions.get("window");
-const isSmallDevice = height < 700;
+import React, { useRef } from "react";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Animated,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 interface ForgotPasswordLinkProps {
-  onPress: () => void;
+  onPress?: () => void;
 }
 
 const ForgotPasswordLink: React.FC<ForgotPasswordLinkProps> = ({ onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0.7)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        speed: 20,
+        bounciness: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        speed: 20,
+        bounciness: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0.7,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onPress) onPress();
+  };
+
   return (
     <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      activeOpacity={0.7}
+      style={styles.forgotPasswordContainer}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
     >
-      <Text style={styles.text}>שכחתי סיסמה</Text>
+      <Animated.View
+        style={[
+          styles.forgotPasswordButton,
+          {
+            transform: [{ scale: scaleAnim }],
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <View style={styles.iconContainer}>
+          <View style={styles.iconGlow} />
+          <Ionicons name="key-outline" size={16} color="#667eea" />
+        </View>
+        <Text style={styles.forgotPasswordText}>שכחת סיסמה?</Text>
+        <View style={styles.underline} />
+      </Animated.View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    alignSelf: "center",
-    marginTop: isSmallDevice ? -8 : -10,
-    marginBottom: isSmallDevice ? 8 : 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  forgotPasswordContainer: {
+    alignSelf: "flex-end",
+    marginBottom: 24,
+    marginTop: -8,
   },
-  text: {
-    fontSize: isSmallDevice ? 13 : 14,
-    color: loginColors.textSecondary,
-    textDecorationLine: "underline",
-    fontWeight: "500",
+  forgotPasswordButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: "rgba(102, 126, 234, 0.05)",
+  },
+  iconContainer: {
+    position: "relative",
+    marginLeft: 8,
+  },
+  iconGlow: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#667eea",
+    opacity: 0.15,
+    top: -4,
+    left: -4,
+  },
+  forgotPasswordText: {
+    color: "#667eea",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  underline: {
+    position: "absolute",
+    bottom: 6,
+    left: 12,
+    right: 36,
+    height: 1,
+    backgroundColor: "#667eea",
+    opacity: 0.3,
   },
 });
 

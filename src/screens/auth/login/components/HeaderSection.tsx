@@ -1,58 +1,48 @@
-// src/screens/auth/login/components/HeaderSection.tsx - גרסה קומפקטית למובייל
+// src/screens/auth/login/components/HeaderSection.tsx - מעוצב לרקע גרדיאנט
 
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
-import {
-  Animated,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  Dimensions,
-} from "react-native";
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { HeaderSectionProps } from "../types";
-import { loginColors } from "../styles/loginStyles";
-
-const { height } = Dimensions.get("window");
-const isSmallDevice = height < 700;
 
 const HeaderSection: React.FC<HeaderSectionProps> = ({
   fadeAnim,
   slideAnim,
   headerScale,
 }) => {
-  // אנימציות נוספות
-  const glowAnim = useRef(new Animated.Value(0.15)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // אנימציות נוספות ללוגו
+  const logoRotate = useRef(new Animated.Value(0)).current;
+  const glowPulse = useRef(new Animated.Value(0.2)).current;
 
   useEffect(() => {
-    // אנימציית Glow
+    // אנימציית סיבוב עדין ללוגו
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 0.25,
-          duration: 2000,
+        Animated.timing(logoRotate, {
+          toValue: 1,
+          duration: 10000,
           useNativeDriver: true,
         }),
-        Animated.timing(glowAnim, {
-          toValue: 0.15,
-          duration: 2000,
+        Animated.timing(logoRotate, {
+          toValue: 0,
+          duration: 10000,
           useNativeDriver: true,
         }),
       ])
     ).start();
 
-    // אנימציית Pulse עדינה
+    // אנימציית פעימה לזוהר
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.03,
+        Animated.timing(glowPulse, {
+          toValue: 0.4,
           duration: 2000,
           useNativeDriver: true,
         }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
+        Animated.timing(glowPulse, {
+          toValue: 0.2,
           duration: 2000,
           useNativeDriver: true,
         }),
@@ -60,54 +50,113 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
     ).start();
   }, []);
 
+  const spin = logoRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "5deg"],
+  });
+
   return (
     <Animated.View
       style={[
         styles.headerSection,
         {
           transform: [{ translateY: slideAnim }, { scale: headerScale }],
-          opacity: fadeAnim,
         },
       ]}
     >
-      {/* לוגו קומפקטי */}
+      {/* Logo Container */}
       <View style={styles.logoContainer}>
+        {/* Glow Effect */}
+        <Animated.View style={[styles.logoGlow, { opacity: glowPulse }]} />
+
+        {/* Secondary Glow */}
         <Animated.View
           style={[
-            styles.logoGlow,
+            styles.logoGlowSecondary,
             {
-              opacity: glowAnim,
-              transform: [{ scale: pulseAnim }],
+              opacity: glowPulse.interpolate({
+                inputRange: [0.2, 0.4],
+                outputRange: [0.1, 0.2],
+              }),
             },
           ]}
         />
 
-        <View style={styles.logoFrame}>
-          <Animated.View
-            style={{
-              transform: [{ scale: pulseAnim }],
-            }}
-          >
-            <Ionicons
-              name="shield-checkmark"
-              size={isSmallDevice ? 36 : 42}
-              color="#FFFFFF"
-            />
-          </Animated.View>
-        </View>
+        {/* Logo with gradient and blur */}
+        <Animated.View
+          style={[
+            styles.logoWrapper,
+            {
+              transform: [{ rotate: spin }],
+            },
+          ]}
+        >
+          <BlurView intensity={15} style={styles.logoBlur}>
+            <LinearGradient
+              colors={["#667eea", "#764ba2"]}
+              style={styles.logoFrame}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="fitness" size={40} color="#ffffff" />
+              {/* Small accent dot */}
+              <View style={styles.accentDot} />
+            </LinearGradient>
+          </BlurView>
+        </Animated.View>
       </View>
 
-      {/* כותרת קומפקטית */}
-      <Text style={styles.title}>התחברות</Text>
-      <Text style={styles.subtitle}>היכנס לחשבון שלך</Text>
+      {/* Title */}
+      <Animated.Text
+        style={[
+          styles.title,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        התחברות
+      </Animated.Text>
 
-      {/* קו דקורטיבי קטן יותר */}
-      <LinearGradient
-        colors={[loginColors.logoGlow, loginColors.primary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.accentLine}
-      />
+      {/* Subtitle */}
+      <Animated.Text
+        style={[
+          styles.subtitle,
+          {
+            opacity: fadeAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.8],
+            }),
+          },
+        ]}
+      >
+        כניסה מאובטחת לחשבון שלך
+      </Animated.Text>
+
+      {/* Accent Line with Gradient */}
+      <Animated.View
+        style={[
+          styles.accentLineContainer,
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                scaleX: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={["#667eea", "#764ba2"]}
+          style={styles.accentLine}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        />
+      </Animated.View>
     </Animated.View>
   );
 };
@@ -115,60 +164,95 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
 const styles = StyleSheet.create({
   headerSection: {
     alignItems: "center",
-    marginBottom: isSmallDevice ? 24 : 36,
+    marginBottom: 40,
   },
   logoContainer: {
     position: "relative",
-    marginBottom: isSmallDevice ? 16 : 20,
-    width: isSmallDevice ? 80 : 90,
-    height: isSmallDevice ? 80 : 90,
+    marginBottom: 24,
+    width: 100,
+    height: 100,
     alignItems: "center",
     justifyContent: "center",
+  },
+  logoWrapper: {
+    position: "relative",
   },
   logoGlow: {
     position: "absolute",
-    width: isSmallDevice ? 100 : 110,
-    height: isSmallDevice ? 100 : 110,
-    borderRadius: isSmallDevice ? 50 : 55,
-    backgroundColor: loginColors.primary,
-    opacity: 0.2,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#667eea",
+    top: -10,
+    left: -10,
+  },
+  logoGlowSecondary: {
+    position: "absolute",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#764ba2",
+    top: -20,
+    left: -20,
+  },
+  logoBlur: {
+    borderRadius: 40,
+    overflow: "hidden",
   },
   logoFrame: {
-    width: isSmallDevice ? 80 : 90,
-    height: isSmallDevice ? 80 : 90,
-    borderRadius: isSmallDevice ? 28 : 32,
-    backgroundColor: loginColors.primary,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: loginColors.primary,
-    shadowOffset: { width: 0, height: 0 },
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 8,
+    position: "relative",
+  },
+  accentDot: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#ffffff",
+    opacity: 0.8,
   },
   title: {
-    fontSize: isSmallDevice ? 32 : 36,
+    fontSize: 36,
     fontWeight: "800",
-    color: loginColors.text,
-    marginBottom: 4,
+    color: "#ffffff",
+    marginBottom: 8,
     textAlign: "center",
+    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-condensed",
+    textShadowColor: "rgba(102, 126, 234, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
     letterSpacing: -0.5,
-    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-black",
   },
   subtitle: {
-    fontSize: isSmallDevice ? 15 : 16,
-    color: loginColors.textSecondary,
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.7)",
     textAlign: "center",
-    marginBottom: isSmallDevice ? 12 : 16,
-    fontWeight: "500",
+    marginBottom: 16,
+    fontWeight: "400",
+    letterSpacing: 0.3,
+  },
+  accentLineContainer: {
+    overflow: "hidden",
+    borderRadius: 2,
+    height: 3,
+    width: 60,
   },
   accentLine: {
-    width: 40,
-    height: 3,
-    borderRadius: 2,
-    shadowColor: loginColors.primary,
+    flex: 1,
+    shadowColor: "#667eea",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.8,
     shadowRadius: 8,
     elevation: 4,
   },

@@ -11,8 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { SignupPromptProps } from "../types";
-import { loginColors } from "../styles/loginStyles";
+import { SignupPromptProps, loginColors } from "../types";
 
 const { height } = Dimensions.get("window");
 const isSmallDevice = height < 700;
