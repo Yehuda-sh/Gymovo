@@ -4,30 +4,9 @@ import { produce } from "immer";
 import { create, StateCreator } from "zustand";
 import { devtools, persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { User } from "../types/user";
-import { generateId } from "../utils/idGenerator";
+import { User } from "../types/user"; // משתמשים בטיפוס מ-types/user
 
-// טיפוסים מעודכנים
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  age?: number;
-  isGuest: boolean;
-  createdAt?: string;
-  stats?: UserStats;
-  // מידע נוסף למשתמשי אורח
-  guestCreatedAt?: string;
-  guestDataExpiry?: string; // תאריך פקיעה לנתוני אורח
-}
-
-interface UserStats {
-  totalWorkouts: number;
-  totalTime: number;
-  totalVolume: number;
-  favoriteExercises: string[];
-}
-
+// טיפוסים נוספים לstore
 export interface RegisterData {
   email: string;
   password: string;
