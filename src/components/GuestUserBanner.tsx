@@ -7,7 +7,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,8 +17,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
 import { useGuestUser } from "../stores/userStore";
 import { colors } from "../theme/colors";
-
-const { width } = Dimensions.get("window");
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -50,7 +47,9 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
   testID = "guest-user-banner",
 }) => {
   const navigation = useNavigation<NavigationProp>();
-  const { isGuest, daysUntilExpiry } = useGuestUser();
+  const guestUserData = useGuestUser();
+  const isGuest = guestUserData?.isGuest ?? false;
+  const daysUntilExpiry = guestUserData?.daysUntilExpiry;
   const [isVisible, setIsVisible] = useState(true);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
@@ -65,9 +64,6 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
 
     return variant;
   }, [variant, daysUntilExpiry]);
-
-  // אם לא אורח או לא גלוי, אל תציג
-  if (!isGuest || !isVisible) return null;
 
   useEffect(() => {
     // אנימציית כניסה
@@ -112,7 +108,7 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
     if (Platform.OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    navigation.navigate("Register");
+    navigation.navigate("Main", { screen: "Register" });
   }, [navigation]);
 
   // יצירת תוכן דינמי על בסיס ימים לתפוגה
@@ -155,7 +151,7 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
         ]}
       >
         <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
+          colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.minimalGradient}
@@ -206,7 +202,7 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
         ]}
       >
         <LinearGradient
-          colors={[colors.cardBackground, colors.cardBorder]}
+          colors={[colors.surface, colors.background]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.fullGradient}
@@ -353,7 +349,7 @@ const styles = StyleSheet.create({
   minimalTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 2,
   },
   minimalSubtitle: {
@@ -367,7 +363,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.cardBackground,
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -401,7 +397,7 @@ const styles = StyleSheet.create({
   fullTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 8,
   },
   fullSubtitle: {
@@ -420,7 +416,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   benefitText: {
-    color: colors.textPrimary,
+    color: colors.text,
     fontSize: 14,
   },
   fullButton: {

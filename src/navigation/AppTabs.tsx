@@ -5,7 +5,7 @@ import {
   createBottomTabNavigator,
   BottomTabNavigationOptions,
 } from "@react-navigation/bottom-tabs";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -14,7 +14,6 @@ import {
   View,
   Platform,
   Animated,
-  Dimensions,
   Text,
 } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -39,10 +38,11 @@ import { useResponsiveDimensions } from "../hooks/useDeviceInfo";
 import { GuestUserBanner } from "../components/GuestUserBanner";
 
 const Tab = createBottomTabNavigator<AppTabsParamList>();
-const { width } = Dimensions.get("window");
 
 // רכיב Badge לטאבים
-const TabBadge: React.FC<{ badge?: TabBadgeConfig }> = ({ badge }) => {
+const TabBadge: React.FC<{ badge?: TabBadgeConfig | undefined }> = ({
+  badge,
+}) => {
   if (!badge || (!badge.count && !badge.showDot)) return null;
 
   const displayCount =
@@ -107,7 +107,7 @@ const CustomTabBarButton: React.FC<{
     // אנימציית לחיצה
     Animated.sequence([
       Animated.parallel([
-        Animated.spring(scaleAnim, {
+        Animated.timing(scaleAnim, {
           toValue: 0.9,
           duration: 100,
           useNativeDriver: true,
@@ -169,31 +169,30 @@ const CustomTabBarButton: React.FC<{
   );
 };
 
-// רכיב Tab Bar מותאם אישית
+// רכיב Tab Bar מותאם אישית - כרגע לא בשימוש
+/*
 const CustomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
   const { isSmallDevice, tabBarHeight } = useResponsiveDimensions();
 
   return (
     <View style={[styles.tabBarContainer, { height: tabBarHeight + 20 }]}>
-      {Platform.OS === "ios" ? (
+      {Platform.OS === 'ios' ? (
         <BlurView
           intensity={100}
           tint="light"
           style={[
             StyleSheet.absoluteFillObject,
-            { borderRadius: isSmallDevice ? 20 : 25 },
+            { borderRadius: isSmallDevice ? 20 : 25 }
           ]}
         />
       ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            styles.androidTabBar,
-            { borderRadius: isSmallDevice ? 20 : 25 },
-          ]}
-        />
+        <View style={[
+          StyleSheet.absoluteFillObject,
+          styles.androidTabBar,
+          { borderRadius: isSmallDevice ? 20 : 25 }
+        ]} />
       )}
-
+      
       <View style={styles.tabBarContent}>
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
@@ -201,7 +200,7 @@ const CustomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
 
           const onPress = () => {
             const event = navigation.emit({
-              type: "tabPress",
+              type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
@@ -220,12 +219,11 @@ const CustomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
               onPress={onPress}
               style={styles.tabBarItem}
             >
-              {options.tabBarIcon &&
-                options.tabBarIcon({
-                  focused: isFocused,
-                  color: isFocused ? colors.primary : colors.textSecondary,
-                  size: 24,
-                })}
+              {options.tabBarIcon && options.tabBarIcon({
+                focused: isFocused,
+                color: isFocused ? colors.primary : colors.textSecondary,
+                size: 24,
+              })}
             </TouchableOpacity>
           );
         })}
@@ -233,18 +231,20 @@ const CustomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
     </View>
   );
 };
+*/
 
 // קומפוננטת הניווט הראשית
 const AppTabs: React.FC = () => {
   const status = useUserStore((state: UserState) => state.status);
-  const user = useUserStore((state: UserState) => state.user);
   const activeWorkout = useWorkoutStore((state) => state.activeWorkout);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isSmallDevice, tabBarHeight, tabIconSize, screenPadding } =
+  const { isSmallDevice, tabBarHeight, screenPadding } =
     useResponsiveDimensions();
 
-  const [badges, setBadges] = useState<Record<string, TabBadgeConfig>>({});
+  const [badges, setBadges] = useState<
+    Record<string, TabBadgeConfig | undefined>
+  >({});
 
   // עדכון badges
   useEffect(() => {
@@ -300,7 +300,15 @@ const AppTabs: React.FC = () => {
           component={status === "guest" ? GuestProfileScreen : ProfileScreen}
           options={{
             tabBarAccessibilityLabel: "פרופיל אישי",
-            tabBarIcon: ({ color, size, focused }) => (
+            tabBarIcon: ({
+              color,
+              size,
+              focused,
+            }: {
+              color: string;
+              size: number;
+              focused: boolean;
+            }) => (
               <AnimatedTabIcon
                 name={focused ? "person" : "person-outline"}
                 color={color}
@@ -309,14 +317,14 @@ const AppTabs: React.FC = () => {
                 badge={badges.Profile}
               />
             ),
-            tabBarButton: (props) => (
+            tabBarButton: (props: any) => (
               <TouchableOpacity
                 {...props}
                 onPress={() => {
                   if (Platform.OS === "ios") {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   }
-                  navigation.navigate("Profile");
+                  navigation.navigate("Main", { screen: "Profile" });
                 }}
               />
             ),
@@ -329,7 +337,15 @@ const AppTabs: React.FC = () => {
           component={WorkoutsScreen}
           options={{
             tabBarAccessibilityLabel: "היסטוריית אימונים",
-            tabBarIcon: ({ color, size, focused }) => (
+            tabBarIcon: ({
+              color,
+              size,
+              focused,
+            }: {
+              color: string;
+              size: number;
+              focused: boolean;
+            }) => (
               <AnimatedTabIcon
                 name={focused ? "barbell" : "barbell-outline"}
                 color={color}
@@ -353,10 +369,12 @@ const AppTabs: React.FC = () => {
                 color="white"
               />
             ),
-            tabBarButton: (props) => (
+            tabBarButton: (props: any) => (
               <CustomTabBarButton
                 {...props}
-                onPress={() => navigation.navigate("StartWorkout")}
+                onPress={() =>
+                  navigation.navigate("Main", { screen: "StartWorkout" })
+                }
                 accessibilityLabel="התחל אימון חדש"
               />
             ),
@@ -369,7 +387,15 @@ const AppTabs: React.FC = () => {
           component={PlansScreen}
           options={{
             tabBarAccessibilityLabel: "תוכניות אימון",
-            tabBarIcon: ({ color, size, focused }) => (
+            tabBarIcon: ({
+              color,
+              size,
+              focused,
+            }: {
+              color: string;
+              size: number;
+              focused: boolean;
+            }) => (
               <AnimatedTabIcon
                 name={focused ? "list" : "list-outline"}
                 color={color}
@@ -387,7 +413,15 @@ const AppTabs: React.FC = () => {
           component={HomeScreen}
           options={{
             tabBarAccessibilityLabel: "מסך הבית",
-            tabBarIcon: ({ color, size, focused }) => (
+            tabBarIcon: ({
+              color,
+              size,
+              focused,
+            }: {
+              color: string;
+              size: number;
+              focused: boolean;
+            }) => (
               <AnimatedTabIcon
                 name={focused ? "home" : "home-outline"}
                 color={color}
