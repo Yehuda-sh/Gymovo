@@ -1,19 +1,57 @@
-// src/utils/idGenerator.ts
-// מחולל זיהויים ייחודיים עם יכולות מתקדמות
+// src/utils/idGenerator.ts - מחולל זיהויים ייחודיים מתקדם
 
-// Types
+import { Platform } from "react-native";
+
+// טיפוסים
 export interface IdGeneratorOptions {
   prefix?: string;
   suffix?: string;
   length?: number;
   includeTimestamp?: boolean;
+  includeDate?: boolean;
   separator?: string;
+  uppercase?: boolean;
+  customPattern?: string;
 }
 
-export type IdFormat = "short" | "long" | "timestamp" | "uuid-like";
+export type IdFormat =
+  | "short"
+  | "long"
+  | "timestamp"
+  | "uuid"
+  | "uuid-v4"
+  | "nanoid"
+  | "sequential"
+  | "readable"
+  | "hash";
+
+export interface ParsedId {
+  prefix?: string;
+  timestamp?: number;
+  date?: string;
+  suffix?: string;
+  parts: string[];
+  isValid: boolean;
+  format?: IdFormat;
+  metadata?: Record<string, any>;
+}
+
+// קבועים
+const ID_PATTERNS = {
+  alphanumeric: /^[a-zA-Z0-9_-]+$/,
+  timestamp: /^\d{13}$/,
+  uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  date: /^\d{4}-\d{2}-\d{2}$/,
+} as const;
+
+// אלפבית בטוח לזיהויים קריאים
+const SAFE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZabcdefghjkmnpqrstvwxyz";
+
+// Cache לזיהויים שנוצרו (למניעת כפילויות)
+const idCache = new Set<string>();
 
 /**
- * יצירת זיהוי ייחודי מבוסס timestamp ומספר אקראי
+ * יצירת זיהוי ייחודי מתקדם
  * @param options - אפשרויות יצירת זיהוי
  * @returns string - זיהוי ייחודי
  */
@@ -23,120 +61,388 @@ export const generateId = (options: IdGeneratorOptions = {}): string => {
     suffix = "",
     separator = "_",
     includeTimestamp = true,
+    includeDate = false,
     length = 9,
+    uppercase = false,
+    customPattern,
   } = options;
 
   let id = "";
+  const parts: string[] = [];
 
+  // הוספת prefix
   if (prefix) {
-    id += prefix + separator;
+    parts.push(prefix);
   }
 
+  // הוספת תאריך
+  if (includeDate) {
+    const date = new Date().toISOString().split("T")[0];
+    parts.push(date);
+  }
+
+  // הוספת timestamp
   if (includeTimestamp) {
-    id += Date.now().toString();
+    parts.push(Date.now().toString());
   }
 
+  // הוספת מחרוזת אקראית
   if (length > 0) {
-    if (includeTimestamp) {
-      id += separator;
-    }
-    id += Math.random()
-      .toString(36)
-      .substring(2, 2 + length);
+    const randomPart = customPattern
+      ? generateFromPattern(customPattern)
+      : generateRandomString(length);
+    parts.push(randomPart);
   }
 
+  // הוספת suffix
   if (suffix) {
-    id += separator + suffix;
+    parts.push(suffix);
+  }
+
+  // חיבור החלקים
+  id = parts.join(separator);
+
+  // המרה לאותיות גדולות אם נדרש
+  if (uppercase) {
+    id = id.toUpperCase();
+  }
+
+  // וידוא ייחודיות
+  if (idCache.has(id)) {
+    // אם הזיהוי כבר קיים, נוסיף מספר אקראי נוסף
+    id += separator + generateRandomString(4);
+  }
+
+  idCache.add(id);
+
+  // ניקוי cache אם גדול מדי (מניעת בעיות זיכרון)
+  if (idCache.size > 10000) {
+    idCache.clear();
   }
 
   return id;
 };
 
 /**
- * יצירת זיהוי קצר יותר לשימוש פנימי
+ * יצירת מחרוזת אקראית בטוחה
+ * @param length - אורך המחרוזת
+ * @returns string - מחרוזת אקראית
+ */
+const generateRandomString = (length: number): string => {
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += SAFE_ALPHABET.charAt(
+      Math.floor(Math.random() * SAFE_ALPHABET.length)
+    );
+  }
+  return result;
+};
+
+/**
+ * יצירת זיהוי מתבנית מותאמת אישית
+ * @param pattern - תבנית (X=אות, 9=ספרה, *=אקראי)
+ * @returns string - זיהוי לפי תבנית
+ */
+const generateFromPattern = (pattern: string): string => {
+  return pattern.replace(/[X9*]/g, (char) => {
+    switch (char) {
+      case "X":
+        return String.fromCharCode(65 + Math.floor(Math.random() * 26));
+      case "9":
+        return Math.floor(Math.random() * 10).toString();
+      case "*":
+        return SAFE_ALPHABET.charAt(
+          Math.floor(Math.random() * SAFE_ALPHABET.length)
+        );
+      default:
+        return char;
+    }
+  });
+};
+
+/**
+ * יצירת זיהוי קצר לשימוש פנימי
  * @param length - אורך הזיהוי (ברירת מחדל: 8)
  * @returns string - זיהוי קצר
  */
 export const generateShortId = (length: number = 8): string => {
-  return Math.random()
-    .toString(36)
-    .substring(2, 2 + length);
+  return generateRandomString(length);
 };
 
 /**
- * יצירת זיהוי דמוי UUID
- * @returns string - זיהוי בפורמט UUID
+ * יצירת UUID v4 תקני
+ * @returns string - UUID בפורמט תקני
  */
-export const generateUuidLike = (): string => {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
+export const generateUUID = (): string => {
+  // פונקציה מותאמת למובייל ללא crypto API
+  const d = new Date().getTime();
+  const d2 =
+    Platform.OS === "ios" || Platform.OS === "android"
+      ? performance.now()
+      : (performance && performance.now && performance.now() * 1000) || 0;
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16;
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 };
 
 /**
- * יצירת זיהוי עבור workout sets
- * @param prefix - קידומת לזיהוי
- * @param exerciseId - זיהוי התרגיל (אופציונלי)
- * @returns string - זיהוי עם קידומת
+ * יצירת nanoid (כמו UUID אבל קצר יותר)
+ * @param size - גודל הזיהוי (ברירת מחדל: 21)
+ * @returns string - nanoid
  */
-export const generateSetId = (
-  prefix: string = "set",
-  exerciseId?: string
-): string => {
-  const parts = [prefix];
-
-  if (exerciseId) {
-    parts.push(exerciseId);
+export const generateNanoId = (size: number = 21): string => {
+  let id = "";
+  for (let i = 0; i < size; i++) {
+    id += SAFE_ALPHABET.charAt(
+      Math.floor(Math.random() * SAFE_ALPHABET.length)
+    );
   }
-
-  parts.push(generateShortId());
-  return parts.join("_");
+  return id;
 };
 
 /**
- * יצירת זיהוי עבור תרגילים באימון
- * @param exerciseId - זיהוי התרגיל הבסיסי
- * @param workoutId - זיהוי האימון (אופציונלי)
- * @returns string - זיהוי תרגיל באימון
+ * יצירת זיהוי קריא (מילים + מספרים)
+ * @param words - מערך מילים
+ * @param separator - מפריד
+ * @returns string - זיהוי קריא
  */
-export const generateWorkoutExerciseId = (
-  exerciseId: string,
-  workoutId?: string
+export const generateReadableId = (
+  words: string[] = [],
+  separator: string = "-"
 ): string => {
-  const parts = [exerciseId];
+  const adjectives = ["strong", "fit", "power", "swift", "iron"];
+  const nouns = ["workout", "lift", "pump", "gains", "beast"];
 
-  if (workoutId) {
-    parts.push(workoutId);
+  if (words.length === 0) {
+    words = [
+      adjectives[Math.floor(Math.random() * adjectives.length)],
+      nouns[Math.floor(Math.random() * nouns.length)],
+    ];
   }
 
-  parts.push(generateShortId());
-  return parts.join("_");
+  const cleanWords = words.map((word) => sanitizeId(word));
+  return cleanWords.join(separator) + separator + generateShortId(4);
 };
 
 /**
- * בדיקה מתקדמת אם זיהוי הוא תקני
- * @param id - הזיהוי לבדיקה
+ * יצירת זיהוי סדרתי עם padding
+ * @param prefix - קידומת
+ * @param sequence - מספר סידורי
+ * @param padding - אורך padding (ברירת מחדל: 6)
+ * @returns string - זיהוי סדרתי
+ */
+export const generateSequentialId = (
+  prefix: string = "item",
+  sequence: number,
+  padding: number = 6
+): string => {
+  const paddedSequence = sequence.toString().padStart(padding, "0");
+  return `${prefix}_${paddedSequence}`;
+};
+
+/**
+ * יצירת זיהוי לפי פורמט ספציפי
+ * @param format - פורמט הזיהוי
+ * @param prefix - קידומת אופציונלית
+ * @returns string - זיהוי בפורמט המבוקש
+ */
+export const generateIdByFormat = (
+  format: IdFormat,
+  prefix?: string
+): string => {
+  const base = prefix ? `${prefix}_` : "";
+
+  switch (format) {
+    case "short":
+      return base + generateShortId(6);
+
+    case "long":
+      return base + generateShortId(12);
+
+    case "timestamp":
+      return base + Date.now() + "_" + generateShortId(4);
+
+    case "uuid":
+    case "uuid-v4":
+      return generateUUID();
+
+    case "nanoid":
+      return generateNanoId();
+
+    case "sequential":
+      // בפועל יש צורך במנגנון ספירה חיצוני
+      return base + Date.now().toString().slice(-6);
+
+    case "readable":
+      return generateReadableId();
+
+    case "hash":
+      // hash פשוט מבוסס זמן ומספר אקראי
+      return (
+        base +
+        btoa(Date.now().toString())
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .slice(0, 8)
+      );
+
+    default:
+      return generateId({ prefix });
+  }
+};
+
+/**
+ * יצירת זיהוי עבור אובייקטים ספציפיים בגימובו
+ */
+export const gymovo = {
+  // זיהוי אימון
+  workout: (userId?: string): string => {
+    const prefix = userId ? `workout_${sanitizeId(userId)}` : "workout";
+    return generateId({ prefix, length: 6 });
+  },
+
+  // זיהוי תרגיל באימון
+  exercise: (workoutId: string, exerciseId: string): string => {
+    return `${workoutId}_ex_${exerciseId}_${generateShortId(4)}`;
+  },
+
+  // זיהוי סט
+  set: (exerciseId: string, setNumber: number): string => {
+    return `${exerciseId}_set_${setNumber}_${generateShortId(4)}`;
+  },
+
+  // זיהוי תוכנית
+  plan: (name?: string): string => {
+    const prefix = name ? `plan_${sanitizeId(name)}` : "plan";
+    return generateId({ prefix, includeDate: true, length: 4 });
+  },
+
+  // זיהוי יום בתוכנית
+  planDay: (planId: string, dayNumber: number): string => {
+    return `${planId}_day_${dayNumber}`;
+  },
+
+  // זיהוי תרגיל מותאם אישית
+  customExercise: (userId: string): string => {
+    return generateId({
+      prefix: `custom_ex_${sanitizeId(userId)}`,
+      length: 6,
+    });
+  },
+
+  // זיהוי הישג
+  achievement: (type: string): string => {
+    return generateId({
+      prefix: `achievement_${sanitizeId(type)}`,
+      includeTimestamp: true,
+      length: 4,
+    });
+  },
+
+  // זיהוי שיא אישי
+  personalRecord: (exerciseId: string, userId: string): string => {
+    return `pr_${sanitizeId(userId)}_${exerciseId}_${Date.now()}`;
+  },
+};
+
+/**
+ * פירוק וניתוח זיהוי
+ * @param id - זיהוי לניתוח
+ * @param separator - מפריד (ברירת מחדל: '_')
+ * @returns ParsedId - אובייקט מפורק
+ */
+export const parseId = (id: string, separator: string = "_"): ParsedId => {
+  if (!id || typeof id !== "string") {
+    return {
+      parts: [],
+      isValid: false,
+    };
+  }
+
+  const parts = id.split(separator);
+  const parsed: ParsedId = {
+    parts,
+    isValid: isValidId(id),
+  };
+
+  // ניסיון לזהות prefix
+  if (parts.length > 0 && isNaN(Number(parts[0]))) {
+    parsed.prefix = parts[0];
+  }
+
+  // ניסיון לזהות timestamp
+  const timestampPart = parts.find((part) => ID_PATTERNS.timestamp.test(part));
+  if (timestampPart) {
+    parsed.timestamp = parseInt(timestampPart);
+  }
+
+  // ניסיון לזהות תאריך
+  const datePart = parts.find((part) => ID_PATTERNS.date.test(part));
+  if (datePart) {
+    parsed.date = datePart;
+  }
+
+  // ניסיון לזהות suffix
+  if (parts.length > 1 && !timestampPart && !datePart) {
+    const lastPart = parts[parts.length - 1];
+    if (isNaN(Number(lastPart))) {
+      parsed.suffix = lastPart;
+    }
+  }
+
+  // ניסיון לזהות פורמט
+  if (ID_PATTERNS.uuid.test(id)) {
+    parsed.format = "uuid";
+  } else if (parsed.timestamp) {
+    parsed.format = "timestamp";
+  } else if (parts.length === 1 && parts[0].length <= 8) {
+    parsed.format = "short";
+  }
+
+  return parsed;
+};
+
+/**
+ * בדיקה אם זיהוי תקני
+ * @param id - זיהוי לבדיקה
+ * @param options - אפשרויות בדיקה
  * @returns boolean - האם הזיהוי תקני
  */
-export const isValidId = (id: string): boolean => {
-  if (typeof id !== "string" || id.length === 0) {
+export const isValidId = (
+  id: string,
+  options: {
+    allowEmpty?: boolean;
+    pattern?: RegExp;
+    minLength?: number;
+    maxLength?: number;
+  } = {}
+): boolean => {
+  const {
+    allowEmpty = false,
+    pattern = ID_PATTERNS.alphanumeric,
+    minLength = 1,
+    maxLength = 255,
+  } = options;
+
+  // בדיקות בסיסיות
+  if (!id || typeof id !== "string") {
+    return allowEmpty && !id;
+  }
+
+  // בדיקת אורך
+  if (id.length < minLength || id.length > maxLength) {
     return false;
   }
 
-  // לא מכיל רווחים או תווים מיוחדים
-  if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+  // בדיקת תבנית
+  if (!pattern.test(id)) {
     return false;
   }
 
-  // לא מתחיל או מסתיים עם _ או -
-  if (
-    id.startsWith("_") ||
-    id.startsWith("-") ||
-    id.endsWith("_") ||
-    id.endsWith("-")
-  ) {
+  // בדיקת תווים בתחילה ובסוף
+  if (/^[_-]|[_-]$/.test(id)) {
     return false;
   }
 
@@ -144,100 +450,77 @@ export const isValidId = (id: string): boolean => {
 };
 
 /**
- * יצירת זיהוי עבור תוכניות אימון
- * @param prefix - קידומת (plan, day, exercise)
- * @param format - פורמט הזיהוי
- * @returns string - זיהוי מלא
- */
-export const generatePlanId = (
-  prefix: string = "plan",
-  format: IdFormat = "timestamp"
-): string => {
-  switch (format) {
-    case "short":
-      return `${prefix}_${generateShortId()}`;
-    case "long":
-      return `${prefix}_${generateShortId(12)}`;
-    case "uuid-like":
-      return `${prefix}_${generateUuidLike()}`;
-    case "timestamp":
-    default:
-      return `${prefix}_${Date.now()}_${generateShortId()}`;
-  }
-};
-
-/**
  * ניקוי זיהוי מתווים לא חוקיים
  * @param id - זיהוי לניקוי
- * @param replacement - תו החלפה (ברירת מחדל: '_')
+ * @param options - אפשרויות ניקוי
  * @returns string - זיהוי נקי
  */
-export const sanitizeId = (id: string, replacement: string = "_"): string => {
-  return id
+export const sanitizeId = (
+  id: string,
+  options: {
+    replacement?: string;
+    lowercase?: boolean;
+    maxLength?: number;
+  } = {}
+): string => {
+  const { replacement = "_", lowercase = true, maxLength = 50 } = options;
+
+  let sanitized = id
     .replace(/[^a-zA-Z0-9_-]/g, replacement)
-    .toLowerCase()
-    .replace(/^[_-]+|[_-]+$/g, "") // הסר _ או - מהתחלה והסוף
-    .replace(/[_-]{2,}/g, replacement); // מספר _ או - רצופים -> אחד
+    .replace(/^[_-]+|[_-]+$/g, "") // הסרת תווים מיוחדים מההתחלה והסוף
+    .replace(/[_-]{2,}/g, replacement); // החלפת רצף של תווים מיוחדים
+
+  if (lowercase) {
+    sanitized = sanitized.toLowerCase();
+  }
+
+  if (maxLength && sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
+  }
+
+  return sanitized || "id";
 };
 
 /**
- * יצירת זיהוי עבור פריט ספציפי
- * @param type - סוג הפריט (workout, exercise, set, plan)
- * @param name - שם הפריט (אופציונלי)
- * @param format - פורמט הזיהוי
- * @returns string - זיהוי מובנה
+ * השוואת זיהויים (case insensitive)
+ * @param id1 - זיהוי ראשון
+ * @param id2 - זיהוי שני
+ * @returns boolean - האם הזיהויים זהים
  */
-export const generateTypedId = (
-  type: string,
-  name?: string,
-  format: IdFormat = "timestamp"
-): string => {
-  const prefix = name ? `${type}_${sanitizeId(name)}` : type;
-  return generatePlanId(prefix, format);
+export const compareIds = (id1: string, id2: string): boolean => {
+  if (!id1 || !id2) return false;
+  return id1.toLowerCase().trim() === id2.toLowerCase().trim();
 };
 
 /**
- * מפרק זיהוי מורכב לחלקים
- * @param id - זיהוי לפירוק
- * @param separator - מפריד (ברירת מחדל: '_')
- * @returns object - חלקי הזיהוי
+ * יצירת hash מזיהוי (לצורכי השוואה או אינדוקס)
+ * @param id - זיהוי
+ * @returns number - hash code
  */
-export const parseId = (id: string, separator: string = "_") => {
-  const parts = id.split(separator);
+export const hashId = (id: string): number => {
+  let hash = 0;
+  if (!id || id.length === 0) return hash;
 
-  return {
-    prefix: parts[0] || "",
-    timestamp: parts.find((part) => /^\d{13}$/.test(part)) || null,
-    suffix: parts[parts.length - 1] || "",
-    parts: parts,
-    isTimestamped: parts.some((part) => /^\d{13}$/.test(part)),
-  };
+  for (let i = 0; i < id.length; i++) {
+    const char = id.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  return Math.abs(hash);
 };
 
-/**
- * יצירת זיהוי עם עיכוב קבוע למיון
- * @param prefix - קידומת
- * @param sequence - מספר סידורי
- * @returns string - זיהוי עם מספר סידורי
- */
-export const generateSequentialId = (
-  prefix: string = "item",
-  sequence: number
-): string => {
-  const paddedSequence = sequence.toString().padStart(6, "0");
-  return `${prefix}_${paddedSequence}_${generateShortId(4)}`;
-};
-
-/**
- * יצירת זיהוי ידידותי לקריאה
- * @param words - מילים לזיהוי
- * @param separator - מפריד
- * @returns string - זיהוי קריא
- */
-export const generateReadableId = (
-  words: string[],
-  separator: string = "-"
-): string => {
-  const cleanWords = words.map((word) => sanitizeId(word));
-  return cleanWords.join(separator) + separator + generateShortId(4);
+// ייצוא ברירת מחדל
+export default {
+  generate: generateId,
+  generateShort: generateShortId,
+  generateUUID,
+  generateNanoId,
+  generateByFormat: generateIdByFormat,
+  parse: parseId,
+  validate: isValidId,
+  sanitize: sanitizeId,
+  compare: compareIds,
+  hash: hashId,
+  gymovo,
 };
