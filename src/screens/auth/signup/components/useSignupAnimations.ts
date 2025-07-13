@@ -1,4 +1,4 @@
-// src/screens/auth/signup/components/useSignupAnimations.ts - Hook מתקדם לאנימציות
+// src/screens/auth/signup/components/useSignupAnimations.ts
 
 import { useEffect, useRef, useCallback } from "react";
 import { Animated, Keyboard } from "react-native";

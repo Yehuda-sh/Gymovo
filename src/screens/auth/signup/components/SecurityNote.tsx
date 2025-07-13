@@ -1,10 +1,10 @@
-// src/screens/auth/signup/components/SecurityNote.tsx - מתוקן ללא שגיאות
+// src/screens/auth/signup/components/SecurityNote.tsx
 
 import React, { useRef, useEffect } from "react";
 import { StyleSheet, Text, View, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { SecurityNoteProps } from "../types";
+import { SecurityNoteProps, signupColors } from "../types";
 
 const SecurityNote: React.FC<SecurityNoteProps> = ({ visible }) => {
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -35,7 +35,7 @@ const SecurityNote: React.FC<SecurityNoteProps> = ({ visible }) => {
         ])
       ).start();
     }
-  }, [visible, fadeAnim, glowAnim]); // תיקון dependencies
+  }, [visible, fadeAnim, glowAnim]);
 
   if (!visible) return null;
 
@@ -55,10 +55,12 @@ const SecurityNote: React.FC<SecurityNoteProps> = ({ visible }) => {
           ],
         },
       ]}
+      accessibilityRole="text"
+      accessibilityLabel="הנתונים שלך מוגנים בהצפנה מתקדמת"
     >
       {/* Background with Gradient Border */}
       <LinearGradient
-        colors={["rgba(0, 255, 136, 0.3)", "rgba(102, 126, 234, 0.3)"]}
+        colors={[signupColors.securityBorder, signupColors.primaryGlow]}
         style={styles.border}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -74,13 +76,14 @@ const SecurityNote: React.FC<SecurityNoteProps> = ({ visible }) => {
                     inputRange: [0, 1],
                     outputRange: [0.3, 0.7],
                   }),
+                  backgroundColor: signupColors.securityBackground,
                 },
               ]}
             />
             <Ionicons
               name="shield-checkmark"
               size={18}
-              color="#00ff88"
+              color={signupColors.success}
               style={styles.icon}
             />
           </View>
@@ -91,10 +94,18 @@ const SecurityNote: React.FC<SecurityNoteProps> = ({ visible }) => {
           {/* Additional Security Indicators */}
           <View style={styles.indicators}>
             <View style={styles.indicator}>
-              <Ionicons name="lock-closed" size={12} color="#667eea" />
+              <Ionicons
+                name="lock-closed"
+                size={12}
+                color={signupColors.info}
+              />
             </View>
             <View style={styles.indicator}>
-              <Ionicons name="checkmark-circle" size={12} color="#00ff88" />
+              <Ionicons
+                name="checkmark-circle"
+                size={12}
+                color={signupColors.success}
+              />
             </View>
           </View>
         </View>
@@ -114,7 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   content: {
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: signupColors.securityBackground,
     borderRadius: 10.5,
     flexDirection: "row",
     alignItems: "center",
@@ -131,7 +142,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "rgba(0, 255, 136, 0.3)",
     top: -3,
     left: -3,
   },
@@ -139,7 +149,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   text: {
-    color: "rgba(255, 255, 255, 0.9)",
+    color: signupColors.securityText,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",

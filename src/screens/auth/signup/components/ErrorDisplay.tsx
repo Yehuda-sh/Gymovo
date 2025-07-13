@@ -3,8 +3,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Animated, StyleSheet, Text, TouchableOpacity } from "react-native";
-import { colors } from "../../../../theme/colors";
 import { ErrorDisplayProps, signupColors } from "../types";
+
+const colors = signupColors;
 
 const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) => {
   if (!error) return null;
@@ -26,12 +27,12 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: signupColors.errorBackground,
-    borderColor: signupColors.errorBorder,
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 4,
   },
   errorText: {
     color: colors.danger,

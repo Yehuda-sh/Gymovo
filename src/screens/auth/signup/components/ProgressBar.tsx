@@ -1,13 +1,14 @@
 // src/screens/auth/signup/components/ProgressBar.tsx
+
 import React from "react";
 import { View, Text, Animated, StyleSheet } from "react-native";
-import { ProgressBarProps } from "../types";
+import { ProgressBarProps, signupColors } from "../types";
 
 const colors = {
-  primary: "#FF6B35",
-  text: "#FFFFFF",
-  textMuted: "rgba(255, 255, 255, 0.6)",
-  inputBorder: "rgba(255, 255, 255, 0.2)",
+  primary: signupColors.primary,
+  text: signupColors.text,
+  textMuted: signupColors.textMuted,
+  inputBorder: signupColors.inputBorder,
 };
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -31,6 +32,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           ],
         },
       ]}
+      accessibilityRole="progressbar"
+      accessibilityLabel={`שלב ${currentStep} מתוך ${totalSteps}`}
     >
       <View style={styles.stepsContainer}>
         {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (

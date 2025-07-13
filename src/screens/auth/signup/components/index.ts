@@ -1,6 +1,6 @@
 // src/screens/auth/signup/components/index.ts
 
-// Main components
+// Main UI components
 export { default as HeaderSection } from "./HeaderSection";
 export { default as ProgressBar } from "./ProgressBar";
 export { default as SignupForm } from "./SignupForm";

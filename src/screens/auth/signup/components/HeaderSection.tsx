@@ -1,16 +1,11 @@
 // src/screens/auth/signup/components/HeaderSection.tsx
+
 import React from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { HeaderSectionProps } from "../types";
+import { HeaderSectionProps, signupColors } from "../types";
 
-// צבעים מ-WelcomeScreen
-const colors = {
-  primary: "#FF6B35",
-  secondary: "#F7931E",
-  text: "#FFFFFF",
-  textSecondary: "rgba(255, 255, 255, 0.85)",
-};
+const colors = signupColors;
 
 const HeaderSection: React.FC<HeaderSectionProps> = ({
   fadeAnim,
@@ -20,17 +15,29 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
   return (
     <Animated.View
       style={[
-        styles.logoSection,
+        styles.headerContainer,
         {
           opacity: fadeAnim,
-          transform: [{ scale: headerScale }],
+          transform: [{ scale: headerScale }, { translateY: slideAnim }],
         },
       ]}
+      accessibilityLabel="איזור כותרת הרשמה"
     >
       <View style={styles.logoIcon}>
-        <Ionicons name="person-add" size={32} color="#fff" />
+        <Ionicons
+          name="person-add"
+          size={32}
+          color="#fff"
+          accessibilityLabel="סמל משתמש חדש"
+        />
       </View>
-      <Text style={styles.title}>הרשמה</Text>
+      <Text
+        style={styles.title}
+        accessibilityRole="header"
+        accessibilityLabel="הרשמה"
+      >
+        הרשמה
+      </Text>
       <View style={styles.accentLine} />
       <Text style={styles.subtitle}>
         הצטרף לקהילת המתאמנים הגדולה בישראל
@@ -42,7 +49,7 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
-  logoSection: {
+  headerContainer: {
     alignItems: "center",
     marginBottom: 30,
   },
@@ -69,10 +76,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 20,
   },
 });
 

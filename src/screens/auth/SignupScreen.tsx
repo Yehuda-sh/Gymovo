@@ -1,25 +1,20 @@
 // src/screens/auth/SignupScreen.tsx
+
 import React, { useState } from "react";
 import {
   View,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
-  Animated,
   StyleSheet,
-  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 
-import {
-  HeaderSection,
-  SignupForm,
-  ActionButtons,
-  ProgressBar,
-  useSignupAnimations,
-} from "./signup";
+import { HeaderSection, SignupForm, ActionButtons, ProgressBar } from "./signup";
+import { useSignupAnimations } from "./signup/components/useSignupAnimations";
+import SignupErrorModal from "./signup/components/SignupErrorModal";
 
 const colors = {
   background: "#1a1a2e",
@@ -27,17 +22,14 @@ const colors = {
   gradientDark: "#0f3460",
 };
 
-interface SignupScreenProps {
-  navigation: any;
-}
-
-const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
+const SignupScreen = ({ navigation }: { navigation: any }) => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [age, setAge] = useState("");
+  const [age, setAge] = useState("16"); // כברירת מחדל
   const [currentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
   const totalSteps = 3;
 
   // אנימציות
@@ -45,25 +37,24 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
 
   const handleNext = async () => {
     // בדיקת תקינות
-    if (!email || !password) {
-      Alert.alert("שגיאה", "נא למלא את כל השדות");
+    if (!email || !password || !age) {
+      setErrorModal("נא למלא את כל השדות");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("שגיאה", "הסיסמה חייבת להכיל לפחות 6 תווים");
+      setErrorModal("הסיסמה חייבת להכיל לפחות 6 תווים");
       return;
     }
 
     if (!age || parseInt(age) < 16 || parseInt(age) > 100) {
-      Alert.alert("שגיאה", "נא להזין גיל תקין (16-100)");
+      setErrorModal("נא להזין גיל תקין (16-100)");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 1. יצירת משתמש ב-Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.toLowerCase().trim(),
         password,
@@ -72,28 +63,23 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. יצירת פרופיל
         const { error: profileError } = await supabase.from("profiles").insert({
           id: authData.user.id,
           email: authData.user.email!,
-          name: email.split("@")[0], // שם זמני
+          name: email.split("@")[0],
           age: parseInt(age),
         });
 
         if (profileError) throw profileError;
 
-        // 3. הצלחה! נווט למסך הראשי
-        Alert.alert("ברוכים הבאים! 🎉", "נרשמת בהצלחה לGymovo");
-
+        // הצלחה!
+        // אפשר להציג פה Modal custom "נרשמת בהצלחה!" או להשתמש בניווט הרגיל:
         navigation.reset({
           index: 0,
           routes: [{ name: "Main" }],
         });
       }
     } catch (error: any) {
-      console.error("Signup error:", error);
-
-      // תרגום שגיאות נפוצות
       let errorMessage = "שגיאה בהרשמה";
 
       if (error.message?.includes("already registered")) {
@@ -104,21 +90,17 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
         errorMessage = "הסיסמה חלשה מדי";
       }
 
-      Alert.alert("שגיאה", errorMessage);
+      setErrorModal(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
+  const handleBack = () => navigation.goBack();
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      {/* רקע גרדיינט */}
       <LinearGradient
         colors={[colors.background, colors.surface, colors.gradientDark]}
         style={StyleSheet.absoluteFillObject}
@@ -165,6 +147,13 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Error Modal */}
+      <SignupErrorModal
+        visible={!!errorModal}
+        error={errorModal || ""}
+        onDismiss={() => setErrorModal(null)}
+      />
     </View>
   );
 };

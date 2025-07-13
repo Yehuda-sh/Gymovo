@@ -1,20 +1,22 @@
 // src/screens/auth/signup/components/ActionButtons.tsx
+
 import React from "react";
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Animated,
+  ActivityIndicator,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { ActionButtonsProps } from "../types";
+import { ActionButtonsProps, signupColors } from "../types";
 
 const colors = {
-  primary: "#FF6B35",
-  secondary: "#F7931E",
-  textSecondary: "rgba(255, 255, 255, 0.85)",
+  primary: signupColors.primary,
+  secondary: signupColors.secondary,
+  textSecondary: signupColors.textSecondary,
 };
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -39,6 +41,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={handleNext}
         activeOpacity={0.8}
         disabled={isLoading}
+        accessibilityLabel="המשך"
+        accessibilityRole="button"
+        accessibilityState={{ busy: isLoading, disabled: isLoading }}
       >
         <LinearGradient
           colors={[colors.primary, colors.secondary]}
@@ -46,11 +51,26 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Text style={styles.primaryButtonText}>המשך</Text>
+          {isLoading ? (
+            <ActivityIndicator
+              size={Platform.OS === "ios" ? "small" : 18}
+              color="#fff"
+              style={{ paddingVertical: 2 }}
+            />
+          ) : (
+            <Text style={styles.primaryButtonText}>המשך</Text>
+          )}
         </LinearGradient>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={handleBack}
+        disabled={isLoading}
+        accessibilityLabel="חזור"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isLoading }}
+      >
         <Text style={styles.secondaryButtonText}>חזור</Text>
       </TouchableOpacity>
     </View>
@@ -59,28 +79,31 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
 const styles = StyleSheet.create({
   buttonsSection: {
-    marginTop: 10,
+    marginTop: 18,
+    marginBottom: 8,
   },
   primaryButton: {
     borderRadius: 10,
     overflow: "hidden",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   gradientButton: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
   },
   primaryButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#fff",
   },
   secondaryButton: {
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   secondaryButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
   },
 });
