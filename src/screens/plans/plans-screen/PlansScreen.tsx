@@ -19,10 +19,12 @@ import {
   TouchableOpacity,
   View,
   Share,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 // Local components
 import {
@@ -43,7 +45,6 @@ import { loadQuizProgress } from "../../../services/quizProgressService";
 
 // Stores & Types
 import { useUserStore } from "../../../stores/userStore";
-import { useNavigation } from "@react-navigation/native";
 import { designSystem } from "../../../theme/designSystem";
 import { Plan } from "../../../types/plan";
 
@@ -76,164 +77,249 @@ const PlansScreen = () => {
 
       // 1. טען תוכניות בסיס (3 בלבד)
       const publicData = await fetchPublicPlansWithFallback();
-      setBasePlans(publicData);
+      setBasePlans(publicData.slice(0, 3)); // רק 3 תוכניות בסיס
 
-      // 2. טען רק תוכניות AI של המשתמש (לא תוכניות ידניות)
+      // 2. טען תוכניות המשתמש (כולל AI אישית אם יש)
       if (user?.id) {
-        const allUserPlans = await getPlansByUserId(user.id);
+        const userPlansList = await getPlansByUserId(user.id);
+        setUserPlans(userPlansList);
+      } else {
+        setUserPlans([]);
+      }
 
-        // סנן רק תוכניות שנוצרו ע"י AI (מהשאלון)
-        const aiPlans = allUserPlans.filter(
-          (plan) =>
-            plan.tags?.includes("AI-generated") || plan.creator === "Gymovo AI"
+      // 3. בדוק אם יש תוכנית AI אישית
+      const quizProgress = user?.id ? await loadQuizProgress(user.id) : null;
+      if (
+        quizProgress?.completedAt &&
+        !userPlans.some((p) => p.name?.includes("AI"))
+      ) {
+        // אם השלים שאלון ואין תוכנית AI - הצע ליצור
+        Alert.alert(
+          "תוכנית AI אישית זמינה! 🎯",
+          "השלמת את השאלון! כעת תוכל ליצור תוכנית אימונים אישית מבוססת AI.",
+          [
+            { text: "אחר כך", style: "cancel" },
+            {
+              text: "צור תוכנית",
+              onPress: () =>
+                navigation.navigate("Main", { screen: "CreateOrEditPlan" }),
+            },
+          ]
         );
-
-        // בדוק אם המשתמש השלים שאלון
-        const quizProgress = await loadQuizProgress(user.id);
-        if (quizProgress?.isCompleted && aiPlans.length === 0) {
-          // אם השלים שאלון אבל אין תוכנית AI - כנראה נמחקה
-          console.log("User completed quiz but no AI plan found");
-        }
-
-        setUserPlans(aiPlans);
       }
     } catch (error) {
       console.error("Error loading plans:", error);
+      Alert.alert("שגיאה", "לא ניתן לטעון את התוכניות");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.id]);
+  }, [user?.id, navigation]);
 
-  // Load plans
+  // בדיקה אם יש תוכנית AI
+  const hasAIPlan = useMemo(() => {
+    return userPlans.some(
+      (plan) =>
+        plan.name?.toLowerCase().includes("ai") || plan.name?.includes("אישית")
+    );
+  }, [userPlans]);
+
+  // סינון תוכניות
+  const filteredPlans = useMemo(() => {
+    let allPlans: Plan[] = [];
+
+    switch (selectedFilter) {
+      case "mine":
+        allPlans = userPlans;
+        break;
+      case "public":
+        allPlans = basePlans;
+        break;
+      case "all":
+      default:
+        // תוכניות המשתמש מופיעות ראשונות
+        allPlans = [...userPlans, ...basePlans];
+        break;
+    }
+
+    // החל חיפוש אם יש
+    if (searchQuery.trim()) {
+      return filterPlansBySearch(allPlans, searchQuery);
+    }
+
+    return allPlans;
+  }, [userPlans, basePlans, selectedFilter, searchQuery]);
+
+  // טעינה ראשונית
   useEffect(() => {
     loadPlans();
     animateEntrance();
   }, [loadPlans, animateEntrance]);
 
-  // סינון תוכניות לפי הגדרות המשתמש
-  const filteredPlans = useMemo(() => {
-    let plansToShow: Plan[] = [];
+  // רענון בחזרה למסך
+  useFocusEffect(
+    useCallback(() => {
+      loadPlans();
+    }, [loadPlans])
+  );
 
-    if (selectedFilter === "all") {
-      // הצג תוכניות בסיס + תוכנית AI אישית
-      plansToShow = [...basePlans, ...userPlans];
-    } else if (selectedFilter === "mine") {
-      // הצג רק תוכנית AI אישית
-      plansToShow = userPlans;
+  // יצירת תוכנית חדשה
+  const handleCreatePlan = useCallback(() => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    if (hasAIPlan) {
+      // אם יש כבר תוכנית AI, צור תוכנית רגילה
+      navigation.navigate("Main", { screen: "CreateOrEditPlan" });
     } else {
-      // הצג רק תוכניות בסיס
-      plansToShow = basePlans;
+      // אם אין תוכנית AI, בדוק אם השלים שאלון
+      if (user?.id) {
+        loadQuizProgress(user.id).then((progress) => {
+          if (progress?.completedAt) {
+            // השלים שאלון - הצע AI
+            Alert.alert(
+              "איזו תוכנית תרצה ליצור?",
+              "יש לך אפשרות ליצור תוכנית AI אישית או תוכנית רגילה",
+              [
+                { text: "ביטול", style: "cancel" },
+                {
+                  text: "תוכנית רגילה",
+                  onPress: () =>
+                    navigation.navigate("Main", { screen: "CreateOrEditPlan" }),
+                },
+                {
+                  text: "תוכנית AI",
+                  onPress: () =>
+                    navigation.navigate("Main", { screen: "CreateOrEditPlan" }),
+                  style: "default",
+                },
+              ]
+            );
+          } else {
+            // לא השלים שאלון
+            Alert.alert(
+              "תוכנית AI אישית",
+              "כדי ליצור תוכנית AI אישית, צריך קודם למלא שאלון קצר",
+              [
+                { text: "אחר כך", style: "cancel" },
+                {
+                  text: "למלא שאלון",
+                  onPress: () =>
+                    navigation.navigate("Main", { screen: "Welcome" }),
+                },
+              ]
+            );
+          }
+        });
+      } else {
+        // משתמש לא מחובר
+        navigation.navigate("Main", { screen: "CreateOrEditPlan" });
+      }
     }
+  }, [hasAIPlan, navigation, user?.id]);
 
-    return filterPlansBySearch(plansToShow, searchQuery);
-  }, [basePlans, userPlans, selectedFilter, searchQuery]);
-
-  // רענון רשימת התוכניות
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadPlans();
-  };
-
-  // מחיקת תוכנית - רק תוכניות AI אישיות
-  const handleDeletePlan = async (planId: string) => {
-    const planToDelete = userPlans.find((p) => p.id === planId);
-    if (!planToDelete) {
-      Alert.alert("שגיאה", "לא ניתן למחוק תוכניות בסיס");
-      return;
-    }
-
-    Alert.alert(
-      "מחיקת תוכנית AI",
-      "האם אתה בטוח? תצטרך למלא שאלון מחדש כדי לקבל תוכנית חדשה",
-      [
-        { text: "ביטול", style: "cancel" },
-        {
-          text: "מחק",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deletePlan(planId, user?.id || "");
-              console.log("AI plan deleted successfully");
-              loadPlans();
-            } catch (error) {
-              console.error("Error deleting plan:", error);
-            }
+  // מחיקת תוכנית
+  const handleDeletePlan = useCallback(
+    async (plan: Plan) => {
+      Alert.alert(
+        "מחיקת תוכנית",
+        `האם אתה בטוח שברצונך למחוק את התוכנית "${plan.name}"?`,
+        [
+          { text: "ביטול", style: "cancel" },
+          {
+            text: "מחק",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                if (user?.id) {
+                  await deletePlan(user.id, plan.id);
+                  if (Platform.OS === "ios") {
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Success
+                    );
+                  }
+                  await loadPlans();
+                }
+              } catch (error: any) {
+                console.error("Error deleting plan:", error);
+                Alert.alert("שגיאה", "לא ניתן למחוק את התוכנית");
+              }
+            },
           },
-        },
-      ]
-    );
-  };
+        ]
+      );
+    },
+    [user?.id, loadPlans]
+  );
 
   // שיתוף תוכנית
-  const handleSharePlan = async (plan: Plan) => {
+  const handleSharePlan = useCallback(async (plan: Plan) => {
     try {
+      const message = `
+🏋️ תוכנית אימונים: ${plan.name}
+
+📋 תיאור: ${plan.description || "תוכנית אימונים מקצועית"}
+
+📊 פרטים:
+• ${plan.days?.length || 0} ימי אימון בשבוע
+• רמת קושי: ${plan.difficulty || "מתאימה לכולם"}
+• משך: ${plan.days?.length ? `${plan.days.length * 4} שבועות` : "4 שבועות"}
+
+💪 הורד את אפליקציית Gymovo והתחל להתאמן!
+      `.trim();
+
       await Share.share({
-        message: `תוכנית אימון מומלצת: ${plan.name}\n${plan.description || ""}`,
-        title: plan.name,
+        message,
+        title: `תוכנית אימונים - ${plan.name}`,
       });
+
+      if (Platform.OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
     } catch (error) {
-      console.error("Share error:", error);
+      console.error("Error sharing plan:", error);
     }
-  };
+  }, []);
 
-  // עבור לעריכת תוכנית
-  const handlePlanPress = (plan: Plan) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("CreateOrEditPlan", { planId: plan.id });
-  };
+  // רענון
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    loadPlans();
+  }, [loadPlans]);
 
-  // יצירת תוכנית חדשה - הפנה לשאלון
-  const handleCreatePlan = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // רינדור תוכנית
+  const renderPlan = useCallback(
+    ({ item, index }: { item: Plan; index: number }) => {
+      return (
+        <PlanCard
+          plan={item}
+          index={index}
+          onPress={() =>
+            navigation.navigate("Main", { screen: "StartWorkout" })
+          }
+          onDelete={
+            item.userId === user?.id ? () => handleDeletePlan(item) : undefined
+          }
+          onShare={() => handleSharePlan(item)}
+        />
+      );
+    },
+    [navigation, handleDeletePlan, handleSharePlan, user?.id]
+  );
 
-    Alert.alert(
-      "יצירת תוכנית מותאמת אישית",
-      "תוכניות מותאמות נוצרות על ידי מילוי שאלון קצר. האם תרצה למלא את השאלון?",
-      [
-        { text: "לא עכשיו", style: "cancel" },
-        {
-          text: "מלא שאלון",
-          onPress: () => {
-            navigation.navigate("Quiz", {
-              signupData: {
-                email: user?.email || "",
-                password: "",
-                age: user?.age || 25,
-                name: user?.name,
-              },
-            });
-          },
-        },
-      ]
-    );
-  };
-
-  // רינדור פריט תוכנית
-  const renderPlan = ({ item, index }: { item: Plan; index: number }) => {
-    const isAIPlan = userPlans.some((p) => p.id === item.id);
-
-    return (
-      <PlanCard
-        plan={item}
-        index={index}
-        onPress={() => handlePlanPress(item)}
-        onShare={() => handleSharePlan(item)}
-        onDelete={isAIPlan ? () => handleDeletePlan(item.id) : undefined}
-      />
-    );
-  };
-
-  if (isLoading && !isRefreshing) {
+  // מסך טעינה
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E86FF" />
+        <ActivityIndicator
+          size="large"
+          color={designSystem.colors.primary.main}
+        />
+        <Text style={styles.loadingText}>טוען תוכניות...</Text>
       </View>
     );
   }
-
-  const totalPlans = filteredPlans.length;
-  const hasAIPlan = userPlans.length > 0;
 
   return (
     <View style={styles.container}>
@@ -241,22 +327,22 @@ const PlansScreen = () => {
         style={[
           styles.header,
           {
-            opacity: fadeAnim,
             transform: [{ scale: headerScale }],
           },
         ]}
       >
         <LinearGradient
-          colors={["#2E86FF", "#1968DB"]}
+          colors={[
+            designSystem.colors.primary.main,
+            designSystem.colors.primary.dark,
+          ]}
           style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
         >
-          <Text style={styles.title}>תוכניות האימון שלי</Text>
+          <Text style={styles.title}>התוכניות שלי</Text>
           <Text style={styles.subtitle}>
             {hasAIPlan
-              ? `3 תוכניות בסיס + תוכנית AI אישית`
-              : `3 תוכניות בסיס זמינות`}
+              ? `${userPlans.length} תוכניות אישיות + ${basePlans.length} תוכניות בסיס`
+              : `${basePlans.length} תוכניות בסיס זמינות`}
           </Text>
         </LinearGradient>
       </Animated.View>
@@ -285,21 +371,27 @@ const PlansScreen = () => {
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
               colors={[designSystem.colors.primary.main]}
+              tintColor={designSystem.colors.primary.main}
             />
           }
           ListEmptyComponent={<EmptyState onCreatePlan={handleCreatePlan} />}
         />
 
-        {!hasAIPlan && (
-          <TouchableOpacity style={styles.fab} onPress={handleCreatePlan}>
-            <LinearGradient
-              colors={["#2E86FF", "#1968DB"]}
-              style={styles.fabGradient}
-            >
-              <Ionicons name="add" size={28} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleCreatePlan}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={[
+              designSystem.colors.primary.main,
+              designSystem.colors.primary.dark,
+            ]}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="add" size={28} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
       </Animated.View>
     </View>
   );
@@ -308,18 +400,24 @@ const PlansScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: designSystem.colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: designSystem.colors.background.primary,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: designSystem.colors.neutral.text.secondary,
   },
   header: {
     marginBottom: 16,
   },
   headerGradient: {
-    paddingTop: 60,
+    paddingTop: Platform.OS === "ios" ? 60 : 50,
     paddingBottom: 24,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
