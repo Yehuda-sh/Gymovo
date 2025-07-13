@@ -2,7 +2,11 @@
 // Hook לניהול אנימציות במסך פרופיל אורח
 
 import { useRef, useCallback } from "react";
-import { Animated } from "react-native";
+import {
+  Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from "react-native";
 
 export const useGuestProfileAnimations = () => {
   // אנימציות בסיסיות
@@ -70,11 +74,23 @@ export const useGuestProfileAnimations = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [
+    backgroundOpacity,
+    bannerSlide,
+    fadeAnim,
+    scaleAnim,
+    contentSlide,
+    featuresAnim,
+    footerAnim,
+  ]);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: true }
+  // פונקציית טיפול בגלילה
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { y } = event.nativeEvent.contentOffset;
+      scrollY.setValue(y);
+    },
+    [scrollY]
   );
 
   return {

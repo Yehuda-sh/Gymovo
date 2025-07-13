@@ -73,8 +73,6 @@ const GuestProfileScreen: React.FC = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onScroll={animations.handleScroll}
-        scrollEventThrottle={16}
       >
         {/* כותרת ופרטי משתמש */}
         <GuestProfileHeader
