@@ -1,5 +1,5 @@
 // src/screens/profile/user/components/QuizResultsView.tsx
-// רכיב הצגת תוצאות השאלון - עיצוב מהפכני ומדהים
+// רכיב הצגת תוצאות השאלון - עיצוב מודרני ועקבי
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -9,10 +9,24 @@ import {
   StyleSheet,
   TouchableOpacity,
   I18nManager,
+  Animated,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors } from "../../../../theme/colors";
+import * as Haptics from "expo-haptics";
 import { QuizResultsViewProps } from "../types";
+
+// צבעים מותאמים לעיצוב החדש
+const resultsColors = {
+  success: "#00b894",
+  successLight: "#00cec9",
+  primary: "#667eea",
+  primaryDark: "#764ba2",
+  text: "#ffffff",
+  textSecondary: "rgba(255, 255, 255, 0.9)",
+  textMuted: "rgba(255, 255, 255, 0.7)",
+  cardBackground: "rgba(255, 255, 255, 0.08)",
+  cardBorder: "rgba(255, 255, 255, 0.15)",
+};
 
 // אכיפת RTL
 I18nManager.forceRTL(true);
@@ -23,6 +37,31 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
   onViewPlans,
   onRetakeQuiz,
 }) => {
+  // אנימציות
+  const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handlePress = (callback: () => void) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    callback();
+  };
+
   const getGoalText = (goal?: string) => {
     const goals = {
       hypertrophy: "הגדלת מסת שריר 💪",
@@ -54,348 +93,283 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
     return equipment.map((e) => equipmentMap[e] || e).join(", ");
   };
 
-  const getAnswerIconGradient = (index: number) => {
-    const gradients = [
-      ["#ff6b6b", "#ffa726"], // מטרה - אדום לכתום
-      ["#4ecdc4", "#44a08d"], // ניסיון - ירוק כחלחל
-      ["#a8edea", "#fed6e3"], // ציוד - תכלת לוורוד
-      ["#667eea", "#764ba2"], // ימי אימון - כחול לסגול
-    ];
-    return gradients[index % gradients.length];
-  };
+  const resultItems = [
+    {
+      icon: "fitness",
+      label: "המטרה שלך",
+      value: getGoalText(answers.goal),
+      visible: !!answers.goal,
+    },
+    {
+      icon: "trending-up",
+      label: "רמת ניסיון",
+      value: getExperienceText(answers.experience),
+      visible: !!answers.experience,
+    },
+    {
+      icon: "barbell",
+      label: "ציוד זמין",
+      value: getEquipmentText(answers.equipment),
+      visible: !!answers.equipment,
+    },
+    {
+      icon: "calendar",
+      label: "ימי אימון בשבוע",
+      value: answers.workoutDays ? `${answers.workoutDays} ימים` : "",
+      visible: !!answers.workoutDays,
+    },
+  ];
 
   return (
-    <View style={styles.resultsContainer}>
-      {/* כותרת מנצחת עם אפקטים */}
+    <Animated.View
+      style={[
+        styles.resultsContainer,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      {/* כותרת מנצחת */}
       <View style={styles.resultsHeader}>
         <View style={styles.successIconContainer}>
           <LinearGradient
-            colors={["#00b894", "#00cec9"]}
+            colors={[resultsColors.success, resultsColors.successLight]}
             style={styles.successIconGradient}
           >
-            <Ionicons name="checkmark-circle" size={32} color="#fff" />
+            <Ionicons name="checkmark-circle" size={36} color="#fff" />
           </LinearGradient>
-          {/* הילה זוהרת */}
-          <View style={styles.successGlow} />
         </View>
 
         <Text style={styles.resultsTitle}>השאלון הושלם בהצלחה! 🎉</Text>
-        <Text style={styles.successSubtitle}>
-          התוכנית האידיאלית שלך מוכנה ✨
-        </Text>
+        <Text style={styles.successSubtitle}>התוכנית האידיאלית שלך מוכנה</Text>
 
         {completedAt && (
           <View style={styles.dateContainer}>
-            <LinearGradient
-              colors={["rgba(255,255,255,0.2)", "rgba(255,255,255,0.1)"]}
-              style={styles.dateBadge}
-            >
+            <View style={styles.dateBadge}>
               <Ionicons
-                name="calendar"
-                size={12}
-                color="rgba(255,255,255,0.9)"
+                name="calendar-outline"
+                size={14}
+                color={resultsColors.textMuted}
               />
               <Text style={styles.completedDate}>
-                הושלם ב-{new Date(completedAt).toLocaleDateString("he-IL")}
+                {new Date(completedAt).toLocaleDateString("he-IL")}
               </Text>
-            </LinearGradient>
+            </View>
           </View>
         )}
       </View>
 
-      {/* רשימת תשובות מעוצבת */}
+      {/* רשימת תשובות */}
       <View style={styles.answersList}>
-        {/* מטרה */}
-        {answers.goal && (
-          <View style={styles.answerItem}>
-            <View style={styles.answerContent}>
-              <Text style={styles.answerLabel}>המטרה שלך</Text>
-              <Text style={styles.answerValue}>
-                {getGoalText(answers.goal)}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={getAnswerIconGradient(0)}
-              style={styles.answerIcon}
+        {resultItems
+          .filter((item) => item.visible)
+          .map((item, index) => (
+            <Animated.View
+              key={index}
+              style={[
+                styles.answerItem,
+                {
+                  opacity: fadeAnim,
+                  transform: [
+                    {
+                      translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
             >
-              <Ionicons name="fitness" size={20} color="#fff" />
-            </LinearGradient>
-          </View>
-        )}
-
-        {/* ניסיון */}
-        {answers.experience && (
-          <View style={styles.answerItem}>
-            <View style={styles.answerContent}>
-              <Text style={styles.answerLabel}>רמת ניסיון</Text>
-              <Text style={styles.answerValue}>
-                {getExperienceText(answers.experience)}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={getAnswerIconGradient(1)}
-              style={styles.answerIcon}
-            >
-              <Ionicons name="trending-up" size={20} color="#fff" />
-            </LinearGradient>
-          </View>
-        )}
-
-        {/* ציוד */}
-        {answers.equipment && (
-          <View style={styles.answerItem}>
-            <View style={styles.answerContent}>
-              <Text style={styles.answerLabel}>ציוד זמין</Text>
-              <Text style={styles.answerValue}>
-                {getEquipmentText(answers.equipment)}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={getAnswerIconGradient(2)}
-              style={styles.answerIcon}
-            >
-              <Ionicons name="barbell" size={20} color="#fff" />
-            </LinearGradient>
-          </View>
-        )}
-
-        {/* ימי אימון */}
-        {answers.workoutDays && (
-          <View style={styles.answerItem}>
-            <View style={styles.answerContent}>
-              <Text style={styles.answerLabel}>ימי אימון בשבוע</Text>
-              <Text style={styles.answerValue}>{answers.workoutDays} ימים</Text>
-            </View>
-            <LinearGradient
-              colors={getAnswerIconGradient(3)}
-              style={styles.answerIcon}
-            >
-              <Ionicons name="calendar" size={20} color="#fff" />
-            </LinearGradient>
-          </View>
-        )}
+              <View style={styles.answerContent}>
+                <Text style={styles.answerLabel}>{item.label}</Text>
+                <Text style={styles.answerValue}>{item.value}</Text>
+              </View>
+              <View
+                style={[
+                  styles.answerIcon,
+                  { backgroundColor: `${resultsColors.primary}20` },
+                ]}
+              >
+                <Ionicons
+                  name={item.icon as any}
+                  size={22}
+                  color={resultsColors.primary}
+                />
+              </View>
+            </Animated.View>
+          ))}
       </View>
 
-      {/* כפתורי פעולה מרשימים */}
+      {/* כפתורי פעולה */}
       <View style={styles.resultsActions}>
         <TouchableOpacity
-          style={styles.viewPlansContainer}
-          onPress={onViewPlans}
+          style={styles.viewPlansButton}
+          onPress={() => handlePress(onViewPlans)}
+          activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#667eea", "#764ba2"]}
-            style={styles.viewPlansButton}
+            colors={[resultsColors.primary, resultsColors.primaryDark]}
+            style={styles.viewPlansGradient}
           >
             <Text style={styles.viewPlansText}>צפה בתוכניות אימון</Text>
             <View style={styles.actionIcon}>
               <Ionicons name="arrow-back" size={18} color="#fff" />
             </View>
           </LinearGradient>
-          <View style={styles.buttonGlow} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.retakeButton} onPress={onRetakeQuiz}>
-          <LinearGradient
-            colors={["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]}
-            style={styles.retakeGradient}
-          >
-            <Text style={styles.retakeText}>מלא שאלון מחדש</Text>
-          </LinearGradient>
+        <TouchableOpacity
+          style={styles.retakeButton}
+          onPress={() => handlePress(onRetakeQuiz)}
+        >
+          <Text style={styles.retakeText}>מלא שאלון מחדש</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   resultsContainer: {
     alignItems: "center",
-    position: "relative",
-    zIndex: 10,
+    width: "100%",
   },
   resultsHeader: {
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 24,
   },
   successIconContainer: {
-    position: "relative",
-    marginBottom: 15,
+    marginBottom: 16,
   },
   successIconGradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#00b894",
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: resultsColors.success,
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 15,
+    shadowRadius: 12,
     elevation: 10,
   },
-  successGlow: {
-    position: "absolute",
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "rgba(0, 184, 148, 0.2)",
-    top: -10,
-    left: -10,
-    zIndex: -1,
-  },
   resultsTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
-    color: "#fff",
+    color: resultsColors.text,
     textAlign: "center",
     marginBottom: 6,
-    textShadowColor: "rgba(0,0,0,0.3)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-    letterSpacing: 0.5,
   },
   successSubtitle: {
     fontSize: 16,
-    color: "rgba(255,255,255,0.9)",
+    color: resultsColors.textSecondary,
     textAlign: "center",
-    marginBottom: 12,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   dateContainer: {
-    marginTop: 8,
+    marginTop: 12,
   },
   dateBadge: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 15,
+    borderRadius: 12,
     gap: 6,
+    backgroundColor: resultsColors.cardBackground,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: resultsColors.cardBorder,
   },
   completedDate: {
     fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    textAlign: "center",
+    color: resultsColors.textMuted,
     fontWeight: "500",
   },
   answersList: {
     width: "100%",
-    gap: 15,
-    marginBottom: 25,
+    gap: 12,
+    marginBottom: 24,
   },
   answerItem: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    gap: 15,
+    backgroundColor: resultsColors.cardBackground,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    gap: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    shadowColor: "rgba(0,0,0,0.1)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 5,
+    borderColor: resultsColors.cardBorder,
   },
   answerIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "rgba(0,0,0,0.2)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   answerContent: {
     flex: 1,
     alignItems: "flex-end",
   },
   answerLabel: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.8)",
-    marginBottom: 4,
-    textAlign: "right",
+    fontSize: 12,
+    color: resultsColors.textMuted,
+    marginBottom: 2,
     fontWeight: "600",
   },
   answerValue: {
-    fontSize: 16,
-    color: "#fff",
+    fontSize: 15,
+    color: resultsColors.text,
     fontWeight: "700",
     textAlign: "right",
-    textShadowColor: "rgba(0,0,0,0.2)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   resultsActions: {
     width: "100%",
     gap: 12,
   },
-  viewPlansContainer: {
-    position: "relative",
-  },
   viewPlansButton: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: resultsColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  viewPlansGradient: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 25,
-    paddingVertical: 15,
-    borderRadius: 25,
-    gap: 10,
-    shadowColor: "rgba(102, 126, 234, 0.3)",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  buttonGlow: {
-    position: "absolute",
-    bottom: -8,
-    left: 8,
-    right: 8,
-    height: 20,
-    backgroundColor: "rgba(102, 126, 234, 0.3)",
-    borderRadius: 25,
-    blur: 15,
+    paddingVertical: 16,
+    gap: 8,
   },
   viewPlansText: {
-    color: "#fff",
+    color: resultsColors.text,
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.5,
   },
   actionIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
   retakeButton: {
     alignItems: "center",
-    overflow: "hidden",
-    borderRadius: 20,
-  },
-  retakeGradient: {
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    width: "100%",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
   },
   retakeText: {
-    color: "rgba(255,255,255,0.9)",
+    color: resultsColors.textSecondary,
     fontSize: 14,
     fontWeight: "600",
     textDecorationLine: "underline",
+    textDecorationColor: resultsColors.textSecondary,
   },
 });
 

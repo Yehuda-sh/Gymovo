@@ -1,30 +1,30 @@
 // src/screens/profile/ProfileScreen.tsx
-// מסך פרופיל קומפקטי ומהיר
+// מסך פרופיל ראשי בעיצוב מודרני
 
 import React from "react";
-import { View, ScrollView, Text, Animated, RefreshControl } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Toast } from "../../components/common/Toast";
-import { clearAllData } from "../../data/storage/utilities";
 import {
-  clearQuizProgress,
-  saveQuizProgress,
-  QuizProgress,
-} from "../../services/quizProgressService";
-import { colors } from "../../theme/colors";
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  StatusBar,
+  RefreshControl,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { Toast } from "../../components/common/Toast";
 import {
   ProfileHeader,
   QuizStatusCard,
   QuickActions,
   AccountActions,
-  DevTools,
-  useProfileData,
-  useProfileAnimations,
 } from "./user";
-import { profileStyles } from "./user/styles";
-import { CleanDuplicatesHelper } from "../../components/dev/CleanDuplicatesHelper";
+import { profileColors } from "./user/styles";
+import { useProfileData, useProfileAnimations } from "./user/hooks";
 
 const ProfileScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const {
     user,
     isRefreshing,
@@ -33,98 +33,145 @@ const ProfileScreen: React.FC = () => {
     handleResumeQuiz,
     handleLogout,
     handleDeleteAccount,
-    getInitials,
-    handleClearQuiz,
-    handleCreatePartialQuiz,
-    handleClearAllData,
     refreshTrigger,
   } = useProfileData();
 
   const { fadeAnim, slideAnim } = useProfileAnimations();
 
-  // Navigation handlers
+  // Handlers
   const handleSettingsPress = () => {
     Toast.show("הגדרות - בקרוב", "info");
+  };
+
+  const handleEditPress = () => {
+    Toast.show("עריכת פרופיל - בקרוב", "info");
+  };
+
+  const handleStatsPress = () => {
+    Toast.show("סטטיסטיקות מפורטות - בקרוב", "info");
+  };
+
+  const handleMyPlansPress = () => {
+    Toast.show("התוכניות שלי - בקרוב", "info");
+  };
+
+  const handleHistoryPress = () => {
+    Toast.show("היסטוריית אימונים - בקרוב", "info");
   };
 
   const handleGuidesPress = () => {
     Toast.show("מדריכי אימון - בקרוב", "info");
   };
 
-  const handleSupportPress = () => {
-    Toast.show("תמיכה - בקרוב", "info");
-  };
-
   if (!user) {
     return (
-      <View style={profileStyles.container}>
-        <Text style={profileStyles.errorText}>לא נמצא משתמש מחובר</Text>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[
+            profileColors.background,
+            profileColors.surface,
+            profileColors.gradientDark,
+          ]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Text style={styles.errorText}>לא נמצא משתמש מחובר</Text>
       </View>
     );
   }
 
   return (
-    <View style={profileStyles.container}>
-      {/* Header קומפקטי */}
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* רקע גרדיאנט */}
+      <LinearGradient
+        colors={[
+          profileColors.background,
+          profileColors.surface,
+          profileColors.gradientDark,
+        ]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Header Component */}
       <ProfileHeader
         user={user}
-        getInitials={getInitials}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
+        insets={insets}
+        fadeAnim={fadeAnim}
+        slideAnim={slideAnim}
+        onSettingsPress={handleSettingsPress}
+        onEditPress={handleEditPress}
+        onStatsPress={handleStatsPress}
       />
 
       {/* תוכן העמוד */}
       <ScrollView
-        style={profileStyles.scrollView}
-        contentContainerStyle={profileStyles.scrollContent}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={["#667eea"]}
-            tintColor="#667eea"
+            colors={[profileColors.buttonPrimary]}
+            tintColor={profileColors.buttonPrimary}
           />
         }
       >
-        <View style={profileStyles.content}>
-          {/* כרטיס שאלון */}
-          {!user.isGuest && (
+        {/* כרטיס שאלון */}
+        {!user.isGuest && (
+          <View style={styles.section}>
             <QuizStatusCard
               userId={user.id}
               onResumeQuiz={handleResumeQuiz}
               onStartNewQuiz={handleStartQuiz}
               refreshTrigger={refreshTrigger}
             />
-          )}
+          </View>
+        )}
 
-          {/* פעולות מהירות */}
-          <QuickActions
-            onSettingsPress={handleSettingsPress}
-            onGuidesPress={handleGuidesPress}
-            onSupportPress={handleSupportPress}
-          />
+        {/* תפריט פעולות */}
+        <QuickActions
+          onSettingsPress={handleMyPlansPress}
+          onGuidesPress={handleGuidesPress}
+          onSupportPress={handleHistoryPress}
+        />
 
-          {/* פעולות חשבון */}
-          <AccountActions
-            user={user}
-            onLogout={handleLogout}
-            onDeleteAccount={handleDeleteAccount}
-          />
+        {/* פעולות חשבון */}
+        <AccountActions
+          user={user}
+          onLogout={handleLogout}
+          onDeleteAccount={handleDeleteAccount}
+        />
 
-          {/* כלי פיתוח */}
-          <DevTools
-            user={user}
-            onClearQuiz={handleClearQuiz}
-            onCreatePartialQuiz={handleCreatePartialQuiz}
-            onClearAllData={handleClearAllData}
-          />
-
-          <CleanDuplicatesHelper />
-        </View>
+        {/* Footer spacing */}
+        <View style={{ height: 30 }} />
       </ScrollView>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: profileColors.background,
+  },
+  errorText: {
+    color: profileColors.text,
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 50,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  section: {
+    marginBottom: 20,
+  },
+});
 
 export default ProfileScreen;

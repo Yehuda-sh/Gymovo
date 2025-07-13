@@ -1,8 +1,8 @@
 // src/screens/profile/user/components/QuizStatusCard.tsx
-// רכיב ניהול מצב השאלון - קומפקטי ומהיר
+// רכיב ניהול מצב השאלון - גרסה קומפקטית
 
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -11,16 +11,28 @@ import {
   TouchableOpacity,
   Animated,
   I18nManager,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors } from "../../../../theme/colors";
 import { QuizStatusCardProps } from "../types";
 import {
   loadQuizProgress,
   QuizProgress,
 } from "../../../../services/quizProgressService";
 import { Toast } from "../../../../components/common/Toast";
-import QuizResultsView from "./QuizResultsView";
+import { useState } from "react";
+
+// צבעים לעיצוב החדש
+const quizColors = {
+  cardBackground: "rgba(255, 255, 255, 0.05)",
+  cardBorder: "rgba(255, 255, 255, 0.1)",
+  gradientStart: "#667eea",
+  gradientEnd: "#764ba2",
+  successGradientStart: "#00b894",
+  successGradientEnd: "#00cec9",
+  warningGradientStart: "#fdcb6e",
+  warningGradientEnd: "#e17055",
+};
 
 // אכיפת RTL
 I18nManager.forceRTL(true);
@@ -33,12 +45,10 @@ const QuizStatusCard: React.FC<QuizStatusCardProps> = ({
 }) => {
   const [quizProgress, setQuizProgress] = useState<QuizProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const scaleAnim = React.useRef(new Animated.Value(0.95)).current;
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    loadProgress();
-  }, [userId, refreshTrigger]); // הוספת refreshTrigger כ-dependency
-
-  const loadProgress = async () => {
+  const loadProgress = React.useCallback(async () => {
     try {
       setLoading(true);
       const progress = await loadQuizProgress(userId);
@@ -49,10 +59,28 @@ const QuizStatusCard: React.FC<QuizStatusCardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  React.useEffect(() => {
+    loadProgress();
+
+    // אנימציות כניסה
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [userId, refreshTrigger, loadProgress]);
 
   const handleViewPlans = () => {
-    // Navigate to plans screen
     Toast.show("תוכניות אימון - בקרוב", "info");
   };
 
@@ -62,125 +90,176 @@ const QuizStatusCard: React.FC<QuizStatusCardProps> = ({
 
   if (loading) {
     return (
-      <View style={styles.quizCard}>
-        <LinearGradient
-          colors={["#74b9ff", "#0984e3"]}
-          style={styles.cardGradient}
-        >
+      <Animated.View
+        style={[styles.quizCard, { transform: [{ scale: scaleAnim }] }]}
+      >
+        <View style={styles.cardInner}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#fff" />
-            <Text style={styles.loadingText}>טוען מידע על השאלון...</Text>
+            <ActivityIndicator size="small" color={quizColors.gradientStart} />
+            <Text style={styles.loadingText}>טוען מידע...</Text>
           </View>
-        </LinearGradient>
-      </View>
+        </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={styles.quizCard}>
+    <Animated.View
+      style={[
+        styles.quizCard,
+        {
+          transform: [{ scale: scaleAnim }],
+          opacity: fadeAnim,
+        },
+      ]}
+    >
       {!quizProgress ? (
         // לא התחיל שאלון
         <LinearGradient
-          colors={["#fd79a8", "#fdcb6e"]}
+          colors={[quizColors.gradientStart, quizColors.gradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
         >
           <View style={styles.quizContent}>
-            <View style={styles.quizIconContainer}>
-              <Ionicons name="help-circle" size={24} color="#fff" />
+            <View style={styles.quizHeader}>
+              <View style={styles.quizIconContainer}>
+                <Ionicons name="help-circle" size={24} color="#fff" />
+              </View>
+              <View style={styles.quizTextContainer}>
+                <Text style={styles.quizTitle}>
+                  בואו נכיר אותך טוב יותר! ✨
+                </Text>
+                <Text style={styles.quizDescription}>
+                  מלא שאלון קצר ונבנה עבורך תוכנית אימון מותאמת אישית
+                </Text>
+              </View>
             </View>
-
-            <Text style={styles.quizTitle}>בואו נכיר אותך טוב יותר! ✨</Text>
-            <Text style={styles.quizDescription}>
-              מלא שאלון קצר ונבנה עבורך תוכנית אימון מותאמת אישית
-            </Text>
 
             <TouchableOpacity
               style={styles.quizButton}
               onPress={onStartNewQuiz}
+              activeOpacity={0.8}
             >
               <Text style={styles.quizButtonText}>התחל שאלון</Text>
-              <Ionicons name="arrow-back" size={16} color="#fd79a8" />
+              <Ionicons
+                name="arrow-back"
+                size={16}
+                color={quizColors.gradientStart}
+              />
             </TouchableOpacity>
           </View>
         </LinearGradient>
       ) : quizProgress.isCompleted ? (
-        // השלים שאלון
+        // השלים שאלון - גרסה קומפקטית
         <LinearGradient
-          colors={["#00b894", "#00cec9"]}
+          colors={[
+            quizColors.successGradientStart,
+            quizColors.successGradientEnd,
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
         >
-          <QuizResultsView
-            answers={quizProgress.answers}
-            completedAt={quizProgress.completedAt}
-            onViewPlans={handleViewPlans}
-            onRetakeQuiz={handleRetakeQuiz}
-          />
+          <View style={styles.completedContent}>
+            <View style={styles.completedHeader}>
+              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+              <Text style={styles.completedTitle}>השאלון הושלם! 🎉</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.viewPlansButton}
+              onPress={handleViewPlans}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewPlansText}>צפה בתוכניות</Text>
+            </TouchableOpacity>
+          </View>
         </LinearGradient>
       ) : (
         // באמצע שאלון
         <LinearGradient
-          colors={["#fdcb6e", "#e17055"]}
+          colors={[
+            quizColors.warningGradientStart,
+            quizColors.warningGradientEnd,
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
         >
           <View style={styles.quizContent}>
-            <View style={styles.quizIconContainer}>
-              <Ionicons name="pause-circle" size={24} color="#fff" />
-            </View>
-
-            <Text style={styles.quizTitle}>השאלון שלך ממתין! ⏳</Text>
-            <Text style={styles.quizDescription}>
-              התחלת למלא את השאלון - בואו נמשיך מהמקום שעצרת
-            </Text>
-
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${
-                        (quizProgress.currentQuestionIndex / 10) * 100
-                      }%`,
-                    },
-                  ]}
-                />
+            <View style={styles.quizHeader}>
+              <View style={styles.quizIconContainer}>
+                <Ionicons name="pause-circle" size={24} color="#fff" />
               </View>
-              <Text style={styles.progressText}>
-                {quizProgress.currentQuestionIndex} מתוך 10 שאלות
-              </Text>
+              <View style={styles.quizTextContainer}>
+                <Text style={styles.quizTitle}>השאלון שלך ממתין! ⏳</Text>
+                <View style={styles.progressInfo}>
+                  <Text style={styles.progressText}>
+                    שאלה {(quizProgress.questionIndex || 0) + 1} מתוך 4
+                  </Text>
+                  <View style={styles.progressBar}>
+                    <Animated.View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${
+                            ((quizProgress.questionIndex || 0) / 4) * 100
+                          }%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
             </View>
 
-            <TouchableOpacity style={styles.quizButton} onPress={onResumeQuiz}>
+            <TouchableOpacity
+              style={styles.quizButton}
+              onPress={() => onResumeQuiz(quizProgress)}
+              activeOpacity={0.8}
+            >
               <Text style={styles.quizButtonText}>המשך שאלון</Text>
-              <Ionicons name="arrow-back" size={16} color="#fdcb6e" />
+              <Ionicons
+                name="arrow-back"
+                size={16}
+                color={quizColors.warningGradientStart}
+              />
             </TouchableOpacity>
           </View>
         </LinearGradient>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   quizCard: {
-    marginBottom: 15,
-    borderRadius: 16,
+    marginBottom: 10, // הקטנה מ-20
+    borderRadius: 10, // הקטנה מ-20
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: quizColors.cardBackground,
+    borderWidth: 1,
+    borderColor: quizColors.cardBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  cardInner: {
+    padding: 10, // הקטנה מ-24
+    minHeight: 60, // הקטנה מ-140
+    justifyContent: "center",
   },
   cardGradient: {
-    padding: 20,
-    minHeight: 120,
+    padding: 10, // הקטנה מ-24
+    minHeight: 60, // הקטנה מ-140
   },
   loadingContainer: {
     flexDirection: "row-reverse",
@@ -190,70 +269,110 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#fff",
+    color: "rgba(255, 255, 255, 0.8)",
     fontWeight: "600",
   },
   quizContent: {
+    gap: 12,
+  },
+  quizHeader: {
+    flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   quizIconContainer: {
-    marginBottom: 5,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  quizTextContainer: {
+    flex: 1,
   },
   quizTitle: {
-    fontSize: 16,
+    fontSize: 14, // הקטנה מ-20
     fontWeight: "bold",
     color: "#fff",
-    textAlign: "center",
-    marginBottom: 5,
+    marginBottom: 2,
   },
   quizDescription: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    textAlign: "center",
-    marginBottom: 10,
-    lineHeight: 16,
+    fontSize: 12, // הקטנה מ-14
+    color: "rgba(255, 255, 255, 0.9)",
+    lineHeight: 12, // הקטנה מ-20
   },
   quizButton: {
     flexDirection: "row-reverse",
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 10, // הקטנה מ-24
+    paddingVertical: 6, // הקטנה מ-12
     gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    alignSelf: "flex-start",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   quizButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     color: "#333",
   },
-  progressContainer: {
-    width: "100%",
+  completedContent: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  completedHeader: {
+    flexDirection: "row-reverse",
     alignItems: "center",
     gap: 8,
   },
+  completedTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  viewPlansButton: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  viewPlansText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: quizColors.successGradientStart,
+  },
+  progressInfo: {
+    marginTop: 4,
+  },
+  progressText: {
+    fontSize: 10,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginBottom: 4,
+  },
   progressBar: {
-    width: "100%",
-    height: 6,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    borderRadius: 3,
+    width: 100,
+    height: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderRadius: 2,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
     backgroundColor: "#fff",
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.9)",
-    textAlign: "center",
+    borderRadius: 2,
   },
 });
 

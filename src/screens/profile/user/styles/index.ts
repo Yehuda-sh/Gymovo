@@ -1,4 +1,4 @@
 // src/screens/profile/user/styles/index.ts
-// ייצוא כל הסטיילים של מסך פרופיל משתמש
+// ייצוא סגנונות
 
-export { profileStyles } from "./profileStyles";
+export * from "./profileStyles";

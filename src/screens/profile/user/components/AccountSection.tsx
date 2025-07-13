@@ -1,30 +1,19 @@
-// src/screens/profile/user/components/AccountActions.tsx
-// פעולות חשבון בעיצוב מודרני
+// src/screens/profile/user/components/AccountSection.tsx
+// פעולות חשבון - התנתקות ומחיקה
 
-import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  I18nManager,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { AccountActionsProps } from "../types";
+import { profileColors } from "../styles";
 
-// צבעים בהשראת העיצוב החדש
-const accountColors = {
-  cardBackground: "rgba(255, 255, 255, 0.05)",
-  cardBorder: "rgba(255, 255, 255, 0.1)",
-  iconDanger: "#ff3366",
-  text: "#ffffff",
-};
+interface AccountSectionProps {
+  user: any;
+  onLogout: () => void;
+  onDeleteAccount: () => void;
+}
 
-// אכיפת RTL
-I18nManager.forceRTL(true);
-
-const AccountActions: React.FC<AccountActionsProps> = ({
+const AccountSection: React.FC<AccountSectionProps> = ({
   user,
   onLogout,
   onDeleteAccount,
@@ -35,7 +24,7 @@ const AccountActions: React.FC<AccountActionsProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.section}>
       <View style={styles.menuCard}>
         {/* התנתק */}
         <TouchableOpacity
@@ -46,16 +35,14 @@ const AccountActions: React.FC<AccountActionsProps> = ({
             <Ionicons
               name="log-out-outline"
               size={24}
-              color={accountColors.iconDanger}
+              color={profileColors.iconDanger}
             />
           </View>
-          <Text style={[styles.menuItemText, styles.dangerText]}>
-            יציאה מהחשבון
-          </Text>
+          <Text style={[styles.menuItemText, styles.dangerText]}>התנתק</Text>
           <Ionicons
             name="chevron-back"
             size={20}
-            color={accountColors.iconDanger}
+            color={profileColors.iconDanger}
           />
         </TouchableOpacity>
 
@@ -72,16 +59,16 @@ const AccountActions: React.FC<AccountActionsProps> = ({
                 <Ionicons
                   name="trash-outline"
                   size={24}
-                  color={accountColors.iconDanger}
+                  color={profileColors.iconDanger}
                 />
               </View>
               <Text style={[styles.menuItemText, styles.dangerText]}>
-                מחיקת חשבון
+                מחק חשבון
               </Text>
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={accountColors.iconDanger}
+                color={profileColors.iconDanger}
               />
             </TouchableOpacity>
           </>
@@ -92,14 +79,14 @@ const AccountActions: React.FC<AccountActionsProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  section: {
     marginBottom: 20,
   },
   menuCard: {
-    backgroundColor: accountColors.cardBackground,
+    backgroundColor: profileColors.cardBackground,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: accountColors.cardBorder,
+    borderColor: profileColors.cardBorder,
     overflow: "hidden",
   },
   menuItem: {
@@ -111,6 +98,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
+    backgroundColor: "rgba(102, 126, 234, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 12,
@@ -121,17 +109,17 @@ const styles = StyleSheet.create({
   menuItemText: {
     flex: 1,
     fontSize: 16,
-    color: accountColors.text,
+    color: profileColors.text,
     fontWeight: "500",
   },
   dangerText: {
-    color: accountColors.iconDanger,
+    color: profileColors.iconDanger,
   },
   menuDivider: {
     height: 1,
-    backgroundColor: accountColors.cardBorder,
+    backgroundColor: profileColors.cardBorder,
     marginHorizontal: 16,
   },
 });
 
-export default AccountActions;
+export default AccountSection;
