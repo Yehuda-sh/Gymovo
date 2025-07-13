@@ -1,26 +1,62 @@
 // src/screens/profile/guest/components/GuestProfileHeader.tsx
-// רכיב כותרת משופר עם אנימציות ומידע על המשתמש האורח
+// כותרת פרופיל אורח עם עיצוב תואם למסכי Login/Welcome
 
-import React from "react";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Animated, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useGuestUser } from "../../../../stores/userStore";
-import { colors } from "../../../../theme/colors";
-
-interface GuestProfileHeaderProps {
-  fadeAnim: Animated.Value;
-  scaleAnim: Animated.Value;
-}
+import { BlurView } from "expo-blur";
+import { GuestProfileHeaderProps } from "../types";
 
 const GuestProfileHeader: React.FC<GuestProfileHeaderProps> = ({
   fadeAnim,
   scaleAnim,
 }) => {
-  const { daysUntilExpiry, isGuest } = useGuestUser();
+  const glowAnim = useRef(new Animated.Value(0.3)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  // חישוב כמה ימים המשתמש כבר אורח
-  const daysSinceCreation = isGuest ? 0 : 0;
+  // חישוב זמן שנותר (30 יום)
+  const daysRemaining = 30;
+  const expiryPercentage = (daysRemaining / 30) * 100;
+
+  useEffect(() => {
+    // אנימציית זוהר
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 0.8,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // אנימציית סיבוב עדינה
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 10000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 10000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [glowAnim, rotateAnim]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
 
   return (
     <Animated.View
@@ -32,73 +68,88 @@ const GuestProfileHeader: React.FC<GuestProfileHeaderProps> = ({
         },
       ]}
     >
-      {/* אווטר עם אנימציה */}
+      {/* אווטאר עם גרדיאנט וזוהר */}
       <View style={styles.avatarContainer}>
+        {/* זוהר מאחורי האווטאר */}
         <Animated.View
           style={[
-            styles.avatarOuter,
+            styles.avatarGlow,
             {
-              transform: [
-                {
-                  rotate: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0deg", "360deg"],
-                  }),
-                },
-              ],
+              opacity: glowAnim,
+            },
+          ]}
+        />
+
+        {/* מסגרת גרדיאנט מסתובבת */}
+        <Animated.View
+          style={[
+            styles.avatarRing,
+            {
+              transform: [{ rotate: spin }],
             },
           ]}
         >
           <LinearGradient
-            colors={["#374151", "#1F2937"]}
-            style={styles.avatarGradient}
+            colors={["#667eea", "#764ba2", "#667eea"]}
+            style={styles.ringGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           />
         </Animated.View>
 
-        <View style={styles.avatarInner}>
-          <Ionicons name="person-outline" size={40} color="#9CA3AF" />
-        </View>
+        {/* אווטאר ראשי */}
+        <BlurView intensity={20} style={styles.avatarBlur}>
+          <LinearGradient
+            colors={["rgba(102, 126, 234, 0.2)", "rgba(118, 75, 162, 0.2)"]}
+            style={styles.avatarInner}
+          >
+            <Ionicons
+              name="person"
+              size={50}
+              color="rgba(255, 255, 255, 0.8)"
+            />
+          </LinearGradient>
+        </BlurView>
 
         {/* תג אורח */}
         <View style={styles.guestBadge}>
-          <Text style={styles.guestBadgeText}>אורח</Text>
+          <LinearGradient
+            colors={["#F59E0B", "#DC2626"]}
+            style={styles.badgeGradient}
+          >
+            <Text style={styles.guestBadgeText}>אורח</Text>
+          </LinearGradient>
         </View>
       </View>
 
-      {/* טקסט ראשי */}
+      {/* כותרת */}
       <Text style={styles.title}>משתמש אורח</Text>
 
-      {/* מידע על הסטטוס */}
+      {/* פרטי סטטוס */}
       <View style={styles.statusContainer}>
         <View style={styles.statusRow}>
-          <Ionicons name="time-outline" size={16} color="#9CA3AF" />
-          <Text style={styles.statusText}>
-            נותרו {daysUntilExpiry} ימים לשמירת הנתונים
-          </Text>
+          <Ionicons name="time-outline" size={16} color="#667eea" />
+          <Text style={styles.statusText}>נותרו {daysRemaining} ימים</Text>
         </View>
 
-        {daysSinceCreation > 0 && (
-          <View style={styles.statusRow}>
-            <Ionicons name="calendar-outline" size={16} color="#9CA3AF" />
-            <Text style={styles.statusText}>
-              מתאמן כבר {daysSinceCreation} ימים
-            </Text>
-          </View>
-        )}
-      </View>
+        {/* בר התקדמות */}
+        <View style={styles.expiryBar}>
+          <LinearGradient
+            colors={
+              expiryPercentage > 50
+                ? ["#667eea", "#764ba2"]
+                : expiryPercentage > 20
+                ? ["#F59E0B", "#DC2626"]
+                : ["#EF4444", "#DC2626"]
+            }
+            style={[styles.expiryProgress, { width: `${expiryPercentage}%` }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        </View>
 
-      {/* פס התקדמות לתפוגה */}
-      <View style={styles.expiryBar}>
-        <View
-          style={[
-            styles.expiryProgress,
-            {
-              width: `${((30 - daysUntilExpiry) / 30) * 100}%`,
-              backgroundColor:
-                daysUntilExpiry <= 7 ? colors.error : colors.primary,
-            },
-          ]}
-        />
+        {/* הודעת אזהרה */}
+        <Text style={styles.warningText}>הנתונים שלך יימחקו בסוף התקופה</Text>
       </View>
     </Animated.View>
   );
@@ -113,58 +164,94 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginBottom: 20,
+    width: 120,
+    height: 120,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarOuter: {
+  avatarGlow: {
+    position: "absolute",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#667eea",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#667eea",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 30,
+      },
+      android: {
+        elevation: 0,
+      },
+    }),
+  },
+  avatarRing: {
     position: "absolute",
     width: 110,
     height: 110,
     borderRadius: 55,
-    top: -5,
-    left: -5,
   },
-  avatarGradient: {
+  ringGradient: {
     width: "100%",
     height: "100%",
     borderRadius: 55,
-    opacity: 0.3,
+    padding: 3,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarInner: {
+  avatarBlur: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#374151",
+    overflow: "hidden",
+  },
+  avatarInner: {
+    width: "100%",
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(102, 126, 234, 0.3)",
+    borderRadius: 50,
   },
   guestBadge: {
     position: "absolute",
     bottom: 0,
     right: -5,
-    backgroundColor: "#F59E0B",
+    borderRadius: 12,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#F59E0B",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  badgeGradient: {
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
   guestBadgeText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "white",
+    fontWeight: "700",
+    color: "#fff",
   },
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: "white",
+    color: "#fff",
     marginBottom: 12,
   },
   statusContainer: {
     alignItems: "center",
     gap: 8,
-    marginBottom: 16,
   },
   statusRow: {
     flexDirection: "row",
@@ -173,18 +260,26 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 14,
-    color: "#9CA3AF",
+    color: "rgba(255, 255, 255, 0.8)",
+    fontWeight: "500",
   },
   expiryBar: {
     width: 200,
-    height: 4,
-    backgroundColor: "#374151",
-    borderRadius: 2,
+    height: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 3,
     overflow: "hidden",
+    marginTop: 4,
   },
   expiryProgress: {
     height: "100%",
-    borderRadius: 2,
+    borderRadius: 3,
+  },
+  warningText: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.5)",
+    marginTop: 4,
+    fontStyle: "italic",
   },
 });
 

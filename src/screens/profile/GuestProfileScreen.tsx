@@ -1,5 +1,5 @@
 // src/screens/profile/GuestProfileScreen.tsx
-// מסך פרופיל משופר למשתמשים אורחים עם שימוש מלא ברכיבים
+// מסך פרופיל משופר למשתמשים אורחים עם עיצוב תואם למסכי Login/Welcome
 
 import React, { useEffect } from "react";
 import {
@@ -11,8 +11,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 // ייבוא רכיבים מתיקיית guest
 import {
@@ -29,15 +27,16 @@ import {
   useGuestProfileAnimations,
 } from "./guest/hooks";
 
-// ייבוא סטיילים וטיפוסים
-import { guestProfileStyles } from "./guest/styles";
-import { RootStackParamList } from "../../types/navigation";
-import { colors } from "../../theme/colors";
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+// צבעים תואמים למסכי Login/Welcome
+const gradientColors = {
+  primary: ["#667eea", "#764ba2"] as [string, string],
+  secondary: ["#764ba2", "#667eea"] as [string, string],
+  background: ["#0f0c29", "#302b63", "#24243e"] as [string, string, string],
+  dark: ["#000000", "#130F40"] as [string, string],
+  accent: "#00ff88",
+};
 
 const GuestProfileScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp>();
   const { navigateToConvertGuest, navigateToSignup } =
     useGuestProfileNavigation();
   const animations = useGuestProfileAnimations();
@@ -45,13 +44,25 @@ const GuestProfileScreen: React.FC = () => {
   // הפעלת אנימציות כניסה
   useEffect(() => {
     animations.startEntranceAnimation();
-  }, []);
+  }, [animations.startEntranceAnimation]);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="light-content" />
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
 
-      {/* רקע גרדיאנט אנימטיבי */}
+      {/* רקע גרדיאנט ראשי */}
+      <LinearGradient
+        colors={gradientColors.background}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
+      {/* שכבת גרדיאנט נוספת לעומק */}
       <Animated.View
         style={[
           StyleSheet.absoluteFillObject,
@@ -59,55 +70,63 @@ const GuestProfileScreen: React.FC = () => {
         ]}
       >
         <LinearGradient
-          colors={[colors.background, "#1a1a1a", colors.background]}
+          colors={
+            ["transparent", ...gradientColors.dark] as [string, string, string]
+          }
           style={StyleSheet.absoluteFillObject}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
         />
       </Animated.View>
 
-      {/* באנר התראה */}
-      <GuestProfileBanner
-        onPress={navigateToConvertGuest}
-        animation={animations.bannerSlide}
-      />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* כותרת ופרטי משתמש */}
-        <GuestProfileHeader
-          fadeAnim={animations.fadeAnim}
-          scaleAnim={animations.scaleAnim}
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        {/* באנר התראה */}
+        <GuestProfileBanner
+          onPress={navigateToConvertGuest}
+          animation={animations.bannerSlide}
         />
 
-        {/* כרטיס CTA ראשי */}
-        <GuestProfileActions
-          onConvertPress={navigateToConvertGuest}
-          onSignupPress={navigateToSignup}
-          slideAnim={animations.contentSlide}
-          pulseAnim={animations.pulseAnim}
-        />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* כותרת ופרטי משתמש */}
+          <GuestProfileHeader
+            fadeAnim={animations.fadeAnim}
+            scaleAnim={animations.scaleAnim}
+          />
 
-        {/* רשימת יתרונות */}
-        <GuestProfileFeatures
-          fadeAnim={animations.featuresAnim}
-          staggerDelay={100}
-        />
+          {/* כרטיס CTA ראשי */}
+          <GuestProfileActions
+            onConvertPress={navigateToConvertGuest}
+            onSignupPress={navigateToSignup}
+            slideAnim={animations.contentSlide}
+            pulseAnim={animations.pulseAnim}
+          />
 
-        {/* כותרת תחתונה */}
-        <GuestProfileFooter
-          onAlternativeSignup={navigateToSignup}
-          fadeAnim={animations.footerAnim}
-        />
-      </ScrollView>
-    </SafeAreaView>
+          {/* רשימת יתרונות */}
+          <GuestProfileFeatures
+            fadeAnim={animations.featuresAnim}
+            staggerDelay={100}
+          />
+
+          {/* כותרת תחתונה */}
+          <GuestProfileFooter
+            onAlternativeSignup={navigateToSignup}
+            fadeAnim={animations.footerAnim}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollContent: {
     paddingTop: 80, // מקום לבאנר
