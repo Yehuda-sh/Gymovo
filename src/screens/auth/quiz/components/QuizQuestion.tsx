@@ -6,7 +6,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { QuizQuestionProps, quizColors } from "../types";
 
 // רכיב שאלה עם אנימציות
-const QuizQuestion: React.FC<QuizQuestionProps> = ({ question, fadeAnim }) => {
+const QuizQuestion: React.FC<QuizQuestionProps> = ({
+  question,
+  fadeAnim,
+  slideAnim,
+}) => {
   return (
     <Animated.View
       style={[

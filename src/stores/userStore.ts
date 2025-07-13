@@ -1,4 +1,4 @@
-// src/stores/userStore.ts - תיקון אתחול המצב
+// src/stores/userStore.ts - גרסה מעודכנת עם פונקציות חסרות
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create, StateCreator } from "zustand";
@@ -18,7 +18,14 @@ export interface UserState {
   user: User | null;
   token: string | null;
   status: AuthStatus;
-  isInitialized: boolean; // ✅ הוספה: דגל לביצור שההתחלה סיימה
+  isInitialized: boolean;
+
+  // פונקציות עדכון
+  setUser: (user: User) => void;
+  setToken: (token: string) => void;
+  setStatus: (status: AuthStatus) => void;
+
+  // פונקציות auth
   login: (
     email: string,
     password: string
@@ -28,36 +35,35 @@ export interface UserState {
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   becomeGuest: () => void;
-  setStatus: (status: AuthStatus) => void;
   loginAsDemoUser: (demoUser: User) => Promise<void>;
-  initialize: () => Promise<void>; // ✅ הוספה: פונקציית אתחול
+  initialize: () => Promise<void>;
 }
 
 const storeCreator: StateCreator<UserState> = (set, get) => ({
   user: null,
   token: null,
   status: "loading",
-  isInitialized: false, // ✅ התחלה: לא מאותחל
+  isInitialized: false,
 
+  // פונקציות עדכון פשוטות
+  setUser: (user: User) => set({ user }),
+  setToken: (token: string) => set({ token }),
   setStatus: (status: AuthStatus) => set({ status }),
 
-  // ✅ חדש: פונקציית אתחול
+  // פונקציית אתחול
   initialize: async () => {
     try {
       console.log("🔧 Initializing user store...");
 
-      // בדוק אם יש משתמש שמור
       const state = get();
 
       if (state.user && state.token) {
-        // יש משתמש שמור - אמת אותו
         console.log("👤 Found existing user:", state.user.name);
         set({
           status: state.user.isGuest ? "guest" : "authenticated",
           isInitialized: true,
         });
       } else {
-        // אין משתמש שמור
         console.log("👤 No existing user found");
         set({
           status: "unauthenticated",
@@ -66,7 +72,6 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
       }
     } catch (error) {
       console.error("Failed to initialize user store:", error);
-      // גם במקרה של שגיאה, סמן כמאותחל
       set({
         status: "unauthenticated",
         isInitialized: true,
@@ -74,77 +79,10 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
     }
   },
 
-  loginAsDemoUser: async (demoUser: User) => {
-    const demoToken = `demo_token_${demoUser.id}_${Date.now()}`;
-
-    try {
-      console.log(`🎭 Login as demo user: ${demoUser.name} (${demoUser.id})`);
-
-      // ראשית: הגדר את המשתמש מיידית
-      set({
-        user: demoUser,
-        token: demoToken,
-        status: "authenticated",
-        isInitialized: true, // ✅ וודא שמאותחל
-      });
-
-      // שנית: טען נתוני דמו ברקע
-      const { getDemoWorkoutHistory, getDemoPlanForUser } = await import(
-        "../constants/demoUsers"
-      );
-
-      const workoutHistory = getDemoWorkoutHistory(demoUser.id);
-      console.log(
-        `📊 Found ${workoutHistory.length} demo workouts for ${demoUser.name}`
-      );
-
-      // שמור אימונים לזיכרון (רק האחרונים כדי לא להאט)
-      if (workoutHistory.length > 0) {
-        const { saveWorkoutToHistory } = await import("../data/storage");
-        const recentWorkouts = workoutHistory.slice(0, 10);
-
-        for (const workout of recentWorkouts) {
-          try {
-            await saveWorkoutToHistory(demoUser.id, workout);
-          } catch (error) {
-            console.warn("Failed to save demo workout:", error);
-          }
-        }
-
-        console.log(
-          `✅ Saved ${recentWorkouts.length} demo workouts to storage`
-        );
-      }
-
-      // שמור תוכנית דמו אם קיימת
-      const userPlan = getDemoPlanForUser(demoUser.id);
-      if (userPlan) {
-        try {
-          const { savePlan } = await import("../data/storage");
-          await savePlan(demoUser.id, userPlan);
-          console.log(`✅ Saved demo plan: ${userPlan.name}`);
-        } catch (error) {
-          console.warn("Failed to save demo plan:", error);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to setup demo user:", error);
-      // גם אם טעינת נתוני הדמו נכשלה, שמור את המשתמש מחובר
-    }
-  },
-
+  // התחברות
   login: async (email: string, password: string) => {
     try {
-      // בדוק אם זה משתמש דמו
-      const { demoUsers } = await import("../constants/demoUsers");
-      const demoUser = demoUsers.find((user) => user.email === email);
-
-      if (demoUser && password === "demo123") {
-        await get().loginAsDemoUser(demoUser);
-        return { success: true };
-      }
-
-      // סימולציה של התחברות אמיתית
+      // בגרסה האמיתית, כאן תהיה קריאה ל-API
       if (email && password.length >= 6) {
         const mockUser: User = {
           id: `user_${Date.now()}`,
@@ -164,12 +102,13 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
         return { success: true };
       }
 
-      return { success: false, error: "אימייל או סיסמה שגויים" };
-    } catch (_error) {
+      return { success: false, error: "אימייל או סיסמה לא תקינים" };
+    } catch (error) {
       return { success: false, error: "שגיאה בהתחברות" };
     }
   },
 
+  // הרשמה
   register: async (data: RegisterData) => {
     try {
       if (data.email && data.password.length >= 6) {
@@ -197,6 +136,7 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
     }
   },
 
+  // כניסה כאורח
   becomeGuest: () => {
     const guestUser: User = {
       id: `guest_${Date.now()}`,
@@ -214,6 +154,35 @@ const storeCreator: StateCreator<UserState> = (set, get) => ({
     });
   },
 
+  // התחברות כמשתמש דמו
+  loginAsDemoUser: async (demoUser: User) => {
+    const demoToken = `demo_token_${demoUser.id}_${Date.now()}`;
+
+    try {
+      console.log(`🎭 Login as demo user: ${demoUser.name} (${demoUser.id})`);
+
+      set({
+        user: demoUser,
+        token: demoToken,
+        status: "authenticated",
+        isInitialized: true,
+      });
+
+      // טען נתוני דמו ברקע
+      const { getDemoWorkoutHistory } = await import("../constants/demoUsers");
+      const workoutHistory = getDemoWorkoutHistory(demoUser.id);
+      console.log(
+        `📊 Found ${workoutHistory.length} demo workouts for ${demoUser.name}`
+      );
+
+      return;
+    } catch (error) {
+      console.error("Failed to login as demo user:", error);
+      throw error;
+    }
+  },
+
+  // התנתקות
   logout: () => {
     set({
       user: null,
@@ -233,12 +202,9 @@ export const useUserStore = create<UserState>()(
       user: state.user,
       token: state.token,
       status: state.status,
-      // לא שומרים isInitialized - זה תמיד מתחיל false
     }),
-    // ✅ הוסף onRehydrateStorage לאתחול אחרי טעינה
     onRehydrateStorage: () => (state) => {
       if (state) {
-        // אחרי שטען מהזיכרון, קרא לאתחול
         state.initialize();
       }
     },

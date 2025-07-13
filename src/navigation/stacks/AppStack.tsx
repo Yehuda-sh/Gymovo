@@ -16,6 +16,7 @@ import SelectWorkoutDayScreen from "../../screens/workouts/SelectWorkoutDayScree
 import ExercisesPickerScreen from "../../screens/workouts/ExercisesPickerScreen";
 import CreateOrEditPlanScreen from "../../screens/plans/CreateOrEditPlanScreen";
 import EditWorkoutDayScreen from "../../screens/plans/EditWorkoutDayScreen";
+import QuizScreen from "../../screens/auth/QuizScreen"; // הוספנו!
 
 // ייבוא הגדרות ורכיבים
 import { appStackOptions, modalOptions } from "../config/navigationStyles";
@@ -37,6 +38,18 @@ export const AppStack: React.FC = () => {
         name="Main"
         component={AppTabs}
         options={{ headerShown: false }}
+      />
+
+      {/* === מסך שאלון === */}
+      <Stack.Screen
+        name="Quiz"
+        component={QuizScreen}
+        options={{
+          title: "בניית התוכנית שלך",
+          headerBackTitle: "חזור",
+          gestureEnabled: false, // מניעת חזרה מאמצע השאלון
+          ...modalOptions, // הצגה כמודל
+        }}
       />
 
       {/* === מסכי אימון === */}
@@ -80,7 +93,8 @@ export const AppStack: React.FC = () => {
         name="ExerciseDetails"
         component={ExerciseDetailsScreen}
         options={({ route }) => ({
-          title: route.params?.exerciseId ? "פרטי תרגיל" : "תרגיל",
+          title: route.params?.exerciseId || "פרטי תרגיל",
+          presentation: "modal",
         })}
       />
 
@@ -88,8 +102,8 @@ export const AppStack: React.FC = () => {
         name="ExerciseSelection"
         component={ExerciseSelectionScreen}
         options={{
-          title: "בחר תרגילים",
-          headerShown: false, // המסך מטפל בheader בעצמו
+          title: "בחירת תרגילים",
+          presentation: "modal",
         }}
       />
 
@@ -97,25 +111,18 @@ export const AppStack: React.FC = () => {
         name="ExercisesPicker"
         component={ExercisesPickerScreen}
         options={{
-          title: "בחר תרגילים",
-          ...modalOptions,
+          title: "הוספת תרגילים",
+          presentation: "modal",
         }}
       />
 
-      {/* === מסכי תוכניות === */}
-      <Stack.Screen
-        name="CreatePlan"
-        component={CreateOrEditPlanScreen}
-        options={{
-          title: "יצירת תוכנית",
-        }}
-      />
-
+      {/* === מסכי ניהול תוכניות === */}
       <Stack.Screen
         name="CreateOrEditPlan"
         component={CreateOrEditPlanScreen}
         options={({ route }) => ({
           title: route.params?.planId ? "עריכת תוכנית" : "יצירת תוכנית",
+          headerBackTitle: "חזור",
         })}
       />
 
@@ -124,6 +131,7 @@ export const AppStack: React.FC = () => {
         component={EditWorkoutDayScreen}
         options={{
           title: "עריכת יום אימון",
+          headerBackTitle: "חזור",
         }}
       />
 
@@ -134,7 +142,11 @@ export const AppStack: React.FC = () => {
         options={{
           title: "הגדרות",
           headerRight: () => (
-            <Ionicons name="checkmark" size={24} color={colors.primary} />
+            <Ionicons
+              name="settings-outline"
+              size={24}
+              color={colors.primary}
+            />
           ),
         }}
       />

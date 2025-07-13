@@ -11,10 +11,10 @@ import {
   QuizNavigation,
   useQuizAnimations,
   useQuizLogic,
-  QUIZ_QUESTIONS,
   QuizScreenProps,
   quizStyles,
 } from "./quiz";
+import { QUIZ_QUESTIONS } from "./quiz/data";
 
 const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
   const { signupData } = route.params;
