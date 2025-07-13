@@ -20,7 +20,8 @@ export const useExerciseData = (
   const handleAddToWorkout = () => {
     if (exercise) {
       addExerciseToWorkout(exercise);
-      Toast.show(`${exercise.name} נוסף לאימון!`);
+      // תוקן: שימוש ב-Toast.success במקום Toast.show
+      Toast.success(`${exercise.name} נוסף לאימון!`);
       onNavigateBack();
     }
   };
