@@ -5,7 +5,6 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StatusBar,
   View,
   StyleSheet,
@@ -173,10 +172,11 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* רקע גרדיאנט */}
+      {/* רקע גרדיאנט כמו Welcome */}
       <LinearGradient
-        colors={["#1a1a2e", "#0f1523", "#000000"]}
+        colors={["#0a0a0a", "#1a1a1a", "#000000"]}
         style={styles.gradient}
+        locations={[0, 0.5, 1]}
       />
 
       {/* אפקט Blur לרקע */}
@@ -189,11 +189,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.contentWrapper}>
           <Animated.View
             style={[
               styles.content,
@@ -210,45 +206,46 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
               headerScale={animations.headerScale}
             />
 
-            {/* Form Section */}
-            <LoginForm
-              email={email}
-              password={password}
-              showPassword={showPassword}
-              isLoading={isLoading}
-              error={error}
-              onEmailChange={setEmail}
-              onPasswordChange={setPassword}
-              onTogglePassword={handleTogglePassword}
-              formSlide={animations.formSlide}
-            />
+            {/* Main Content */}
+            <View style={styles.mainContent}>
+              {/* Form Section */}
+              <LoginForm
+                email={email}
+                password={password}
+                showPassword={showPassword}
+                isLoading={isLoading}
+                error={error}
+                onEmailChange={setEmail}
+                onPasswordChange={setPassword}
+                onTogglePassword={handleTogglePassword}
+                formSlide={animations.formSlide}
+              />
 
-            {/* Error Display */}
-            <ErrorDisplay error={error} onDismiss={handleDismissError} />
+              {/* Error Display */}
+              <ErrorDisplay error={error} onDismiss={handleDismissError} />
 
-            {/* Forgot Password */}
-            <ForgotPasswordLink onPress={handleForgotPassword} />
+              {/* Forgot Password */}
+              <ForgotPasswordLink onPress={handleForgotPassword} />
 
-            <View style={styles.spacer} />
+              {/* Actions Section */}
+              <ActionButtons
+                isLoading={isLoading}
+                onLogin={handleLogin}
+                onBack={handleBack}
+              />
 
-            {/* Actions Section */}
-            <ActionButtons
-              isLoading={isLoading}
-              onLogin={handleLogin}
-              onBack={handleBack}
-            />
+              {/* Social Login */}
+              <SocialLoginButton
+                onGoogleLogin={handleGoogleLogin}
+                fadeAnim={animations.fadeAnim}
+                loading={socialLoading}
+              />
+            </View>
 
-            {/* Social Login */}
-            <SocialLoginButton
-              onGoogleLogin={handleGoogleLogin}
-              fadeAnim={animations.fadeAnim}
-              loading={socialLoading}
-            />
-
-            {/* Sign up link */}
+            {/* Sign up link - תמיד בתחתית */}
             <SignupPrompt onSignupPress={handleSignup} />
           </Animated.View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -296,16 +293,19 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
+  contentWrapper: {
+    flex: 1,
     paddingHorizontal: 24,
-    paddingBottom: isSmallDevice ? 30 : 40,
-    paddingTop: isSmallDevice ? 40 : 60,
+    paddingTop: isSmallDevice ? 30 : 40,
+    paddingBottom: 20,
   },
   content: {
-    width: "100%",
-    alignItems: "center",
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  mainContent: {
+    flex: 1,
+    justifyContent: "center",
   },
   spacer: {
     height: 16,

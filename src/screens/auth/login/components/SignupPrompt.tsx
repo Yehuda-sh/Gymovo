@@ -85,7 +85,8 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     alignItems: "center",
-    marginTop: isSmallDevice ? 16 : 24,
+    marginTop: "auto",
+    paddingTop: isSmallDevice ? 16 : 20,
     paddingBottom: isSmallDevice ? 10 : 20,
   },
   divider: {
