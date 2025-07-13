@@ -1,153 +1,150 @@
 // src/screens/home/HomeScreen.tsx
-// מסך הבית הראשי עם תיקוני RTL מלאים + Responsive
+// מסך הבית מאוזן - קומפקטי עם גלילה מינימלית
 
-import * as Haptics from "expo-haptics";
 import React from "react";
 import {
-  RefreshControl,
-  ScrollView,
   View,
+  ScrollView,
   StyleSheet,
   Text,
   ActivityIndicator,
-  I18nManager,
+  StatusBar,
+  RefreshControl,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useUserStore } from "../../stores/userStore";
-import { theme } from "../../theme";
-import { RootStackParamList } from "../../types/navigation";
 import { useHomeData } from "./hooks/useHomeData";
-import HomeHeader from "./components/HomeHeader";
-import StatsButton from "./components/StatsButton";
-import QuickActionsSection from "./components/QuickActionsSection";
-import MotivationCard from "./components/MotivationCard";
-import RecommendedPlanCard from "./components/RecommendedPlanCard";
-import RecentWorkoutsSection from "./components/RecentWorkoutsSection";
-import { useResponsiveDimensions } from "../../hooks/useDeviceInfo";
-// eslint-disable-next-line import/no-named-as-default
-import DevResponsiveInfo from "../../components/DevResponsiveInfo";
-
-// Force RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+import { RootStackParamList } from "../../types/navigation";
+import {
+  HomeHeader,
+  StatsButton,
+  QuickActionsSection,
+  MotivationCard,
+  WelcomeMessage,
+  QuickStartFAB,
+  RecentWorkoutsSection,
+  RecommendedPlanCard,
+} from "./components";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/**
- * Loading screen component
- */
+// צבעים
+const gradientColors = {
+  primary: ["#667eea", "#764ba2"] as [string, string],
+  secondary: ["#764ba2", "#667eea"] as [string, string],
+  background: ["#0f0c29", "#302b63", "#24243e"] as [string, string, string],
+  dark: ["#000000", "#130F40"] as [string, string],
+};
+
 const LoadingScreen = () => (
   <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color={theme.colors.primary} />
-    <Text style={styles.loadingText}>טוען נתונים...</Text>
+    <LinearGradient
+      colors={gradientColors.background}
+      style={StyleSheet.absoluteFillObject}
+    />
+    <ActivityIndicator size="large" color={gradientColors.primary[0]} />
+    <Text style={styles.loadingText}>טוען...</Text>
   </View>
 );
 
-/**
- * Main home screen component with dashboard and quick actions
- */
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
   const user = useUserStore((state) => state.user);
   const { dashboardData, loading, refreshing, onRefresh } = useHomeData(user);
 
-  const { isSmallDevice, screenPadding, titleFontSize } =
-    useResponsiveDimensions();
-
   if (loading) {
     return <LoadingScreen />;
   }
 
-  // Dynamic styles for responsive design
-  const dynamicStyles = StyleSheet.create({
-    headerContainer: {
-      paddingHorizontal: screenPadding,
-      paddingVertical: isSmallDevice ? theme.spacing.xs / 2 : theme.spacing.xs, // מקוצר לגריד
-    },
-    section: {
-      marginBottom: isSmallDevice ? theme.spacing.sm : theme.spacing.md, // מקוצר דרסטית לגריד
-    },
-    sectionTitle: {
-      fontSize: titleFontSize + 1, // מקוצר מ-+2
-      fontWeight: "900",
-      color: theme.colors.text,
-      textAlign: "right",
-      marginBottom: isSmallDevice ? theme.spacing.sm : theme.spacing.md, // מקוצר דרסטית
-      paddingHorizontal: screenPadding,
-      letterSpacing: -0.8,
-      lineHeight: isSmallDevice ? 24 : 28, // מקוצר מ-30/36
-      textShadowColor: "rgba(0, 0, 0, 0.1)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
-    },
-    sectionContent: {
-      paddingHorizontal: screenPadding,
-    },
-  });
-
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
+      {/* רקע גרדיאנט */}
+      <LinearGradient
+        colors={gradientColors.background}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 12 },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
+            tintColor={gradientColors.primary[0]}
+            colors={[gradientColors.primary[0]]}
           />
         }
       >
         {/* Header */}
-        <View style={dynamicStyles.headerContainer}>
+        <View style={styles.headerSection}>
           <HomeHeader user={user} />
         </View>
 
-        {/* Stats Button - Compact */}
-        <StatsButton dashboardData={dashboardData} />
+        {/* Welcome Message */}
+        <WelcomeMessage dashboardData={dashboardData} />
 
-        {/* Quick Actions Section */}
-        <View style={dynamicStyles.section}>
-          <Text style={dynamicStyles.sectionTitle}>פעולות מהירות</Text>
+        {/* Stats Button */}
+        <View style={styles.statsSection}>
+          <StatsButton dashboardData={dashboardData} />
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.actionsSection}>
+          <Text style={styles.sectionTitle}>פעולות מהירות</Text>
           <QuickActionsSection dashboardData={dashboardData} />
         </View>
 
-        {/* Motivation Card - חזרה לפעילות! */}
-        <MotivationCard dashboardData={dashboardData} />
+        {/* Motivation Card */}
+        <View style={styles.motivationSection}>
+          <Text style={styles.sectionTitle}>היעד השבועי שלך</Text>
+          <MotivationCard dashboardData={dashboardData} />
+        </View>
 
-        {/* Today's Workout - more compact */}
-        {dashboardData?.todaysWorkout && (
-          <View style={{ marginBottom: theme.spacing.sm }}>
-            <Text style={dynamicStyles.sectionTitle}>האימון להיום</Text>
-            <View style={dynamicStyles.sectionContent}>
-              <RecommendedPlanCard
-                plan={dashboardData.todaysWorkout}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  navigation.navigate("StartWorkout");
-                }}
-              />
+        {/* Recent Workouts */}
+        {dashboardData?.recentWorkouts &&
+          dashboardData.recentWorkouts.length > 0 && (
+            <View style={styles.recentSection}>
+              <RecentWorkoutsSection dashboardData={dashboardData} />
             </View>
+          )}
+
+        {/* Recommended Plan (if exists) */}
+        {dashboardData?.todaysWorkout && (
+          <View style={styles.recommendedSection}>
+            <Text style={styles.sectionTitle}>תוכנית מומלצת להיום</Text>
+            <RecommendedPlanCard
+              plan={dashboardData.todaysWorkout}
+              onPress={() => {
+                navigation.navigate("Main", { screen: "StartWorkout" });
+              }}
+            />
           </View>
         )}
 
-        {/* Recent Workouts - compact */}
-        <View style={{ marginBottom: theme.spacing.xs }}>
-          <RecentWorkoutsSection dashboardData={dashboardData} />
-        </View>
-
-        {/* Bottom spacing for tab bar */}
-        <View style={styles.bottomSpacing} />
+        {/* Extra spacing for tab bar */}
+        <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* רכיב פיתוח - מידע responsive */}
-      <DevResponsiveInfo />
+      {/* Quick Start FAB */}
+      <QuickStartFAB />
     </View>
   );
 };
@@ -155,27 +152,53 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 80, // מרווח לטאב בר
+  },
+  headerSection: {
+    marginBottom: 16,
+  },
+  statsSection: {
+    marginBottom: 20,
+  },
+  actionsSection: {
+    marginBottom: 20,
+    height: 260,
+  },
+  motivationSection: {
+    marginBottom: 20,
+    minHeight: 120,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "right",
+    marginBottom: 10,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  recentSection: {
+    marginBottom: 20,
+  },
+  recommendedSection: {
+    marginBottom: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.background,
   },
   loadingText: {
-    marginTop: theme.spacing.md,
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-  },
-  bottomSpacing: {
-    height: 30, // מקוצר עוד יותר לגריד
+    marginTop: 12,
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.8)",
   },
 });
 

@@ -1,29 +1,15 @@
 // src/screens/home/components/RecentWorkoutsSection.tsx
-// קטע אימונים אחרונים עם עיצוב RTL נכון
+// קטע אימונים אחרונים עם גרדיאנט
 
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
-import {
-  View,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  I18nManager,
-} from "react-native";
+import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-
-import { theme } from "../../../theme";
+import { LinearGradient } from "expo-linear-gradient";
 import { RootStackParamList } from "../../../types/navigation";
 import { DashboardData } from "../types";
-import { useResponsiveDimensions } from "../../../hooks/useDeviceInfo";
-import EmptyState from "./EmptyState";
-import WorkoutCard from "./WorkoutCard";
-
-// Force RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
 
 interface RecentWorkoutsSectionProps {
   dashboardData: DashboardData | null;
@@ -31,120 +17,175 @@ interface RecentWorkoutsSectionProps {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/**
- * Recent workouts section with proper RTL layout
- */
 const RecentWorkoutsSection: React.FC<RecentWorkoutsSectionProps> = ({
   dashboardData,
 }) => {
   const navigation = useNavigation<NavigationProp>();
-  const { isSmallDevice } = useResponsiveDimensions();
 
-  // אם אין אימונים אחרונים
-  if (!dashboardData?.recentWorkouts.length) {
-    return <EmptyState />;
+  if (!dashboardData?.recentWorkouts?.length) {
+    return (
+      <View style={styles.emptyContainer}>
+        <LinearGradient
+          colors={["rgba(102, 126, 234, 0.1)", "rgba(118, 75, 162, 0.1)"]}
+          style={styles.emptyGradient}
+        >
+          <Ionicons name="barbell-outline" size={32} color="#667eea" />
+          <Text style={styles.emptyText}>עדיין אין אימונים</Text>
+          <Text style={styles.emptySubtext}>התחל אימון ראשון!</Text>
+        </LinearGradient>
+      </View>
+    );
   }
 
-  // רק 2 אימונים אחרונים לחיסכון מקסימלי במקום לגריד
   const recentWorkouts = dashboardData.recentWorkouts.slice(0, 2);
 
   const handleViewAll = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.navigate("Workouts" as any);
+    navigation.navigate("Main", { screen: "Workouts" });
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      paddingHorizontal: theme.spacing.lg,
-      marginBottom: theme.spacing.xs,
-    },
-    // RTL Header - כותרת מימין, כפתור משמאל
-    header: {
-      flexDirection: "row-reverse", // RTL - מימין לשמאל
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: theme.spacing.sm,
-    },
-    sectionTitle: {
-      fontSize: isSmallDevice ? 18 : 20,
-      fontWeight: "900",
-      color: theme.colors.text,
-      textAlign: "right", // RTL
-      letterSpacing: -0.6,
-    },
-    // כפתור "ראה הכל" - כפתור משני בצד שמאל
-    viewAllButton: {
-      flexDirection: "row", // RTL - אייקון לפני טקסט
-      alignItems: "center",
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    viewAllText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: theme.colors.primary,
-      marginRight: theme.spacing.xs, // RTL - מרווח מימין לאייקון
-    },
-    workoutsList: {
-      gap: theme.spacing.xs,
-    },
-    bottomSpacing: {
-      height: 20,
-    },
-  });
+  const handleWorkoutPress = (workout: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // תיקון: שליחת הפרמטר הנכון
+    navigation.navigate("WorkoutSummary", {
+      workout: workout,
+      workoutData: workout, // תאימות לאחור
+    });
+  };
 
   return (
     <View style={styles.container}>
-      {/* RTL Header - כותרת מימין, כפתור משמאל */}
       <View style={styles.header}>
-        {/* כותרת בצד ימין */}
-        <Text style={styles.sectionTitle}>אימונים אחרונים</Text>
-
-        {/* כפתור "ראה הכל" בצד שמאל */}
-        <TouchableOpacity
-          style={styles.viewAllButton}
-          onPress={handleViewAll}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.viewAllText}>ראה הכל</Text>
-          <Ionicons
-            name="chevron-back" // RTL - חץ לשמאל
-            size={16}
-            color={theme.colors.primary}
-          />
+        <Text style={styles.title}>אימונים אחרונים</Text>
+        <TouchableOpacity onPress={handleViewAll}>
+          <Text style={styles.viewAllText}>הצג הכל</Text>
         </TouchableOpacity>
       </View>
 
-      {/* רשימת אימונים */}
-      <View style={styles.workoutsList}>
-        {recentWorkouts.map((workout, index) => (
-          <WorkoutCard
-            key={workout.id}
-            workout={workout}
-            isCompact={true}
-            animationDelay={index * 100}
-            onPress={() =>
-              navigation.navigate("WorkoutSummary", {
-                workoutData: workout,
-              })
-            }
-          />
-        ))}
-      </View>
-
-      {/* Bottom spacing for tab bar */}
-      <View style={styles.bottomSpacing} />
+      {recentWorkouts.map((workout, index) => (
+        <TouchableOpacity
+          key={workout.id}
+          style={styles.workoutCard}
+          onPress={() => handleWorkoutPress(workout)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={["rgba(102, 126, 234, 0.15)", "rgba(118, 75, 162, 0.1)"]}
+            style={styles.cardGradient}
+          >
+            <View style={styles.cardContent}>
+              <View style={styles.cardLeft}>
+                <Text style={styles.workoutName}>{workout.name}</Text>
+                <Text style={styles.workoutDate}>
+                  {new Date(workout.date || "").toLocaleDateString("he-IL")}
+                </Text>
+              </View>
+              <View style={styles.cardRight}>
+                <View style={styles.statItem}>
+                  <Ionicons name="time-outline" size={14} color="#667eea" />
+                  <Text style={styles.statText}>
+                    {workout.duration || 0} דק&apos;
+                  </Text>
+                </View>
+                {workout.rating && (
+                  <View style={styles.statItem}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.statText}>{workout.rating}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: "#667eea",
+    fontWeight: "500",
+  },
+  workoutCard: {
+    marginBottom: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  cardGradient: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(102, 126, 234, 0.2)",
+  },
+  cardContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cardLeft: {
+    flex: 1,
+  },
+  workoutName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  workoutDate: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.6)",
+  },
+  cardRight: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statText: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.8)",
+  },
+  emptyContainer: {
+    paddingHorizontal: 16,
+  },
+  emptyGradient: {
+    padding: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(102, 126, 234, 0.2)",
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.6)",
+    marginTop: 4,
+  },
+});
 
 export default RecentWorkoutsSection;
