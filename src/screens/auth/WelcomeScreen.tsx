@@ -17,7 +17,6 @@ import { UserState, useUserStore } from "../../stores/userStore";
 import { demoUsers } from "../../constants/demoUsers";
 import { User } from "../../types/user";
 import { supabase } from "../../lib/supabase";
-import { authService } from "../../services/auth/authService";
 import * as WebBrowser from "expo-web-browser";
 import {
   BackgroundGradient,
@@ -25,24 +24,30 @@ import {
   GuestButton,
   DevPanel,
   useWelcomeAnimations,
-  welcomeStyles,
-  WelcomeScreenProps,
-  DemoUserData,
 } from "./welcome";
-import SocialLoginButtons from "./welcome/components/SocialLoginButtons";
 import ActionButtons from "./welcome/components/ActionButtons";
+import SocialLoginButtons from "./welcome/components/SocialLoginButtons";
+import { welcomeStyles } from "./welcome/styles/welcomeStyles";
+import { WelcomeScreenProps } from "./welcome/types";
 
 // תיקון עבור OAuth redirects
 WebBrowser.maybeCompleteAuthSession();
+
+// המרת DemoUserData types
+interface DemoUserForPanel {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  level?: string;
+  goal?: string;
+}
 
 const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   const becomeGuest = useUserStore((state: UserState) => state.becomeGuest);
   const loginAsDemoUser = useUserStore(
     (state: UserState) => state.loginAsDemoUser
   );
-  const setUser = useUserStore((state: UserState) => state.setUser);
-  const setToken = useUserStore((state: UserState) => state.setToken);
-  const setStatus = useUserStore((state: UserState) => state.setStatus);
 
   // 🔒 State לDev Mode מוסתר
   const [logoTapCount, setLogoTapCount] = useState(0);
@@ -90,10 +95,10 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
     tapTimeoutRef.current = setTimeout(() => {
       setLogoTapCount(0);
-    }, 3000);
-  }, [logoTapCount, logoScale, modalOpacity, modalScale]);
+    }, 1000);
+  }, [logoTapCount, modalOpacity, modalScale]);
 
-  // 🚪 סגירת Dev Modal
+  // סגירת מודל Dev
   const closeDevModal = useCallback(() => {
     Animated.parallel([
       Animated.timing(modalOpacity, {
@@ -111,144 +116,127 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
     });
   }, [modalOpacity, modalScale]);
 
-  // 🔐 התחברות חברתית עם Supabase - Google
+  // 🏃 התחברות כאורח
+  const handleGuestLogin = useCallback(() => {
+    setLoading(true);
+    setTimeout(() => {
+      becomeGuest();
+      setLoading(false);
+    }, 300);
+  }, [becomeGuest]);
+
+  // 👨‍💻 התחברות כמשתמש דמו
+  const handleDemoLogin = useCallback(
+    async (demoUser: User) => {
+      setLoading(true);
+      setShowDevModal(false);
+
+      try {
+        await loginAsDemoUser(demoUser);
+      } catch (error) {
+        Alert.alert("שגיאה", "לא ניתן להתחבר כמשתמש דמו");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loginAsDemoUser]
+  );
+
+  // 🗑️ איפוס נתונים
+  const handleResetData = useCallback(async () => {
+    Alert.alert("איפוס נתונים", "האם אתה בטוח?", [
+      { text: "ביטול", style: "cancel" },
+      {
+        text: "אפס הכל",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await clearAllData();
+            Alert.alert("✅", "כל הנתונים אופסו בהצלחה");
+          } catch (error) {
+            Alert.alert("שגיאה", "לא ניתן לאפס נתונים");
+          }
+        },
+      },
+    ]);
+  }, []);
+
+  // 🔑 התחברות רגילה
+  const handleLogin = useCallback(() => {
+    navigation.navigate("Login");
+  }, [navigation]);
+
+  // 📝 הרשמה
+  const handleSignup = useCallback(() => {
+    navigation.navigate("Signup");
+  }, [navigation]);
+
+  // 🔐 Google Login עם Supabase
   const handleGoogleLogin = useCallback(async () => {
     try {
       setLoading(true);
-      console.log("מתחיל תהליך התחברות עם Google...");
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          skipBrowserRedirect: true,
-          redirectTo: "gymovo://auth",
+          redirectTo: "gymovo://auth-callback",
         },
       });
 
-      if (error) {
-        console.error("Google login error:", error);
-        Alert.alert("שגיאה", "לא הצלחנו להתחבר עם Google");
-        return;
-      }
-
-      if (data?.url) {
-        console.log("פותח דפדפן להתחברות...");
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          "gymovo://auth"
-        );
-
-        if (result.type === "success" && result.url) {
-          console.log("התחברות הצליחה!");
-          // הניווט יתבצע אוטומטית דרך ה-auth listener ב-App.tsx
-        }
-      }
-    } catch (error) {
-      console.error("Google login error:", error);
-      Alert.alert("שגיאה", "משהו השתבש בתהליך ההתחברות");
+      if (error) throw error;
+    } catch (error: any) {
+      Alert.alert("שגיאה בהתחברות", error.message);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // 🔐 התחברות חברתית עם Supabase - Apple
+  // 🍎 Apple Login עם Supabase
   const handleAppleLogin = useCallback(async () => {
+    if (Platform.OS !== "ios") {
+      Alert.alert("זמין רק ב-iOS", "התחברות עם Apple זמינה רק במכשירי iOS");
+      return;
+    }
+
     try {
       setLoading(true);
-      console.log("מתחיל תהליך התחברות עם Apple...");
-
-      // Apple Sign In זמין רק ב-iOS
-      if (Platform.OS !== "ios") {
-        Alert.alert("שגיאה", "התחברות עם Apple זמינה רק במכשירי iOS");
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
-          skipBrowserRedirect: true,
-          redirectTo: "gymovo://auth",
+          redirectTo: "gymovo://auth-callback",
         },
       });
 
-      if (error) {
-        console.error("Apple login error:", error);
-        Alert.alert("שגיאה", "לא הצלחנו להתחבר עם Apple");
-        return;
-      }
-
-      if (data?.url) {
-        console.log("פותח דפדפן להתחברות...");
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          "gymovo://auth"
-        );
-
-        if (result.type === "success" && result.url) {
-          console.log("התחברות הצליחה!");
-          // הניווט יתבצע אוטומטית דרך ה-auth listener ב-App.tsx
-        }
-      }
-    } catch (error) {
-      console.error("Apple login error:", error);
-      Alert.alert("שגיאה", "משהו השתבש בתהליך ההתחברות");
+      if (error) throw error;
+    } catch (error: any) {
+      Alert.alert("שגיאה בהתחברות", error.message);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // התחברות כמשתמש דמו
-  const handleDemoLogin = useCallback(
-    async (demoUser: DemoUserData) => {
-      const userForStore: User = {
-        id: demoUser.id,
-        email: demoUser.email,
-        name: demoUser.name,
-        age: demoUser.age,
-        isGuest: demoUser.isGuest,
-        createdAt: demoUser.createdAt,
-        stats: demoUser.stats,
-      };
-
-      await loginAsDemoUser(userForStore);
-      closeDevModal();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Main" }],
-      });
-    },
-    [loginAsDemoUser, navigation, closeDevModal]
-  );
-
-  // כניסה כאורח
-  const handleGuestLogin = useCallback(() => {
-    becomeGuest();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Main" }],
-    });
-  }, [becomeGuest, navigation]);
-
-  // איפוס נתונים
-  const handleResetData = useCallback(async () => {
-    if (__DEV__) {
-      await clearAllData();
-      // נקה גם את ה-session של Supabase
-      await supabase.auth.signOut();
-      console.log("✅ All data cleared!");
-      closeDevModal();
-    }
-  }, [closeDevModal]);
+  // המרת demoUsers לפורמט המתאים ל-DevPanel
+  const demoUsersForPanel: DemoUserForPanel[] = demoUsers.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+    level: user.demographics?.experienceLevel,
+    goal: user.demographics?.primaryGoal,
+  }));
 
   return (
     <View style={welcomeStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
 
-      {/* רקע כהה עם גרדיאנט */}
-      <BackgroundGradient />
+      {/* רקע גרדיאנט */}
+      <BackgroundGradient visible={true} />
 
+      {/* תוכן ראשי */}
       <View style={welcomeStyles.content}>
-        {/* לוגו וכותרת */}
         <HeroSection
           fadeAnim={fadeAnim}
           logoScale={logoScale}
@@ -257,15 +245,15 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
           onLogoPress={handleLogoPress}
         />
 
-        {/* כפתורי כניסה רגילים */}
+        {/* כפתורי פעולה */}
         <ActionButtons
-          onSignup={() => navigation.navigate("Signup")}
-          onLogin={() => navigation.navigate("Login")}
           buttonsSlide={buttonsSlide}
-          fadeAnim={fadeAnim}
+          onLogin={handleLogin}
+          onSignup={handleSignup}
+          loading={loading}
         />
 
-        {/* כפתורי התחברות חברתית - אחרי הכפתורים הרגילים */}
+        {/* כפתורי רשתות חברתיות */}
         <SocialLoginButtons
           onGoogleLogin={handleGoogleLogin}
           onAppleLogin={handleAppleLogin}
@@ -274,7 +262,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
         />
 
         {/* כפתור אורח */}
-        <GuestButton onGuestLogin={handleGuestLogin} />
+        <GuestButton onGuestLogin={handleGuestLogin} loading={loading} />
       </View>
 
       {/* 🔒 Dev Modal */}
@@ -312,7 +300,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
               <DevPanel
                 visible={true}
-                demoUsers={demoUsers as DemoUserData[]}
+                demoUsers={demoUsersForPanel as any}
                 onDemoLogin={handleDemoLogin}
                 onResetData={handleResetData}
               />
