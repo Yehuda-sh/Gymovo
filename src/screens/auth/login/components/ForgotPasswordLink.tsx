@@ -1,29 +1,40 @@
-// src/screens/auth/login/components/ForgotPasswordLink.tsx
+// src/screens/auth/login/components/ForgotPasswordLink.tsx - גרסה קומפקטית
 
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
-import { colors } from "../../../../theme/colors";
+import { Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import { loginColors } from "../styles/loginStyles";
+
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 interface ForgotPasswordLinkProps {
-  onPress?: () => void;
+  onPress: () => void;
 }
 
 const ForgotPasswordLink: React.FC<ForgotPasswordLinkProps> = ({ onPress }) => {
   return (
-    <TouchableOpacity style={styles.forgotPassword} onPress={onPress}>
-      <Text style={styles.forgotPasswordText}>שכחת סיסמה?</Text>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.text}>שכחתי סיסמה</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 24,
+  container: {
+    alignSelf: "center",
+    marginTop: isSmallDevice ? -8 : -10,
+    marginBottom: isSmallDevice ? 8 : 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  forgotPasswordText: {
-    color: colors.primary,
-    fontSize: 14,
+  text: {
+    fontSize: isSmallDevice ? 13 : 14,
+    color: loginColors.textSecondary,
+    textDecorationLine: "underline",
     fontWeight: "500",
   },
 });

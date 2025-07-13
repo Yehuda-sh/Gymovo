@@ -1,11 +1,21 @@
-// src/screens/auth/login/components/HeaderSection.tsx - בהשראת WelcomeScreen
+// src/screens/auth/login/components/HeaderSection.tsx - גרסה קומפקטית למובייל
 
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
-import { Animated, Platform, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  Dimensions,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { HeaderSectionProps } from "../types";
 import { loginColors } from "../styles/loginStyles";
+
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 const HeaderSection: React.FC<HeaderSectionProps> = ({
   fadeAnim,
@@ -14,7 +24,6 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
 }) => {
   // אנימציות נוספות
   const glowAnim = useRef(new Animated.Value(0.15)).current;
-  const iconRotation = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -22,7 +31,7 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
-          toValue: 0.3,
+          toValue: 0.25,
           duration: 2000,
           useNativeDriver: true,
         }),
@@ -34,36 +43,22 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
       ])
     ).start();
 
-    // אנימציית סיבוב איקון
-    Animated.loop(
-      Animated.timing(iconRotation, {
-        toValue: 1,
-        duration: 20000,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // אנימציית Pulse
+    // אנימציית Pulse עדינה
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 1500,
+          toValue: 1.03,
+          duration: 2000,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1500,
+          duration: 2000,
           useNativeDriver: true,
         }),
       ])
     ).start();
   }, []);
-
-  const iconSpin = iconRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
 
   return (
     <Animated.View
@@ -75,9 +70,8 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
         },
       ]}
     >
-      {/* לוגו עם אפקטים */}
+      {/* לוגו קומפקטי */}
       <View style={styles.logoContainer}>
-        {/* Glow Effect */}
         <Animated.View
           style={[
             styles.logoGlow,
@@ -88,38 +82,26 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
           ]}
         />
 
-        {/* Logo Frame */}
         <View style={styles.logoFrame}>
           <Animated.View
             style={{
-              transform: [{ rotate: iconSpin }],
+              transform: [{ scale: pulseAnim }],
             }}
           >
-            <Ionicons name="barbell" size={48} color="#FFFFFF" />
+            <Ionicons
+              name="shield-checkmark"
+              size={isSmallDevice ? 36 : 42}
+              color="#FFFFFF"
+            />
           </Animated.View>
         </View>
-
-        {/* Decorative rings */}
-        <View style={[styles.ring, styles.ring1]} />
-        <View style={[styles.ring, styles.ring2]} />
       </View>
 
-      {/* כותרת */}
-      <Animated.Text
-        style={[
-          styles.title,
-          {
-            transform: [{ scale: pulseAnim }],
-          },
-        ]}
-      >
-        התחברות
-      </Animated.Text>
+      {/* כותרת קומפקטית */}
+      <Text style={styles.title}>התחברות</Text>
+      <Text style={styles.subtitle}>היכנס לחשבון שלך</Text>
 
-      {/* כותרת משנה */}
-      <Text style={styles.subtitle}>כניסה מאובטחת לחשבון שלך</Text>
-
-      {/* קו דקורטיבי */}
+      {/* קו דקורטיבי קטן יותר */}
       <LinearGradient
         colors={[loginColors.logoGlow, loginColors.primary]}
         start={{ x: 0, y: 0 }}
@@ -133,82 +115,62 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
 const styles = StyleSheet.create({
   headerSection: {
     alignItems: "center",
-    marginBottom: 48,
+    marginBottom: isSmallDevice ? 24 : 36,
   },
   logoContainer: {
     position: "relative",
-    marginBottom: 32,
-    width: 120,
-    height: 120,
+    marginBottom: isSmallDevice ? 16 : 20,
+    width: isSmallDevice ? 80 : 90,
+    height: isSmallDevice ? 80 : 90,
     alignItems: "center",
     justifyContent: "center",
   },
   logoGlow: {
     position: "absolute",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: isSmallDevice ? 100 : 110,
+    height: isSmallDevice ? 100 : 110,
+    borderRadius: isSmallDevice ? 50 : 55,
     backgroundColor: loginColors.primary,
     opacity: 0.2,
   },
   logoFrame: {
-    width: 120,
-    height: 120,
-    borderRadius: 40,
+    width: isSmallDevice ? 80 : 90,
+    height: isSmallDevice ? 80 : 90,
+    borderRadius: isSmallDevice ? 28 : 32,
     backgroundColor: loginColors.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: loginColors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  ring: {
-    position: "absolute",
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: loginColors.logoGlow,
-  },
-  ring1: {
-    width: 110,
-    height: 110,
-    opacity: 0.3,
-  },
-  ring2: {
-    width: 130,
-    height: 130,
-    opacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
-    fontSize: 42,
-    fontWeight: "900",
+    fontSize: isSmallDevice ? 32 : 36,
+    fontWeight: "800",
     color: loginColors.text,
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: "center",
-    letterSpacing: -1,
+    letterSpacing: -0.5,
     fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-black",
-    textShadowColor: "rgba(255, 107, 53, 0.3)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
   },
   subtitle: {
-    fontSize: 17,
+    fontSize: isSmallDevice ? 15 : 16,
     color: loginColors.textSecondary,
     textAlign: "center",
-    marginBottom: 24,
-    letterSpacing: 0.3,
+    marginBottom: isSmallDevice ? 12 : 16,
     fontWeight: "500",
   },
   accentLine: {
-    width: 60,
-    height: 4,
+    width: 40,
+    height: 3,
     borderRadius: 2,
     shadowColor: loginColors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });
 

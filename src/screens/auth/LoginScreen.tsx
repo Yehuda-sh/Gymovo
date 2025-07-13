@@ -35,6 +35,7 @@ WebBrowser.maybeCompleteAuthSession();
 import { loginStyles, loginColors } from "./login/styles/loginStyles";
 
 const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const setUser = useUserStore((state: UserState) => state.setUser);
@@ -299,8 +300,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 60,
+    paddingBottom: isSmallDevice ? 30 : 40,
+    paddingTop: isSmallDevice ? 40 : 60,
   },
   content: {
     width: "100%",

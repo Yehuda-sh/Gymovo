@@ -7,7 +7,8 @@ export { default as ErrorDisplay } from "./ErrorDisplay";
 export { default as ActionButtons } from "./ActionButtons";
 export { default as SignupPrompt } from "./SignupPrompt";
 export { default as ForgotPasswordLink } from "./ForgotPasswordLink";
+export { default as SocialLoginButton } from "./SocialLoginButton";
 
 // Utilities and hooks
 export * from "./ValidationUtils";
-export { useLoginAnimations } from "./useLoginAnimations"; 
+export { useLoginAnimations } from "./useLoginAnimations";

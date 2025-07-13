@@ -10,12 +10,16 @@ import {
   TextInput,
   Text,
   Platform,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LoginFormProps } from "../types";
 import { loginColors } from "../styles/loginStyles";
+
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 const LoginForm: React.FC<LoginFormProps> = ({
   email,
@@ -261,25 +265,25 @@ const LoginForm: React.FC<LoginFormProps> = ({
 const styles = StyleSheet.create({
   formSection: {
     width: "100%",
-    marginBottom: 24,
+    marginBottom: isSmallDevice ? 16 : 24,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: isSmallDevice ? 14 : 18,
   },
   inputWrapper: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   inputBackground: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
   },
   inputFocused: {
@@ -292,22 +296,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   input: {
-    height: 60,
-    paddingHorizontal: 60,
-    fontSize: 16,
+    height: isSmallDevice ? 52 : 56,
+    paddingHorizontal: 52,
+    fontSize: isSmallDevice ? 15 : 16,
     color: loginColors.text,
     fontWeight: "500",
     textAlign: "right",
   },
   inputIcon: {
     position: "absolute",
-    right: 20,
-    top: 19,
+    right: 18,
+    top: isSmallDevice ? 15 : 17,
   },
   passwordToggle: {
     position: "absolute",
-    left: 16,
-    top: 14,
+    left: 14,
+    top: isSmallDevice ? 11 : 13,
     padding: 6,
     zIndex: 1,
   },

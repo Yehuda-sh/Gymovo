@@ -8,10 +8,13 @@ import {
   Animated,
   StyleSheet,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { loginColors } from "../styles/loginStyles";
+
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 interface SocialLoginButtonProps {
   onGoogleLogin: () => void;
@@ -98,28 +101,28 @@ export const SocialLoginButton: React.FC<SocialLoginButtonProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    marginVertical: 20,
+    marginVertical: isSmallDevice ? 12 : 16,
   },
   // קו מפריד
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: isSmallDevice ? 12 : 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
   },
   dividerText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.5)",
     fontWeight: "500",
   },
   buttonWrapper: {
     width: "100%",
-    height: 56,
+    height: isSmallDevice ? 48 : 52,
   },
   socialButton: {
     flex: 1,
@@ -127,16 +130,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#4285F4",
-    borderRadius: 16,
+    borderRadius: 14,
     gap: 8,
     shadowColor: "#4285F4",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   socialButtonText: {
-    fontSize: 16,
+    fontSize: isSmallDevice ? 15 : 16,
     fontWeight: "600",
     color: "#fff",
   },

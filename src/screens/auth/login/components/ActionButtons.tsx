@@ -1,4 +1,4 @@
-// src/screens/auth/login/components/ActionButtons.tsx - כפתורים בהשראת Welcome
+// src/screens/auth/login/components/ActionButtons.tsx - גרסה קומפקטית למובייל
 
 import React, { useRef } from "react";
 import {
@@ -9,12 +9,16 @@ import {
   TouchableOpacity,
   Animated,
   Platform,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ActionButtonsProps } from "../types";
 import { loginColors } from "../styles/loginStyles";
+
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
   isLoading,
@@ -161,16 +165,16 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 const styles = StyleSheet.create({
   actionsSection: {
     width: "100%",
-    gap: 16,
-    marginTop: 32,
+    gap: isSmallDevice ? 12 : 16,
+    marginTop: isSmallDevice ? 16 : 24,
   },
   buttonWrapper: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
   },
   loginButton: {
-    height: 60,
-    borderRadius: 16,
+    height: isSmallDevice ? 52 : 56,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -178,18 +182,18 @@ const styles = StyleSheet.create({
   },
   buttonGlow: {
     position: "absolute",
-    top: -50,
+    top: -40,
     left: "50%",
-    width: 200,
-    height: 100,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 100,
-    transform: [{ translateX: -100 }],
-    opacity: 0.5,
+    width: 150,
+    height: 80,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 80,
+    transform: [{ translateX: -75 }],
+    opacity: 0.4,
   },
   backButton: {
-    height: 56,
-    borderRadius: 16,
+    height: isSmallDevice ? 48 : 52,
+    borderRadius: 14,
     backgroundColor: "transparent",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.2)",
@@ -202,28 +206,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loginButtonText: {
-    fontSize: 18,
+    fontSize: isSmallDevice ? 16 : 17,
     fontWeight: "700",
     color: "#fff",
     letterSpacing: 0.5,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: isSmallDevice ? 15 : 16,
     fontWeight: "600",
     color: loginColors.textSecondary,
     letterSpacing: 0.3,
   },
   loadingContainer: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: isSmallDevice ? 24 : 32,
   },
   loadingInner: {
     alignItems: "center",
-    gap: 16,
+    gap: 14,
   },
   loadingText: {
     color: loginColors.primary,
-    fontSize: 17,
+    fontSize: isSmallDevice ? 15 : 16,
     fontWeight: "600",
     letterSpacing: 0.5,
   },

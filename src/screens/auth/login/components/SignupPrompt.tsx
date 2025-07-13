@@ -1,4 +1,4 @@
-// src/screens/auth/login/components/SignupPrompt.tsx - בהשראת Welcome
+// src/screens/auth/login/components/SignupPrompt.tsx - גרסה קומפקטית למובייל
 
 import React, { useRef, useEffect } from "react";
 import {
@@ -7,11 +7,15 @@ import {
   TouchableOpacity,
   View,
   Animated,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { SignupPromptProps } from "../types";
 import { loginColors } from "../styles/loginStyles";
+
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 const SignupPrompt: React.FC<SignupPromptProps> = ({ onSignupPress }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -81,47 +85,47 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     alignItems: "center",
-    marginTop: 32,
-    paddingBottom: 20,
+    marginTop: isSmallDevice ? 16 : 24,
+    paddingBottom: isSmallDevice ? 10 : 20,
   },
   divider: {
-    width: 80,
+    width: 60,
     height: 1,
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    marginBottom: 24,
+    marginBottom: isSmallDevice ? 16 : 20,
   },
   signupContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   signupText: {
     color: loginColors.textSecondary,
-    fontSize: 15,
+    fontSize: isSmallDevice ? 14 : 15,
     fontWeight: "500",
   },
   signupLinkTouchable: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
     paddingHorizontal: 6,
     paddingVertical: 4,
   },
   signupLink: {
     color: loginColors.primary,
-    fontSize: 15,
+    fontSize: isSmallDevice ? 14 : 15,
     fontWeight: "700",
     letterSpacing: 0.3,
   },
   bottomDecoration: {
     flexDirection: "row",
-    gap: 8,
-    marginTop: 32,
+    gap: 6,
+    marginTop: isSmallDevice ? 16 : 24,
   },
   decorationDot: {
-    width: 4,
-    height: 4,
+    width: 3,
+    height: 3,
     borderRadius: 2,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
