@@ -1,4 +1,4 @@
-// src/screens/auth/welcome/components/SocialLoginButtons.tsx - התחברות מהירה
+// src/screens/auth/welcome/components/SocialLoginButtons.tsx - עם loading state
 
 import React, { useRef } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   I18nManager,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { rtlStyles } from "../../../../theme/rtl";
@@ -29,18 +30,21 @@ interface SocialLoginButtonsProps {
   onGoogleLogin: () => void;
   onAppleLogin: () => void;
   fadeAnim: any;
+  loading?: boolean;
 }
 
 export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
   onGoogleLogin,
   onAppleLogin,
   fadeAnim,
+  loading = false,
 }) => {
   const googleScale = useRef(new Animated.Value(1)).current;
   const appleScale = useRef(new Animated.Value(1)).current;
 
   // Google Touch Feedback
   const handleGooglePressIn = () => {
+    if (loading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.spring(googleScale, {
       toValue: 0.95,
@@ -51,6 +55,7 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
   };
 
   const handleGooglePressOut = () => {
+    if (loading) return;
     Animated.spring(googleScale, {
       toValue: 1,
       tension: 300,
@@ -62,6 +67,7 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
 
   // Apple Touch Feedback
   const handleApplePressIn = () => {
+    if (loading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.spring(appleScale, {
       toValue: 0.95,
@@ -72,6 +78,7 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
   };
 
   const handleApplePressOut = () => {
+    if (loading) return;
     Animated.spring(appleScale, {
       toValue: 1,
       tension: 300,
@@ -82,48 +89,86 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      {/* קו מפריד עם "או" */}
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: fadeAnim,
+        },
+      ]}
+    >
+      {/* קו מפריד */}
       <View style={styles.dividerContainer}>
         <View style={styles.dividerLine} />
-        <Text style={[styles.dividerText, rtlStyles.text]}>או</Text>
+        <Text style={styles.dividerText}>או המשך עם</Text>
         <View style={styles.dividerLine} />
       </View>
 
-      {/* כפתורי התחברות - קומפקטיים יותר */}
+      {/* כפתורי התחברות */}
       <View style={styles.socialButtonsRow}>
-        {/* כפתור Google */}
+        {/* Google */}
         <Animated.View
           style={[
             styles.buttonWrapper,
-            { transform: [{ scale: googleScale }] },
+            {
+              transform: [{ scale: googleScale }],
+            },
           ]}
         >
           <TouchableOpacity
-            style={[styles.socialButton, styles.googleButton]}
+            style={[
+              styles.socialButton,
+              styles.googleButton,
+              loading && styles.disabledButton,
+            ]}
             onPressIn={handleGooglePressIn}
             onPressOut={handleGooglePressOut}
             activeOpacity={1}
+            disabled={loading}
           >
-            <Ionicons name="logo-google" size={18} color="#fff" />
-            <Text style={styles.socialButtonText}>Google</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={18} color="#fff" />
+                <Text style={styles.socialButtonText}>Google</Text>
+              </>
+            )}
           </TouchableOpacity>
         </Animated.View>
 
-        {/* כפתור Apple */}
-        <Animated.View
-          style={[styles.buttonWrapper, { transform: [{ scale: appleScale }] }]}
-        >
-          <TouchableOpacity
-            style={[styles.socialButton, styles.appleButton]}
-            onPressIn={handleApplePressIn}
-            onPressOut={handleApplePressOut}
-            activeOpacity={1}
+        {/* Apple (iOS only) */}
+        {Platform.OS === "ios" && (
+          <Animated.View
+            style={[
+              styles.buttonWrapper,
+              {
+                transform: [{ scale: appleScale }],
+              },
+            ]}
           >
-            <Ionicons name="logo-apple" size={18} color="#fff" />
-            <Text style={styles.socialButtonText}>Apple</Text>
-          </TouchableOpacity>
-        </Animated.View>
+            <TouchableOpacity
+              style={[
+                styles.socialButton,
+                styles.appleButton,
+                loading && styles.disabledButton,
+              ]}
+              onPressIn={handleApplePressIn}
+              onPressOut={handleApplePressOut}
+              activeOpacity={1}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-apple" size={18} color="#fff" />
+                  <Text style={styles.socialButtonText}>Apple</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </View>
     </Animated.View>
   );
@@ -189,6 +234,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     textAlign: "center",
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
 });
 

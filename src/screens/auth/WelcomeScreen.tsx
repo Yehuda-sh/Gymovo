@@ -1,4 +1,4 @@
-// src/screens/auth/WelcomeScreen.tsx - עם התחברות חברתית
+// src/screens/auth/WelcomeScreen.tsx - עם Supabase Integration מלאה
 
 import React, { useCallback, useState, useRef } from "react";
 import {
@@ -10,11 +10,14 @@ import {
   Text,
   StyleSheet,
   Alert,
+  Platform,
 } from "react-native";
 import { clearAllData } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { demoUsers } from "../../constants/demoUsers";
 import { User } from "../../types/user";
+import { supabase } from "../../lib/supabase";
+import * as WebBrowser from "expo-web-browser";
 import {
   BackgroundGradient,
   HeroSection,
@@ -28,15 +31,22 @@ import {
 import SocialLoginButtons from "./welcome/components/SocialLoginButtons";
 import ActionButtons from "./welcome/components/ActionButtons";
 
+// תיקון עבור OAuth redirects
+WebBrowser.maybeCompleteAuthSession();
+
 const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   const becomeGuest = useUserStore((state: UserState) => state.becomeGuest);
   const loginAsDemoUser = useUserStore(
     (state: UserState) => state.loginAsDemoUser
   );
+  const setUser = useUserStore((state: UserState) => state.setUser);
+  const setToken = useUserStore((state: UserState) => state.setToken);
+  const setStatus = useUserStore((state: UserState) => state.setStatus);
 
   // 🔒 State לDev Mode מוסתר
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [showDevModal, setShowDevModal] = useState(false);
+  const [loading, setLoading] = useState(false);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // אנימציות למודל Dev
@@ -100,48 +110,90 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
     });
   }, [modalOpacity, modalScale]);
 
-  // 🔐 התחברות חברתית
+  // 🔐 התחברות חברתית עם Supabase
   const handleGoogleLogin = useCallback(async () => {
     try {
-      Alert.alert("Google Login", "מתחבר דרך Google...", [
-        { text: "בטל" },
-        {
-          text: "המשך",
-          onPress: () => {
-            // כאן תוסיף את הלוגיקה האמיתית של Google
-            console.log("Google login initiated");
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Main" }],
-            });
-          },
+      setLoading(true);
+      console.log("מתחיל תהליך התחברות עם Google...");
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          skipBrowserRedirect: true,
+          redirectTo: "gymovo://auth",
         },
-      ]);
+      });
+
+      if (error) {
+        console.error("Google login error:", error);
+        Alert.alert("שגיאה", "לא הצלחנו להתחבר עם Google");
+        return;
+      }
+
+      if (data?.url) {
+        console.log("פותח דפדפן להתחברות...");
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          "gymovo://auth"
+        );
+
+        if (result.type === "success" && result.url) {
+          console.log("התחברות הצליחה!");
+          // הניווט יתבצע אוטומטית דרך ה-auth listener
+        }
+      }
     } catch (error) {
       console.error("Google login error:", error);
+      Alert.alert("שגיאה", "משהו השתבש בתהליך ההתחברות");
+    } finally {
+      setLoading(false);
     }
-  }, [navigation]);
+  }, []);
 
   const handleAppleLogin = useCallback(async () => {
     try {
-      Alert.alert("Apple Login", "מתחבר דרך Apple...", [
-        { text: "בטל" },
-        {
-          text: "המשך",
-          onPress: () => {
-            // כאן תוסיף את הלוגיקה האמיתית של Apple
-            console.log("Apple login initiated");
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Main" }],
-            });
-          },
+      setLoading(true);
+      console.log("מתחיל תהליך התחברות עם Apple...");
+
+      // Apple Sign In זמין רק ב-iOS
+      if (Platform.OS !== "ios") {
+        Alert.alert("שגיאה", "התחברות עם Apple זמינה רק במכשירי iOS");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "apple",
+        options: {
+          skipBrowserRedirect: true,
+          redirectTo: "gymovo://auth",
         },
-      ]);
+      });
+
+      if (error) {
+        console.error("Apple login error:", error);
+        Alert.alert("שגיאה", "לא הצלחנו להתחבר עם Apple");
+        return;
+      }
+
+      if (data?.url) {
+        console.log("פותח דפדפן להתחברות...");
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          "gymovo://auth"
+        );
+
+        if (result.type === "success" && result.url) {
+          console.log("התחברות הצליחה!");
+          // הניווט יתבצע אוטומטית דרך ה-auth listener
+        }
+      }
     } catch (error) {
       console.error("Apple login error:", error);
+      Alert.alert("שגיאה", "משהו השתבש בתהליך ההתחברות");
+    } finally {
+      setLoading(false);
     }
-  }, [navigation]);
+  }, []);
 
   // התחברות כמשתמש דמו
   const handleDemoLogin = useCallback(
@@ -179,6 +231,8 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   const handleResetData = useCallback(async () => {
     if (__DEV__) {
       await clearAllData();
+      // נקה גם את ה-session של Supabase
+      await supabase.auth.signOut();
       console.log("✅ All data cleared!");
       closeDevModal();
     }
@@ -214,6 +268,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
           onGoogleLogin={handleGoogleLogin}
           onAppleLogin={handleAppleLogin}
           fadeAnim={fadeAnim}
+          loading={loading}
         />
 
         {/* כפתור אורח */}
