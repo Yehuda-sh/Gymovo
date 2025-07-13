@@ -95,7 +95,7 @@ const RecommendedPlanCard: React.FC<RecommendedPlanCardProps> = ({
             title="התחל עכשיו"
             onPress={onPress}
             variant="secondary"
-            size="lg"
+              
             fullWidth
           />
         </View>
