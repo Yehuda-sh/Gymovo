@@ -17,6 +17,7 @@ import { UserState, useUserStore } from "../../stores/userStore";
 import { demoUsers } from "../../constants/demoUsers";
 import { User } from "../../types/user";
 import { supabase } from "../../lib/supabase";
+import { authService } from "../../services/auth/authService";
 import * as WebBrowser from "expo-web-browser";
 import {
   BackgroundGradient,
@@ -110,7 +111,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
     });
   }, [modalOpacity, modalScale]);
 
-  // 🔐 התחברות חברתית עם Supabase
+  // 🔐 התחברות חברתית עם Supabase - Google
   const handleGoogleLogin = useCallback(async () => {
     try {
       setLoading(true);
@@ -139,7 +140,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
         if (result.type === "success" && result.url) {
           console.log("התחברות הצליחה!");
-          // הניווט יתבצע אוטומטית דרך ה-auth listener
+          // הניווט יתבצע אוטומטית דרך ה-auth listener ב-App.tsx
         }
       }
     } catch (error) {
@@ -150,6 +151,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
     }
   }, []);
 
+  // 🔐 התחברות חברתית עם Supabase - Apple
   const handleAppleLogin = useCallback(async () => {
     try {
       setLoading(true);
@@ -184,7 +186,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
         if (result.type === "success" && result.url) {
           console.log("התחברות הצליחה!");
-          // הניווט יתבצע אוטומטית דרך ה-auth listener
+          // הניווט יתבצע אוטומטית דרך ה-auth listener ב-App.tsx
         }
       }
     } catch (error) {

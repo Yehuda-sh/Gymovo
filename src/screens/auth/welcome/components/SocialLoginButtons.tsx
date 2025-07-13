@@ -89,30 +89,21 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: fadeAnim,
-        },
-      ]}
-    >
-      {/* קו מפריד */}
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      {/* קו מפריד עם "או" */}
       <View style={styles.dividerContainer}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>או המשך עם</Text>
+        <Text style={[styles.dividerText, rtlStyles.text]}>או</Text>
         <View style={styles.dividerLine} />
       </View>
 
-      {/* כפתורי התחברות */}
+      {/* כפתורי התחברות - קומפקטיים יותר */}
       <View style={styles.socialButtonsRow}>
-        {/* Google */}
+        {/* כפתור Google */}
         <Animated.View
           style={[
             styles.buttonWrapper,
-            {
-              transform: [{ scale: googleScale }],
-            },
+            { transform: [{ scale: googleScale }] },
           ]}
         >
           <TouchableOpacity
@@ -137,14 +128,12 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Apple (iOS only) */}
+        {/* כפתור Apple - רק ב-iOS */}
         {Platform.OS === "ios" && (
           <Animated.View
             style={[
               styles.buttonWrapper,
-              {
-                transform: [{ scale: appleScale }],
-              },
+              { transform: [{ scale: appleScale }] },
             ]}
           >
             <TouchableOpacity
