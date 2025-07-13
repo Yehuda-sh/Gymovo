@@ -1,9 +1,10 @@
-// src/stores/userStore.ts - תיקון ושיפור ניהול משתמש אורח
+// src/stores/userStore.ts - גרסה משופרת עם ניהול משתמשי אורח
 
 import { produce } from "immer";
-import { create } from "zustand";
+import { create, StateCreator } from "zustand";
 import { devtools, persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { User } from "../types/user";
 import { generateId } from "../utils/idGenerator";
 
 // טיפוסים מעודכנים
@@ -27,19 +28,49 @@ interface UserStats {
   favoriteExercises: string[];
 }
 
-interface UserState {
+export interface RegisterData {
+  email: string;
+  password: string;
+  age: number;
+  name?: string;
+}
+
+type AuthStatus = "loading" | "unauthenticated" | "authenticated" | "guest";
+
+interface LoginResult {
+  success: boolean;
+  error?: string;
+}
+
+interface SignupResult {
+  success: boolean;
+  error?: string;
+}
+
+interface ConversionResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface UserState {
   user: User | null;
   token: string | null;
-  status: "authenticated" | "unauthenticated" | "guest" | "loading";
+  status: AuthStatus;
   isInitialized: boolean;
 
-  // פעולות
+  // פונקציות עדכון בסיסיות
+  setUser: (user: User) => void;
+  setToken: (token: string) => void;
+  setStatus: (status: AuthStatus) => void;
+
+  // פונקציות auth
   initialize: () => Promise<void>;
-  login: (credentials: LoginCredentials) => Promise<LoginResult>;
-  signup: (data: RegisterData) => Promise<SignupResult>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  register: (data: RegisterData) => Promise<SignupResult>;
   becomeGuest: () => void;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
+  loginAsDemoUser: (demoUser: User) => Promise<void>;
 
   // ניהול מעבר ממשתמש אורח למשתמש רשום
   convertGuestToUser: (
@@ -67,11 +98,16 @@ const isGuestDataExpired = (expiryDate?: string): boolean => {
 };
 
 // יצירת Store מתוקן
-const storeCreator = (set: any, get: any): UserState => ({
+const storeCreator: StateCreator<UserState> = (set, get) => ({
   user: null,
   token: null,
   status: "loading",
   isInitialized: false,
+
+  // פונקציות עדכון בסיסיות
+  setUser: (user: User) => set({ user }),
+  setToken: (token: string) => set({ token }),
+  setStatus: (status: AuthStatus) => set({ status }),
 
   // אתחול - בודק אם יש משתמש אורח שמור
   initialize: async () => {
@@ -107,12 +143,18 @@ const storeCreator = (set: any, get: any): UserState => ({
               isInitialized: true,
             });
           }
-        } else {
+        } else if (parsed.state?.user && parsed.state?.token) {
           // משתמש רשום רגיל
           set({
             user: parsed.state.user,
             token: parsed.state.token,
             status: "authenticated",
+            isInitialized: true,
+          });
+        } else {
+          // נתונים לא תקינים
+          set({
+            status: "unauthenticated",
             isInitialized: true,
           });
         }
@@ -129,6 +171,63 @@ const storeCreator = (set: any, get: any): UserState => ({
         status: "unauthenticated",
         isInitialized: true,
       });
+    }
+  },
+
+  // התחברות
+  login: async (email: string, password: string) => {
+    try {
+      // בגרסה האמיתית, כאן תהיה קריאה ל-API
+      if (email && password.length >= 6) {
+        const mockUser: User = {
+          id: `user_${Date.now()}`,
+          email,
+          name: email.split("@")[0],
+          age: 25,
+          isGuest: false,
+        };
+
+        set({
+          user: mockUser,
+          token: `token_${Date.now()}`,
+          status: "authenticated",
+          isInitialized: true,
+        });
+
+        return { success: true };
+      }
+
+      return { success: false, error: "אימייל או סיסמה לא תקינים" };
+    } catch (error) {
+      return { success: false, error: "שגיאה בהתחברות" };
+    }
+  },
+
+  // הרשמה
+  register: async (data: RegisterData) => {
+    try {
+      if (data.email && data.password.length >= 6) {
+        const newUser: User = {
+          id: `user_${Date.now()}`,
+          email: data.email,
+          name: data.name || data.email.split("@")[0],
+          age: data.age,
+          isGuest: false,
+        };
+
+        set({
+          user: newUser,
+          token: `token_${Date.now()}`,
+          status: "authenticated",
+          isInitialized: true,
+        });
+
+        return { success: true };
+      }
+
+      return { success: false, error: "נתונים לא תקינים" };
+    } catch (error) {
+      return { success: false, error: "שגיאה ברישום" };
     }
   },
 
@@ -247,6 +346,34 @@ const storeCreator = (set: any, get: any): UserState => ({
     );
   },
 
+  // התחברות כמשתמש דמו
+  loginAsDemoUser: async (demoUser: User) => {
+    const demoToken = `demo_token_${demoUser.id}_${Date.now()}`;
+
+    try {
+      console.log(`🎭 Login as demo user: ${demoUser.name} (${demoUser.id})`);
+
+      set({
+        user: demoUser,
+        token: demoToken,
+        status: "authenticated",
+        isInitialized: true,
+      });
+
+      // טען נתוני דמו ברקע
+      const { getDemoWorkoutHistory } = await import("../constants/demoUsers");
+      const workoutHistory = getDemoWorkoutHistory(demoUser.id);
+      console.log(
+        `📊 Found ${workoutHistory.length} demo workouts for ${demoUser.name}`
+      );
+
+      return;
+    } catch (error) {
+      console.error("Failed to login as demo user:", error);
+      throw error;
+    }
+  },
+
   // התנתקות משופרת
   logout: async () => {
     const user = get().user;
@@ -263,28 +390,33 @@ const storeCreator = (set: any, get: any): UserState => ({
       isInitialized: true,
     });
   },
-
-  // שאר הפונקציות כמו login, signup וכו'...
 });
 
 // יצירת Store עם persistence משופר
 export const useUserStore = create<UserState>()(
-  persist(storeCreator, {
-    name: "gymovo-user-storage",
-    storage: createJSONStorage(() => AsyncStorage),
-    partialize: (state) => ({
-      user: state.user,
-      token: state.token,
-      status: state.status,
+  devtools(
+    persist(storeCreator, {
+      name: "gymovo-user-storage",
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        status: state.status,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // בדוק תוקף נתוני אורח בכל טעינה
+          setTimeout(() => {
+            state.checkGuestDataExpiry();
+            state.initialize();
+          }, 0);
+        }
+      },
     }),
-    onRehydrateStorage: () => (state) => {
-      if (state) {
-        // בדוק תוקף נתוני אורח בכל טעינה
-        state.checkGuestDataExpiry();
-        state.initialize();
-      }
-    },
-  })
+    {
+      name: "user-store",
+    }
+  )
 );
 
 // Hook לניהול משתמש אורח
