@@ -33,7 +33,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreatePlan }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, []); // Dependencies לא נדרשים כי useRef values לא משתנים
 
   return (
     <Animated.View
@@ -60,7 +60,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreatePlan }) => {
 
       <TouchableOpacity onPress={onCreatePlan}>
         <LinearGradient
-          colors={designSystem.gradients.primary.colors}
+          colors={[
+            designSystem.colors.primary.main,
+            designSystem.colors.primary.dark,
+          ]}
           style={styles.createButton}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
