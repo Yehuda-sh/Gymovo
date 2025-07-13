@@ -26,7 +26,7 @@ import PlansScreen from "../screens/plans/PlansScreen";
 import GuestProfileScreen from "../screens/profile/GuestProfileScreen";
 import ProfileScreen from "../screens/profile/ProfileScreen";
 import WorkoutsScreen from "../screens/workouts/WorkoutsScreen";
-import StartWorkoutScreen from "../screens/workouts/StartWorkoutScreen";
+import StartWorkoutScreen from "../screens/workouts/start-workout/StartWorkoutScreen";
 
 // ייבוא stores, hooks וטיפוסים
 import { UserState, useUserStore } from "../stores/userStore";

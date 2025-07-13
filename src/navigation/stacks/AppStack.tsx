@@ -10,7 +10,7 @@ import ExerciseDetailsScreen from "../../screens/exercises/ExerciseDetailsScreen
 import ExerciseSelectionScreen from "../../screens/exercises/ExerciseSelectionScreen";
 import SettingsScreen from "../../screens/settings/SettingsScreen";
 import ActiveWorkoutScreen from "../../screens/workouts/ActiveWorkoutScreen";
-import StartWorkoutScreen from "../../screens/workouts/StartWorkoutScreen";
+import StartWorkoutScreen from "../../screens/workouts/start-workout/StartWorkoutScreen";
 import WorkoutSummaryScreen from "../../screens/workouts/WorkoutSummaryScreen";
 import SelectWorkoutDayScreen from "../../screens/workouts/SelectWorkoutDayScreen";
 import ExercisesPickerScreen from "../../screens/workouts/ExercisesPickerScreen";

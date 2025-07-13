@@ -12,7 +12,7 @@ import HomeScreen from "../../screens/home/HomeScreen";
 import PlansScreen from "../../screens/plans/PlansScreen";
 import GuestProfileScreen from "../../screens/profile/GuestProfileScreen";
 import ProfileScreen from "../../screens/profile/ProfileScreen";
-import StartWorkoutScreen from "../../screens/workouts/StartWorkoutScreen";
+import StartWorkoutScreen from "../../screens/workouts/start-workout/StartWorkoutScreen";
 import WorkoutsScreen from "../../screens/workouts/WorkoutsScreen";
 
 // ייבוא רכיבים וקונפיגורציה
