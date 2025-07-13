@@ -8,12 +8,64 @@ import {
   Text,
   StyleSheet,
   Animated,
+  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { designSystem } from "../../../theme/designSystem";
 import { FilterTabsProps, filtersList, createPressAnimation } from "./utils";
+
+// רכיב לטאב בודד
+const FilterTab: React.FC<{
+  filter: { id: string; label: string; icon: string };
+  isActive: boolean;
+  onPress: () => void;
+}> = ({ filter, isActive, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // הפעלת אנימציית לחיצה
+    createPressAnimation(scaleAnim).start();
+    onPress();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={[styles.filterTab, isActive && styles.filterTabActive]}
+        onPress={handlePress}
+      >
+        {isActive ? (
+          <LinearGradient
+            colors={[
+              designSystem.colors.primary.main,
+              designSystem.colors.primary.dark,
+            ]}
+            style={styles.filterTabGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name={filter.icon as any} size={16} color="#fff" />
+            <Text style={[styles.filterTabText, styles.filterTabTextActive]}>
+              {filter.label}
+            </Text>
+          </LinearGradient>
+        ) : (
+          <>
+            <Ionicons
+              name={filter.icon as any}
+              size={16}
+              color={designSystem.colors.neutral.text.secondary}
+            />
+            <Text style={styles.filterTabText}>{filter.label}</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 // רכיב פילטרים עם אנימציות חלקות וגרדיאנטים יפים
 const FilterTabs: React.FC<FilterTabsProps> = ({ selected, onSelect }) => {
@@ -24,56 +76,14 @@ const FilterTabs: React.FC<FilterTabsProps> = ({ selected, onSelect }) => {
       style={styles.filterTabs}
       contentContainerStyle={styles.filterTabsContent}
     >
-      {filtersList.map((filter) => {
-        const isActive = selected === filter.id;
-        const scaleAnim = useRef(new Animated.Value(1)).current;
-
-        const handlePress = () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-          // הפעלת אנימציית לחיצה
-          createPressAnimation(scaleAnim).start();
-
-          onSelect(filter.id);
-        };
-
-        return (
-          <Animated.View
-            key={filter.id}
-            style={{ transform: [{ scale: scaleAnim }] }}
-          >
-            <TouchableOpacity
-              style={[styles.filterTab, isActive && styles.filterTabActive]}
-              onPress={handlePress}
-            >
-              {isActive ? (
-                <LinearGradient
-                  colors={designSystem.gradients.primary.colors}
-                  style={styles.filterTabGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Ionicons name={filter.icon as any} size={16} color="#fff" />
-                  <Text
-                    style={[styles.filterTabText, styles.filterTabTextActive]}
-                  >
-                    {filter.label}
-                  </Text>
-                </LinearGradient>
-              ) : (
-                <>
-                  <Ionicons
-                    name={filter.icon as any}
-                    size={16}
-                    color={designSystem.colors.neutral.text.secondary}
-                  />
-                  <Text style={styles.filterTabText}>{filter.label}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-        );
-      })}
+      {filtersList.map((filter) => (
+        <FilterTab
+          key={filter.id}
+          filter={filter}
+          isActive={selected === filter.id}
+          onPress={() => onSelect(filter.id)}
+        />
+      ))}
     </ScrollView>
   );
 };
