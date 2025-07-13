@@ -1,22 +1,33 @@
-// src/screens/auth/welcome/components/HeroSection.tsx - עם לוגו נושם
+// src/screens/auth/welcome/components/HeroSection.tsx - מותאם למובייל
 
-import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, Animated, StyleSheet, I18nManager } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+  StyleSheet,
+  I18nManager,
+  Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { HeroSectionProps, welcomeColors } from "../types";
-import { rtlText } from "../../../../theme/rtl";
 import * as Haptics from "expo-haptics";
 
 // Force RTL
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
-// צבעים ישראליים חדשים
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
+
+// צבעים ישראליים
 const newColors = {
-  primary: "#FF6B35",     // כתום חם ראשי
-  secondary: "#F7931E",   // כתום זהוב  
-  accent: "#FFD23F",      // צהוב זהב
-  dark: "#2C1810",        // חום כהה
-  glow: "rgba(255, 107, 53, 0.3)", // זוהר כתום
+  primary: "#FF6B35",
+  secondary: "#F7931E",
+  accent: "#FFD23F",
+  dark: "#2C1810",
+  glow: "rgba(255, 107, 53, 0.3)",
 };
 
 interface HeroSectionWithTapProps extends HeroSectionProps {
@@ -31,10 +42,12 @@ export const HeroSection: React.FC<HeroSectionWithTapProps> = ({
   onLogoPress,
 }) => {
   // אנימציית נשימה ללוגו
-  const breathingScale = React.useRef(new Animated.Value(1)).current;
-  
+  const breathingScale = useRef(new Animated.Value(1)).current;
+  const glowOpacity = useRef(new Animated.Value(0.3)).current;
+
   useEffect(() => {
-    const breathingAnimation = Animated.loop(
+    // אנימציית נשימה
+    Animated.loop(
       Animated.sequence([
         Animated.timing(breathingScale, {
           toValue: 1.05,
@@ -47,19 +60,30 @@ export const HeroSection: React.FC<HeroSectionWithTapProps> = ({
           useNativeDriver: true,
         }),
       ])
-    );
-    
-    breathingAnimation.start();
-    
-    return () => breathingAnimation.stop();
+    ).start();
+
+    // אנימציית זוהר
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowOpacity, {
+          toValue: 0.5,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowOpacity, {
+          toValue: 0.3,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   }, []);
 
   // טיפול בלחיצה על לוגו
   const handleLogoPress = () => {
     if (onLogoPress) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      
-      // אנימציה קטנה בלחיצה
+
       Animated.sequence([
         Animated.timing(logoScale, {
           toValue: 0.9,
@@ -73,72 +97,107 @@ export const HeroSection: React.FC<HeroSectionWithTapProps> = ({
           useNativeDriver: true,
         }),
       ]).start();
-      
+
       onLogoPress();
     }
   };
 
   return (
     <Animated.View style={[styles.heroContainer, { opacity: fadeAnim }]}>
-      {/* לוגו עם נשימה ולחיצה */}
+      {/* לוגו קומפקטי יותר */}
       <TouchableOpacity
         onPress={handleLogoPress}
-        activeOpacity={onLogoPress ? 0.8 : 1}
+        activeOpacity={onLogoPress ? 0.9 : 1}
+        style={styles.logoTouchable}
         disabled={!onLogoPress}
-        style={styles.logoContainer}
       >
-        <Animated.View
-          style={[
-            styles.logoWrapper,
-            {
-              transform: [
-                { scale: Animated.multiply(logoScale, breathingScale) }
-              ],
-            },
-          ]}
-        >
-          {/* לוגו */}
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoEmoji}>💪</Text>
-          </View>
-          
-          {/* זוהר כתום */}
-          <View style={styles.logoGlow} />
-        </Animated.View>
+        <View style={styles.logoContainer}>
+          <Animated.View
+            style={[
+              styles.logoGlow,
+              {
+                opacity: glowOpacity,
+                transform: [{ scale: breathingScale }],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.logoIcon,
+              {
+                transform: [{ scale: logoScale }, { scale: breathingScale }],
+              },
+            ]}
+          >
+            <Ionicons
+              name="barbell"
+              size={isSmallDevice ? 40 : 48}
+              color="#fff"
+            />
+          </Animated.View>
+        </View>
       </TouchableOpacity>
 
-      {/* כותרת ראשית */}
+      {/* כותרת קומפקטית */}
       <Animated.View
         style={[
           styles.titleContainer,
-          {
-            transform: [{ translateY: titleSlide }],
-          },
+          { transform: [{ translateY: titleSlide }] },
         ]}
       >
-        <Text style={[styles.title, rtlText]}>Gymovo</Text>
+        <Text style={styles.title}>Gymovo</Text>
         <View style={styles.accentLine} />
       </Animated.View>
 
-      {/* תת-כותרת עברית טבעית */}
+      {/* כותרת משנה קצרה יותר */}
       <Animated.View
         style={[
           styles.subtitleContainer,
+          { transform: [{ translateY: subtitleSlide }] },
+        ]}
+      >
+        <Text style={styles.subtitle}>
+          האפליקציה שתעזור לך לנפץ את הגרסה הטובה ביותר של עצמך
+        </Text>
+      </Animated.View>
+
+      {/* שורת אייקונים במקום טקסט נוסף */}
+      <Animated.View
+        style={[
+          styles.featuresRow,
           {
+            opacity: fadeAnim,
             transform: [{ translateY: subtitleSlide }],
           },
         ]}
       >
-        <Text style={[styles.subtitle, rtlText]}>
-          האפליקציה שתעזור לך להפוך לגרסה הטובה ביותר של עצמך
-        </Text>
+        <View style={styles.featureItem}>
+          <Ionicons name="trophy" size={20} color={newColors.accent} />
+          <Text style={styles.featureText}>1,247</Text>
+        </View>
+        <View style={styles.featureDivider} />
+        <View style={styles.featureItem}>
+          <Ionicons name="flame" size={20} color={newColors.accent} />
+          <Text style={styles.featureText}>מתאמנים</Text>
+        </View>
+        <View style={styles.featureDivider} />
+        <View style={styles.featureItem}>
+          <Ionicons name="star" size={20} color={newColors.accent} />
+          <Text style={styles.featureText}>4.9</Text>
+        </View>
       </Animated.View>
 
-      {/* משפט מניע */}
-      <Animated.View style={[styles.motivationContainer, { opacity: fadeAnim }]}>
-        <Text style={[styles.motivationText, rtlText]}>
-          מוכן להפתיע את עצמך? ✨
-        </Text>
+      {/* תגית מוטיבציה קצרה */}
+      <Animated.View
+        style={[
+          styles.tagContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: breathingScale }],
+          },
+        ]}
+      >
+        <Text style={styles.tagText}>מוכן להפוך את עצמך? ✨</Text>
       </Animated.View>
     </Animated.View>
   );
@@ -146,86 +205,101 @@ export const HeroSection: React.FC<HeroSectionWithTapProps> = ({
 
 const styles = StyleSheet.create({
   heroContainer: {
-    alignItems: 'center',
-    paddingVertical: 50,
+    alignItems: "center",
+    paddingVertical: isSmallDevice ? 20 : 30,
     paddingHorizontal: 20,
   },
-  logoContainer: {
-    marginBottom: 30,
+  logoTouchable: {
+    marginBottom: isSmallDevice ? 15 : 20,
   },
-  logoWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: isSmallDevice ? 90 : 100,
+    height: isSmallDevice ? 90 : 100,
+    borderRadius: isSmallDevice ? 45 : 50,
     backgroundColor: newColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: newColors.glow,
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  logoEmoji: {
-    fontSize: 48,
-    color: '#fff',
+    shadowRadius: 15,
+    elevation: 12,
   },
   logoGlow: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    position: "absolute",
+    width: isSmallDevice ? 110 : 120,
+    height: isSmallDevice ? 110 : 120,
+    borderRadius: isSmallDevice ? 55 : 60,
     backgroundColor: newColors.accent,
-    opacity: 0.15,
-    top: -10,
-    left: -10,
+    opacity: 0.3,
   },
   titleContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-    width: '100%',
+    alignItems: "center",
+    marginBottom: isSmallDevice ? 8 : 12,
   },
   title: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
+    fontSize: isSmallDevice ? 40 : 48,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "center",
     letterSpacing: -1,
   },
   accentLine: {
-    width: 60,
-    height: 4,
+    width: 50,
+    height: 3,
     backgroundColor: newColors.secondary,
     borderRadius: 2,
-    marginTop: 12,
+    marginTop: 8,
   },
   subtitleContainer: {
     paddingHorizontal: 30,
-    width: '100%',
-    marginBottom: 20,
+    marginBottom: isSmallDevice ? 15 : 20,
   },
   subtitle: {
-    fontSize: 17,
-    color: 'rgba(255, 255, 255, 0.85)',
-    textAlign: 'right',
-    lineHeight: 25,
-    fontWeight: '400',
-    writingDirection: 'rtl',
+    fontSize: isSmallDevice ? 15 : 16,
+    color: "rgba(255, 255, 255, 0.85)",
+    textAlign: "center",
+    lineHeight: isSmallDevice ? 22 : 24,
+    fontWeight: "400",
   },
-  motivationContainer: {
-    paddingHorizontal: 40,
+  featuresRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: isSmallDevice ? 15 : 20,
   },
-  motivationText: {
-    fontSize: 16,
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  featureText: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "500",
+  },
+  featureDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    marginHorizontal: 12,
+  },
+  tagContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  tagText: {
+    fontSize: 14,
     color: newColors.accent,
-    textAlign: 'center',
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontWeight: "600",
   },
 });
 

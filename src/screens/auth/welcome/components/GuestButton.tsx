@@ -1,4 +1,4 @@
-// src/screens/auth/welcome/components/GuestButton.tsx - עם Touch Feedback
+// src/screens/auth/welcome/components/GuestButton.tsx - גרסה קומפקטית
 
 import React, { useRef } from "react";
 import {
@@ -6,95 +6,104 @@ import {
   TouchableOpacity,
   Animated,
   StyleSheet,
-  I18nManager,
+  View,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { GuestButtonProps } from "../types";
-import { rtlStyles } from "../../../../theme/rtl";
 import * as Haptics from "expo-haptics";
+import { GuestButtonProps } from "../types";
 
-// Force RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
-
-const newColors = {
-  accent: "#FFD23F", // צהוב זהב
-};
+const { height } = Dimensions.get("window");
+const isSmallDevice = height < 700;
 
 export const GuestButton: React.FC<GuestButtonProps> = ({ onGuestLogin }) => {
-  const buttonScale = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      delay: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Animated.spring(buttonScale, {
+    Animated.spring(scaleAnim, {
       toValue: 0.95,
-      tension: 300,
-      friction: 10,
+      speed: 20,
+      bounciness: 5,
       useNativeDriver: true,
     }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(buttonScale, {
+    Animated.spring(scaleAnim, {
       toValue: 1,
-      tension: 300,
-      friction: 10,
+      speed: 20,
+      bounciness: 5,
       useNativeDriver: true,
     }).start();
-
-    setTimeout(() => {
-      onGuestLogin();
-    }, 100);
+    setTimeout(() => onGuestLogin(), 100);
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
       <TouchableOpacity
-        style={[styles.guestButton, rtlStyles.iconText]}
+        style={styles.button}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
       >
-        {/* אייקון לפני הטקסט (צד ימין) */}
-        <Ionicons
-          name="person-outline"
-          size={18}
-          color="rgba(255, 255, 255, 0.6)"
-          style={styles.icon}
-        />
-
-        {/* טקסט כניסה כאורח */}
-        <Text style={[styles.guestText, rtlStyles.text]}>כניסה כאורח</Text>
-
-        {/* חץ קטן */}
-        <Ionicons
-          name="chevron-back" // RTL מתוקן
-          size={16}
-          color="rgba(255, 255, 255, 0.4)"
-        />
+        <View style={styles.iconContainer}>
+          <Ionicons name="person-outline" size={16} color="#64748B" />
+        </View>
+        <Text style={styles.text}>כניסה מהירה ללא הרשמה</Text>
+        <Ionicons name="arrow-forward-outline" size={16} color="#64748B" />
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  guestButton: {
-    flexDirection: "row-reverse", // RTL
+  container: {
+    position: "absolute",
+    bottom: isSmallDevice ? 20 : 30,
+    alignSelf: "center",
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: "rgba(100, 116, 139, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(100, 116, 139, 0.3)",
+  },
+  iconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(100, 116, 139, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16, // יותר padding
-    paddingHorizontal: 20,
-    marginTop: 24, // יותר רווח מלמעלה
-    gap: 8,
   },
-  icon: {
-    marginLeft: 4, // ריווח בצד שמאל של האייקון
-  },
-  guestText: {
-    fontSize: 15,
-    color: "rgba(255, 255, 255, 0.7)",
+  text: {
+    fontSize: 14,
+    color: "#94A3B8",
     fontWeight: "500",
-    textAlign: "center",
   },
 });
 
