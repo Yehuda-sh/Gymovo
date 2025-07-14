@@ -29,6 +29,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
+    paddingHorizontal: 20,
   },
   sectionHeader: {
     marginBottom: 16,
@@ -47,6 +48,6 @@ const styles = StyleSheet.create({
   sectionContent: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: 4,
+    overflow: "hidden",
   },
 });

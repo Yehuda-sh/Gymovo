@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   disabledText: {
-    color: colors.textMuted, // ✅ תיקון: שימוש ב-textMuted במקום disabled
+    color: colors.textMuted,
   },
   danger: {
     backgroundColor: withOpacity(colors.danger, 0.05),
