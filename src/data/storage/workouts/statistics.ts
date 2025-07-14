@@ -1,7 +1,7 @@
 // src/data/storage/workouts/statistics.ts
 // 📊 סטטיסטיקות אימונים מתקדמות - חישובים וניתוחים
 
-import { Workout } from "../../../types/workout";
+import { Workout } from "../../../types/workout"; 
 import { withRetry, StorageError } from "../core";
 import { getWorkoutHistory } from "./history";
 

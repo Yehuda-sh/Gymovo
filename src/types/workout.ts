@@ -65,6 +65,8 @@ export interface Workout {
   personalRecords?: PersonalRecord[];
   photos?: WorkoutPhoto[];
   isQuickWorkout?: boolean;
+  completedAt?: string; // ISO datetime string
+  rating?: number; // 1-5 כוכבים
 }
 
 // Personal Record
