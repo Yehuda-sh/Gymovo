@@ -1,361 +1,661 @@
-// src/services/wgerApi.ts - שירות API מעודכן
+// src/services/wgerApi.ts - שירות API משופר עם תמיכה מלאה
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Exercise } from "../types/exercise";
 import { Plan } from "../types/plan";
 
+// קבועים
 const WGER_API_URL = "https://wger.de/api/v2";
+const API_LANGUAGE = 2; // Hebrew
+const API_STATUS = 2; // Accepted
+const CACHE_DURATION = 1000 * 60 * 30; // 30 דקות
+const TOKEN_KEY = "@gymovo_wger_token";
 
-// הוספת fetch עם retry ו-timeout
-const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
-  for (let i = 0; i < retries; i++) {
+// Endpoints
+const ENDPOINTS = {
+  // Public endpoints (no auth required)
+  exercises: "/exercise/",
+  exerciseInfo: "/exerciseinfo/",
+  exerciseCategory: "/exercisecategory/",
+  equipment: "/equipment/",
+  muscle: "/muscle/",
+
+  // Auth endpoints
+  token: "/token/",
+  tokenRefresh: "/token/refresh/",
+  tokenVerify: "/token/verify/",
+
+  // User endpoints (auth required)
+  routines: "/routine/",
+  templates: "/templates/",
+  publicTemplates: "/public-templates/",
+  workoutSessions: "/workoutsession/",
+  workoutLog: "/workoutlog/",
+
+  // New endpoints from v2.4
+  slots: "/slot/",
+  slotEntry: "/slot-entry/",
+  weightConfig: "/weight-config/",
+  repetitionsConfig: "/repetitions-config/",
+  setsConfig: "/sets-config/",
+  restConfig: "/rest-config/",
+} as const;
+
+// Types
+interface WgerApiError extends Error {
+  statusCode?: number;
+  endpoint?: string;
+  isNetworkError?: boolean;
+}
+
+interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+interface AuthTokens {
+  access: string;
+  refresh: string;
+  expiresAt?: number;
+}
+
+interface FetchOptions extends RequestInit {
+  authenticated?: boolean;
+  retry?: number;
+  useCache?: boolean; // שינוי שם כדי למנוע התנגשות עם RequestInit.cache
+}
+
+// Cache management
+const apiCache = new Map<string, { data: any; timestamp: number }>();
+
+class WgerApiService {
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private isApiAvailable = true;
+
+  constructor() {
+    this.loadTokens();
+  }
+
+  // Token management
+  private async loadTokens() {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        return response;
+      const tokens = await AsyncStorage.getItem(TOKEN_KEY);
+      if (tokens) {
+        const parsed: AuthTokens = JSON.parse(tokens);
+        this.accessToken = parsed.access;
+        this.refreshToken = parsed.refresh;
       }
-
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     } catch (error) {
-      console.log(`🔄 Attempt ${i + 1}/${retries} failed:`, error);
+      console.error("Failed to load tokens:", error);
+    }
+  }
 
-      if (i === retries - 1) {
-        throw error;
+  private async saveTokens(tokens: AuthTokens) {
+    try {
+      await AsyncStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
+      this.accessToken = tokens.access;
+      this.refreshToken = tokens.refresh;
+    } catch (error) {
+      console.error("Failed to save tokens:", error);
+    }
+  }
+
+  // Authentication
+  async authenticate(username: string, password: string): Promise<boolean> {
+    try {
+      const response = await this.fetchApi<{ access: string; refresh: string }>(
+        ENDPOINTS.token,
+        {
+          method: "POST",
+          body: JSON.stringify({ username, password }),
+          authenticated: false,
+        }
+      );
+
+      if (response.access && response.refresh) {
+        await this.saveTokens({
+          access: response.access,
+          refresh: response.refresh,
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Authentication failed:", error);
+      return false;
+    }
+  }
+
+  async refreshAccessToken(): Promise<boolean> {
+    if (!this.refreshToken) return false;
+
+    try {
+      const response = await this.fetchApi<{ access: string }>(
+        ENDPOINTS.tokenRefresh,
+        {
+          method: "POST",
+          body: JSON.stringify({ refresh: this.refreshToken }),
+          authenticated: false,
+        }
+      );
+
+      if (response.access) {
+        this.accessToken = response.access;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return false;
+    }
+  }
+
+  // Core fetch method with retry and caching
+  private async fetchApi<T>(
+    endpoint: string,
+    options: FetchOptions = {}
+  ): Promise<T> {
+    const {
+      authenticated = false,
+      retry = 3,
+      useCache = true,
+      ...fetchOptions
+    } = options;
+
+    // Check cache first
+    if (useCache && fetchOptions.method === "GET") {
+      const cached = this.getCached(endpoint);
+      if (cached) return cached;
+    }
+
+    // Prepare headers
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...((fetchOptions.headers as Record<string, string>) || {}),
+    };
+
+    if (authenticated && this.accessToken) {
+      headers.Authorization = `Bearer ${this.accessToken}`;
+    }
+
+    // Fetch with retry
+    for (let attempt = 0; attempt < retry; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(`${WGER_API_URL}${endpoint}`, {
+          ...fetchOptions,
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          // Handle 401 - try refresh token
+          if (response.status === 401 && authenticated && attempt === 0) {
+            const refreshed = await this.refreshAccessToken();
+            if (refreshed) continue; // Retry with new token
+          }
+
+          throw this.createError(
+            `HTTP ${response.status}: ${response.statusText}`,
+            response.status,
+            endpoint
+          );
+        }
+
+        const data = await response.json();
+
+        // Cache successful GET requests
+        if (useCache && fetchOptions.method === "GET") {
+          this.setCache(endpoint, data);
+        }
+
+        return data;
+      } catch (error) {
+        console.log(`🔄 Attempt ${attempt + 1}/${retry} failed:`, error);
+
+        if (attempt === retry - 1) {
+          // Last attempt failed
+          this.isApiAvailable = false;
+          throw error;
+        }
+
+        // Wait before retry
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * (attempt + 1))
+        );
+      }
+    }
+
+    throw this.createError("Max retries exceeded", undefined, endpoint);
+  }
+
+  // Cache helpers
+  private getCached(key: string): any | null {
+    const cached = apiCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log(`📦 Using cached data for ${key}`);
+      return cached.data;
+    }
+    return null;
+  }
+
+  private setCache(key: string, data: any) {
+    apiCache.set(key, { data, timestamp: Date.now() });
+  }
+
+  private createError(
+    message: string,
+    statusCode?: number,
+    endpoint?: string
+  ): WgerApiError {
+    const error = new Error(message) as WgerApiError;
+    error.statusCode = statusCode;
+    error.endpoint = endpoint;
+    error.isNetworkError = !statusCode;
+    return error;
+  }
+
+  // Public API methods
+
+  /**
+   * בדיקת חיבור ל-API
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      await this.fetchApi("/", { useCache: false });
+      this.isApiAvailable = true;
+      return true;
+    } catch {
+      this.isApiAvailable = false;
+      return false;
+    }
+  }
+
+  /**
+   * שליפת כל התרגילים
+   */
+  async fetchAllExercises(): Promise<Exercise[]> {
+    try {
+      const response = await this.fetchApi<PaginatedResponse<any>>(
+        `${ENDPOINTS.exercises}?language=${API_LANGUAGE}&status=${API_STATUS}&limit=200`
+      );
+
+      if (!response.results || response.results.length === 0) {
+        return this.getFallbackExercises();
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+      const exercises: Exercise[] = response.results
+        .filter((ex: any) => ex.name && ex.category)
+        .map((ex: any) => this.mapExercise(ex));
+
+      console.log(`✅ Fetched ${exercises.length} exercises from API`);
+      return exercises;
+    } catch (error) {
+      console.error("❌ Failed to fetch exercises:", error);
+      return this.getFallbackExercises();
     }
   }
 
-  throw new Error("Max retries exceeded");
-};
+  /**
+   * שליפת פרטי תרגיל
+   */
+  async fetchExerciseById(exerciseId: string): Promise<Exercise | null> {
+    try {
+      const response = await this.fetchApi<any>(
+        `${ENDPOINTS.exercises}${exerciseId}/`
+      );
 
-// שיפור generatePlanDefaults
-const generatePlanDefaults = (source: "wger" | "local" = "wger") => ({
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  userId: source === "wger" ? "public" : "temp-user-id",
-  isActive: true,
-  rating: 0,
-  difficulty: "intermediate" as const,
-  tags: source === "wger" ? ["public", "wger"] : ["user-generated"],
-  weeklyGoal: 3,
-  targetMuscleGroups: ["Full Body"] as string[],
-  durationWeeks: 4,
-});
+      return this.mapExercise(response);
+    } catch (error) {
+      console.error(`❌ Failed to fetch exercise ${exerciseId}:`, error);
 
-// Type guard משופר
-const isValidPlan = (plan: any): plan is Plan => {
-  return (
-    plan &&
-    typeof plan.id === "string" &&
-    typeof plan.name === "string" &&
-    typeof plan.createdAt === "string" &&
-    typeof plan.updatedAt === "string" &&
-    typeof plan.userId === "string"
-  );
-};
+      // Try fallback
+      const fallback = this.getFallbackExercises().find(
+        (ex) => ex.id === exerciseId
+      );
+      return fallback || null;
+    }
+  }
 
-// תוכניות בסיס - 3 בלבד, זמינות לכל המשתמשים
-const getBasePlans = (): Plan[] => {
-  return [
-    {
-      ...generatePlanDefaults("local"),
-      id: "base-plan-fullbody",
-      name: "Full Body למתחילים",
-      description: "תוכנית מאוזנת 3x בשבוע להתחלה מושלמת",
-      creator: "Gymovo Team",
-      difficulty: "beginner",
-      days: [],
-      targetMuscleGroups: ["Full Body"],
+  /**
+   * שליפת תוכניות ציבוריות
+   */
+  async fetchPublicPlans(): Promise<Plan[]> {
+    try {
+      // First try new endpoints
+      const response = await this.fetchApi<PaginatedResponse<any>>(
+        `${ENDPOINTS.publicTemplates}?limit=20`
+      );
+
+      if (response.results && response.results.length > 0) {
+        return response.results.map((plan: any) => this.mapPlan(plan));
+      }
+
+      // Fallback to base plans
+      return this.getBasePlans();
+    } catch (error) {
+      console.error("❌ Failed to fetch public plans:", error);
+      return this.getBasePlans();
+    }
+  }
+
+  /**
+   * חיפוש תרגילים
+   */
+  async searchExercises(query: string): Promise<Exercise[]> {
+    try {
+      const response = await this.fetchApi<PaginatedResponse<any>>(
+        `${ENDPOINTS.exercises}search/?term=${encodeURIComponent(query)}`
+      );
+
+      return response.results.map((ex: any) => this.mapExercise(ex));
+    } catch (error) {
+      console.error("❌ Failed to search exercises:", error);
+
+      // Fallback to local search
+      const fallback = this.getFallbackExercises();
+      return fallback.filter((ex) =>
+        ex.name.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+  }
+
+  /**
+   * שליפת קטגוריות
+   */
+  async fetchCategories(): Promise<{ id: number; name: string }[]> {
+    try {
+      const response = await this.fetchApi<PaginatedResponse<any>>(
+        `${ENDPOINTS.exerciseCategory}?language=${API_LANGUAGE}`
+      );
+
+      return response.results;
+    } catch (error) {
+      console.error("❌ Failed to fetch categories:", error);
+      return this.getFallbackCategories();
+    }
+  }
+
+  /**
+   * שליפת ציוד
+   */
+  async fetchEquipment(): Promise<{ id: number; name: string }[]> {
+    try {
+      const response = await this.fetchApi<PaginatedResponse<any>>(
+        `${ENDPOINTS.equipment}?language=${API_LANGUAGE}`
+      );
+
+      return response.results;
+    } catch (error) {
+      console.error("❌ Failed to fetch equipment:", error);
+      return this.getFallbackEquipment();
+    }
+  }
+
+  // Mapping functions
+  private mapExercise(data: any): Exercise {
+    return {
+      id: String(data.id),
+      name: data.name,
+      description: this.cleanDescription(data.description || ""),
+      category: this.mapCategory(data.category),
+      equipment: this.mapEquipment(data.equipment),
+      targetMuscleGroups: this.mapMuscles(data.muscles || []),
+      instructions: this.extractInstructions(data.description),
+      difficulty: this.mapDifficulty(data.difficulty),
+      imageUrl: data.images?.[0]?.image || undefined,
+      videoUrl: data.videos?.[0]?.video || undefined,
+    };
+  }
+
+  private mapPlan(data: any): Plan {
+    return {
+      id: `wger-${data.id}`,
+      name: data.name,
+      description: data.description || "",
+      createdAt: data.created || new Date().toISOString(),
+      updatedAt: data.last_updated || new Date().toISOString(),
+      userId: "public",
+      isActive: false,
+      rating: data.rating || 0,
+      difficulty: this.mapDifficulty(data.difficulty),
+      tags: ["public", "wger"],
+      weeklyGoal: data.weekly_goal || 3,
+      targetMuscleGroups: [],
+      durationWeeks: data.duration || 4,
+      days: [], // Would need separate API call
+    };
+  }
+
+  // Helper functions
+  private cleanDescription(description: string): string {
+    // Remove HTML tags
+    return description.replace(/<[^>]*>/g, "").trim();
+  }
+
+  private extractInstructions(description: string): string[] {
+    const cleaned = this.cleanDescription(description);
+    return cleaned
+      .split(/\n|\./)
+      .filter((line) => line.trim().length > 0)
+      .map((line) => line.trim());
+  }
+
+  private mapCategory(categoryId: number): string {
+    const categoryMap: Record<number, string> = {
+      8: "זרועות",
+      9: "רגליים",
+      10: "ליבה",
+      11: "חזה",
+      12: "גב",
+      13: "כתפיים",
+      14: "אירובי",
+      15: "גמישות",
+    };
+    return categoryMap[categoryId] || "אחר";
+  }
+
+  private mapEquipment(equipmentIds: number[]): string[] {
+    const equipmentMap: Record<number, string> = {
+      1: "משקולת",
+      2: "מוט",
+      3: "מכונה",
+      4: "רצועות",
+      5: "משקל גוף",
+      6: "כדור כוח",
+      7: "קטלבל",
+      8: "גומיות",
+    };
+    return equipmentIds.map((id) => equipmentMap[id] || "אחר");
+  }
+
+  private mapMuscles(muscleIds: number[]): string[] {
+    const muscleMap: Record<number, string> = {
+      1: "שריר הזרוע הדו-ראשי",
+      2: "דלתא קדמית",
+      3: "דלתא צידית",
+      4: "חזה",
+      5: "שריר הזרוע התלת-ראשי",
+      6: "בטן",
+      7: "גב תחתון",
+      8: "גב עליון",
+      9: "ירך קדמית",
+      10: "ירך אחורית",
+      11: "ישבן",
+      12: "סובך",
+    };
+    return muscleIds.map((id) => muscleMap[id] || "אחר");
+  }
+
+  private mapDifficulty(
+    value?: number | string
+  ): "beginner" | "intermediate" | "advanced" {
+    if (typeof value === "number") {
+      if (value <= 3) return "beginner";
+      if (value <= 7) return "intermediate";
+      return "advanced";
+    }
+    return "intermediate";
+  }
+
+  // Fallback data
+  private getFallbackExercises(): Exercise[] {
+    return [
+      {
+        id: "fallback-1",
+        name: "לחיצת חזה עם משקולות",
+        description: "תרגיל בסיסי לחיזוק שרירי החזה",
+        category: "חזה",
+        equipment: ["משקולת"],
+        targetMuscleGroups: ["חזה", "שריר הזרוע התלת-ראשי"],
+        instructions: [
+          "שכב על ספסל שטוח עם משקולת בכל יד",
+          "הורד את המשקולות לצדי החזה",
+          "דחוף למעלה תוך יישור הידיים",
+        ],
+        difficulty: "beginner",
+      },
+      {
+        id: "fallback-2",
+        name: "סקוואט",
+        description: "תרגיל מורכב לחיזוק הרגליים והישבנים",
+        category: "רגליים",
+        equipment: ["משקל גוף"],
+        targetMuscleGroups: ["ירך קדמית", "ישבן"],
+        instructions: [
+          "עמוד עם רגליים ברוחב הכתפיים",
+          "רד למטה כאילו אתה יושב על כיסא",
+          "חזור למעלה תוך דחיפה מהעקבים",
+        ],
+        difficulty: "beginner",
+      },
+      {
+        id: "fallback-3",
+        name: "חתירה בכבל",
+        description: "תרגיל לחיזוק שרירי הגב",
+        category: "גב",
+        equipment: ["מכונה"],
+        targetMuscleGroups: ["גב עליון", "גב תחתון", "שריר הזרוע הדו-ראשי"],
+        instructions: [
+          "שב מול מכונת הכבלים",
+          "משוך את הידית לכיוון הבטן",
+          "החזר לאט תוך שליטה",
+        ],
+        difficulty: "intermediate",
+      },
+    ];
+  }
+
+  private getBasePlans(): Plan[] {
+    const defaultPlanData = {
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: "public",
+      isActive: false,
+      rating: 0,
+      weeklyGoal: 3,
       durationWeeks: 8,
-      tags: ["base-plan", "beginner", "full-body"],
-    },
-    {
-      ...generatePlanDefaults("local"),
-      id: "base-plan-ppl",
-      name: "Push/Pull/Legs",
-      description: "תוכנית PPL קלאסית לבניית שריר",
-      creator: "Gymovo Team",
-      difficulty: "intermediate",
       days: [],
-      targetMuscleGroups: ["Full Body"],
-      durationWeeks: 12,
-      tags: ["base-plan", "intermediate", "ppl"],
-    },
-    {
-      ...generatePlanDefaults("local"),
-      id: "base-plan-strength",
-      name: "StrongLifts 5x5",
-      description: "תוכנית כוח עם תרגילים מורכבים",
-      creator: "Gymovo Team",
-      difficulty: "intermediate",
-      days: [],
-      targetMuscleGroups: ["Full Body"],
-      durationWeeks: 16,
-      tags: ["base-plan", "strength", "5x5"],
-    },
-  ];
-};
+    };
 
-// fetchPublicPlans - מחזיר תוכניות בסיס
-export const fetchPublicPlans = async (): Promise<Plan[]> => {
-  console.log("🔍 Loading base workout plans");
-  return getBasePlans();
-
-  /* קוד מקורי - מוסתר כרגע בגלל בעיות API
-  try {
-    const response = await fetchWithRetry(
-      `${WGER_API_URL}/workout/?language=2&status=2&limit=15`
-    );
-
-    const data = await response.json();
-    console.log(`📦 Received ${data.results?.length || 0} plans from API`);
-
-    if (!data.results || !Array.isArray(data.results)) {
-      console.warn("⚠️ Unexpected format from API");
-      return getBasePlans();
-    }
-
-    const plans: Plan[] = data.results
-      .filter((p: any) => p.name && p.description)
-      .map((plan: any) => ({
-        id: `wger-plan-${plan.id}`,
-        name: plan.name,
-        description: plan.description || "תוכנית מומלצת מ-WGER",
-        ...generatePlanDefaults("wger"),
-        days: [],
-      }));
-
-    plans.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    console.log(`✅ Successfully parsed ${plans.length} plans`);
-    return plans;
-  } catch (error) {
-    console.error("❌ Failed to fetch public plans:", error);
-    return getBasePlans();
+    return [
+      {
+        ...defaultPlanData,
+        id: "base-plan-fullbody",
+        name: "Full Body למתחילים",
+        description: "תוכנית מאוזנת 3x בשבוע להתחלה מושלמת",
+        difficulty: "beginner",
+        tags: ["base-plan", "beginner", "full-body"],
+        targetMuscleGroups: ["Full Body"],
+      },
+      {
+        ...defaultPlanData,
+        id: "base-plan-ppl",
+        name: "Push/Pull/Legs",
+        description: "תוכנית PPL קלאסית לבניית שריר",
+        difficulty: "intermediate",
+        tags: ["base-plan", "intermediate", "ppl"],
+        targetMuscleGroups: ["Full Body"],
+        durationWeeks: 12,
+      },
+      {
+        ...defaultPlanData,
+        id: "base-plan-upper-lower",
+        name: "Upper/Lower Split",
+        description: "תוכנית מפוצלת לגוף עליון ותחתון",
+        difficulty: "intermediate",
+        tags: ["base-plan", "intermediate", "split"],
+        targetMuscleGroups: ["Full Body"],
+        weeklyGoal: 4,
+      },
+    ];
   }
-  */
-};
 
-// פונקציה חדשה: fetchPublicPlansWithFallback
-export const fetchPublicPlansWithFallback = async (): Promise<Plan[]> => {
-  // מחזיר ישירות תוכניות בסיס
-  return getBasePlans();
-};
-
-// Helper functions for mapping
-const mapCategory = (categoryId: number | undefined): string => {
-  const categoryMap: Record<number, string> = {
-    8: "זרועות",
-    9: "רגליים",
-    10: "ליבה",
-    11: "חזה",
-    12: "גב",
-    13: "כתפיים",
-    14: "ישבן",
-    15: "כללי",
-  };
-  return categoryMap[categoryId || 15] || "כללי";
-};
-
-const mapEquipment = (equipmentIds: number[] | undefined): string[] => {
-  if (!equipmentIds || equipmentIds.length === 0) return ["Bodyweight"];
-
-  const equipmentMap: Record<number, string> = {
-    1: "Barbell",
-    2: "SZ-Bar",
-    3: "Dumbbell",
-    4: "Gym mat",
-    5: "Swiss Ball",
-    6: "Pull-up bar",
-    7: "Bodyweight",
-    8: "Bench",
-    9: "Incline bench",
-    10: "Kettlebell",
-  };
-
-  return equipmentIds.map((id) => equipmentMap[id]).filter(Boolean) as string[];
-};
-
-const getMuscleGroup = (muscleId: number): string => {
-  const muscleMap: Record<number, string> = {
-    1: "זרועות",
-    2: "כתפיים",
-    3: "זרועות",
-    4: "חזה",
-    5: "גב",
-    6: "ליבה",
-    7: "רגליים",
-    8: "רגליים",
-    9: "גב",
-    10: "רגליים",
-    11: "רגליים",
-    12: "גב",
-    13: "כתפיים",
-    14: "זרועות",
-    15: "ליבה",
-  };
-  return muscleMap[muscleId] || "כללי";
-};
-
-const cleanInstructions = (description: string): string => {
-  return description
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .trim();
-};
-
-// תרגילי fallback בעברית
-const getFallbackExercises = (): Exercise[] => [
-  {
-    id: "fallback-1",
-    name: "לחיצת חזה",
-    description: "תרגיל בסיסי לחיזוק שרירי החזה",
-    category: "חזה",
-    equipment: ["Barbell", "Bench"],
-    targetMuscleGroups: ["חזה", "זרועות", "כתפיים"],
-    instructions: [
-      "שכב על הספסל כשהמוט מעל החזה.",
-      "הורד את המוט לאט לכיוון החזה.",
-      "דחוף חזרה למצב ההתחלה.",
-    ],
-    difficulty: "beginner",
-  },
-  {
-    id: "fallback-2",
-    name: "סקוואט",
-    description: "תרגיל מצוין לחיזוק הרגליים",
-    category: "רגליים",
-    equipment: ["Barbell"],
-    targetMuscleGroups: ["רגליים", "ישבן"],
-    instructions: [
-      "הנח את המוט על הכתפיים.",
-      "רד למטה תוך כיפוף הברכיים עד 90 מעלות וחזור למעלה.",
-    ],
-    difficulty: "beginner",
-  },
-  {
-    id: "fallback-3",
-    name: "מתח רחב",
-    description: "תרגיל מעולה לחיזוק הגב",
-    category: "גב",
-    equipment: ["Pull-up bar"],
-    targetMuscleGroups: ["גב"],
-    instructions: [
-      "אחוז במוט באחיזה רחבה ומשוך את הגוף למעלה עד שהסנטר מעל המוט.",
-    ],
-    difficulty: "advanced",
-  },
-  {
-    id: "fallback-4",
-    name: "לחיצת כתפיים",
-    description: "תרגיל לפיתוח כתפיים חזקות",
-    category: "כתפיים",
-    equipment: ["Dumbbell"],
-    targetMuscleGroups: ["כתפיים"],
-    instructions: ["החזק משקולות בגובה הכתפיים ולחץ למעלה עד יישור הידיים."],
-    difficulty: "intermediate",
-  },
-  {
-    id: "fallback-5",
-    name: "כפיפות בטן",
-    description: "תרגיל קלאסי לחיזוק שרירי הבטן",
-    category: "ליבה",
-    equipment: ["Bodyweight"],
-    targetMuscleGroups: ["ליבה"],
-    instructions: [
-      "שכב על הגב עם ברכיים כפופות. הרם את פלג הגוף העליון לכיוון הברכיים.",
-    ],
-    difficulty: "beginner",
-  },
-];
-
-// fetchAllExercises - משתמש רק בתרגילי fallback
-export const fetchAllExercises = async (): Promise<Exercise[]> => {
-  console.log("🏋️ Using fallback exercises (API temporarily disabled)");
-  return getFallbackExercises();
-
-  /* קוד מקורי - להפעלה כשה-API יחזור לעבוד
-  try {
-    const response = await fetchWithRetry(
-      `${WGER_API_URL}/exercise/?language=2&status=2&limit=200`
-    );
-
-    const data = await response.json();
-    console.log(`📊 Received ${data.results?.length || 0} exercises`);
-
-    if (!data.results || !Array.isArray(data.results)) {
-      console.warn("⚠️ Unexpected format from API");
-      return getFallbackExercises();
-    }
-
-    const exercises: Exercise[] = data.results
-      .filter((ex: any) => ex.name && ex.category)
-      .map((ex: any) => ({
-        id: String(ex.id),
-        name: ex.name,
-        description: ex.description || "",
-        category: mapCategory(ex.category),
-        equipment: mapEquipment(ex.equipment),
-        targetMuscleGroups:
-          ex.muscles?.map((m: number) => getMuscleGroup(m)) || [],
-        instructions: ex.description
-          ? [cleanInstructions(ex.description)]
-          : [],
-        difficulty: "intermediate" as const,
-      }));
-
-    if (exercises.length < 50) {
-      exercises.push(...getFallbackExercises());
-    }
-
-    console.log(`✅ Total exercises: ${exercises.length}`);
-    return exercises;
-  } catch (error) {
-    console.error("❌ Failed to fetch exercises:", error);
-    return getFallbackExercises();
+  private getFallbackCategories() {
+    return [
+      { id: 8, name: "זרועות" },
+      { id: 9, name: "רגליים" },
+      { id: 10, name: "ליבה" },
+      { id: 11, name: "חזה" },
+      { id: 12, name: "גב" },
+      { id: 13, name: "כתפיים" },
+    ];
   }
-  */
+
+  private getFallbackEquipment() {
+    return [
+      { id: 1, name: "משקולת" },
+      { id: 2, name: "מוט" },
+      { id: 3, name: "מכונה" },
+      { id: 5, name: "משקל גוף" },
+    ];
+  }
+}
+
+// Singleton instance
+const wgerApiService = new WgerApiService();
+
+// Export simplified API
+export const wgerApi = {
+  // Connection test
+  testConnection: () => wgerApiService.testConnection(),
+
+  // Authentication
+  authenticate: (username: string, password: string) =>
+    wgerApiService.authenticate(username, password),
+
+  // Exercises
+  fetchAllExercises: () => wgerApiService.fetchAllExercises(),
+  fetchExerciseById: (id: string) => wgerApiService.fetchExerciseById(id),
+  searchExercises: (query: string) => wgerApiService.searchExercises(query),
+
+  // Plans
+  fetchPublicPlans: () => wgerApiService.fetchPublicPlans(),
+
+  // Reference data
+  fetchCategories: () => wgerApiService.fetchCategories(),
+  fetchEquipment: () => wgerApiService.fetchEquipment(),
 };
 
-// fetchExerciseInfoById - מחזיר null כי אין API
-export const fetchExerciseInfoById = async (
-  exerciseId: string
-): Promise<Exercise | null> => {
-  console.log(`🔍 Exercise API disabled, returning null for ID: ${exerciseId}`);
+// Legacy exports for backward compatibility
+export const fetchAllExercises = wgerApi.fetchAllExercises;
+export const fetchExerciseInfoById = wgerApi.fetchExerciseById;
+export const fetchPublicPlans = wgerApi.fetchPublicPlans;
+export const fetchPublicPlansWithFallback = wgerApi.fetchPublicPlans;
 
-  // מנסה למצוא בתרגילי fallback
-  const fallbackExercises = getFallbackExercises();
-  const found = fallbackExercises.find((ex) => ex.id === exerciseId);
-
-  return found || null;
-};
-
-// ייצוא נוסף של פונקציות עזר
+// Export types and helpers
 export {
-  generatePlanDefaults,
-  isValidPlan,
-  mapCategory,
-  mapEquipment,
-  getMuscleGroup,
+  WgerApiService,
+  WgerApiError,
+  type PaginatedResponse,
+  type AuthTokens,
 };
