@@ -20,10 +20,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useUserStore, useGuestUser, UserState } from "../../stores/userStore";
+import { useUserStore, useIsGuest } from "../../stores/userStore";
 import { useWorkoutStore } from "../../stores/workoutStore";
 import { RootStackParamList } from "../../types/navigation";
-import { showToast } from "../../utils/toast";
+import { Toast } from "../../components/common/Toast";
+import { colors } from "../../theme/colors";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -33,145 +34,141 @@ const PASSWORD_MIN_LENGTH = 6;
 
 export const ConvertGuestScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const convertGuestToUser = useUserStore(
-    (state: UserState) => state.convertGuestToUser
-  );
-  const { daysUntilExpiry } = useGuestUser();
+  const convertGuestToUser = useUserStore((state) => state.convertGuestToUser);
+  const getGuestExpiryDate = useUserStore((state) => state.getGuestExpiryDate);
+  const isGuest = useIsGuest();
   const workoutCount = useWorkoutStore((state) => state.workouts.length);
+
+  // חישוב ימים לתפוגה
+  const daysUntilExpiry = useMemo(() => {
+    const expiryDate = getGuestExpiryDate();
+    if (!expiryDate) return 0;
+
+    const today = new Date();
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  }, [getGuestExpiryDate]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
     confirmPassword?: string;
+    name?: string;
   }>({});
 
-  // Validation functions
-  const validateEmail = useCallback((email: string): boolean => {
-    return EMAIL_REGEX.test(email.trim());
-  }, []);
-
-  const validatePassword = useCallback((password: string): boolean => {
-    return password.length >= PASSWORD_MIN_LENGTH;
-  }, []);
-
-  const validateForm = useCallback((): boolean => {
+  // Validation
+  const validateForm = useCallback(() => {
     const newErrors: typeof errors = {};
 
-    // Email validation
-    if (!email.trim()) {
+    if (!email) {
       newErrors.email = "אימייל הוא שדה חובה";
-    } else if (!validateEmail(email)) {
+    } else if (!EMAIL_REGEX.test(email)) {
       newErrors.email = "כתובת אימייל לא תקינה";
     }
 
-    // Password validation
     if (!password) {
       newErrors.password = "סיסמה היא שדה חובה";
-    } else if (!validatePassword(password)) {
+    } else if (password.length < PASSWORD_MIN_LENGTH) {
       newErrors.password = `הסיסמה חייבת להכיל לפחות ${PASSWORD_MIN_LENGTH} תווים`;
     }
 
-    // Confirm password validation
     if (!confirmPassword) {
-      newErrors.confirmPassword = "אימות סיסמה הוא שדה חובה";
+      newErrors.confirmPassword = "אישור סיסמה הוא שדה חובה";
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = "הסיסמאות לא תואמות";
     }
 
+    if (!name) {
+      newErrors.name = "שם הוא שדה חובה";
+    } else if (name.length < 2) {
+      newErrors.name = "השם חייב להכיל לפחות 2 תווים";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [email, password, confirmPassword, validateEmail, validatePassword]);
+  }, [email, password, confirmPassword, name]);
 
-  // Clear error for specific field when user starts typing
-  const handleFieldChange = useCallback(
-    (field: keyof typeof errors, value: string) => {
-      switch (field) {
-        case "email":
-          setEmail(value);
-          if (errors.email) {
-            setErrors((prev) => ({ ...prev, email: undefined }));
-          }
-          break;
-        case "password":
-          setPassword(value);
-          if (errors.password) {
-            setErrors((prev) => ({ ...prev, password: undefined }));
-          }
-          break;
-        case "confirmPassword":
-          setConfirmPassword(value);
-          if (errors.confirmPassword) {
-            setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-          }
-          break;
-      }
-    },
-    [errors]
-  );
-
+  // Handle conversion
   const handleConvert = useCallback(async () => {
-    // Dismiss keyboard
-    Keyboard.dismiss();
-
-    // Validate form
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
+    if (!isGuest) {
+      Alert.alert("שגיאה", "המשתמש כבר רשום במערכת");
+      return;
+    }
+
+    Keyboard.dismiss();
     setLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const result = await convertGuestToUser(
-        email.trim().toLowerCase(),
-        password
+      await convertGuestToUser(
+        email.toLowerCase().trim(),
+        password,
+        name.trim()
       );
 
-      if (result.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast("החשבון נוצר בהצלחה! 🎉", "success");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Toast.success("ברוך הבא! 🎉", "החשבון שלך נוצר בהצלחה וכל הנתונים נשמרו");
 
-        // Navigate to main screen
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Main" }],
-        });
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-
-        // Handle specific errors
-        if (
-          result.error?.includes("already exists") ||
-          result.error?.includes("already registered")
-        ) {
-          setErrors({ email: "כתובת האימייל כבר רשומה במערכת" });
-        } else {
-          Alert.alert("שגיאה", result.error || "לא הצלחנו ליצור את החשבון");
-        }
-      }
-    } catch (error) {
-      console.error("Convert guest error:", error);
+      // ניווט למסך הבית
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Home" as keyof RootStackParamList }],
+      });
+    } catch (error: any) {
+      console.error("Conversion error:", error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("שגיאה", "אירעה שגיאה בלתי צפויה. אנא נסה שוב מאוחר יותר.");
+
+      Toast.error(
+        "שגיאה",
+        error.message || "לא הצלחנו ליצור את החשבון. נסה שוב"
+      );
     } finally {
       setLoading(false);
     }
-  }, [email, password, validateForm, convertGuestToUser, navigation]);
+  }, [
+    email,
+    password,
+    name,
+    validateForm,
+    isGuest,
+    convertGuestToUser,
+    navigation,
+  ]);
 
-  // Calculate form completion percentage
-  const formProgress = useMemo(() => {
-    let completed = 0;
-    if (validateEmail(email)) completed++;
-    if (validatePassword(password)) completed++;
-    if (password && password === confirmPassword) completed++;
-    return (completed / 3) * 100;
-  }, [email, password, confirmPassword, validateEmail, validatePassword]);
+  // Urgency indicator
+  const urgencyColor = useMemo(() => {
+    if (daysUntilExpiry <= 3) return colors.error;
+    if (daysUntilExpiry <= 7) return colors.warning;
+    return colors.primary;
+  }, [daysUntilExpiry]);
+
+  if (!isGuest) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centeredContainer}>
+          <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+          <Text style={styles.successTitle}>אתה כבר רשום!</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>חזור</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -181,144 +178,134 @@ export const ConvertGuestScreen: React.FC = () => {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* כותרת ראשית */}
+          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
-              style={styles.backButton}
+              style={styles.backIcon}
               onPress={() => navigation.goBack()}
-              activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={24} color="#fff" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
 
-            <LinearGradient
-              colors={["#3B82F6", "#2563EB"]}
-              style={styles.iconContainer}
-            >
-              <Ionicons name="person-add" size={40} color="white" />
-            </LinearGradient>
-
-            <Text style={styles.title}>שמור את ההתקדמות שלך</Text>
-            <Text style={styles.subtitle}>
-              צור חשבון בחינם וכל הנתונים שלך יישמרו
-            </Text>
-          </View>
-
-          {/* Progress bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[styles.progressFill, { width: `${formProgress}%` }]}
-              />
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>המר חשבון אורח</Text>
+              <Text style={styles.subtitle}>
+                שמור את כל הנתונים שלך לצמיתות
+              </Text>
             </View>
           </View>
 
-          {/* כרטיס מידע */}
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoNumber}>{workoutCount}</Text>
-                <Text style={styles.infoLabel}>אימונים</Text>
-              </View>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoItem}>
-                <Text style={styles.infoNumber}>{daysUntilExpiry}</Text>
-                <Text style={styles.infoLabel}>ימים נותרו</Text>
-              </View>
+          {/* Urgency Banner */}
+          <LinearGradient
+            colors={[urgencyColor, `${urgencyColor}DD`]}
+            style={styles.urgencyBanner}
+          >
+            <Ionicons
+              name={daysUntilExpiry <= 3 ? "warning" : "time-outline"}
+              size={24}
+              color="white"
+            />
+            <View style={styles.urgencyTextContainer}>
+              <Text style={styles.urgencyTitle}>
+                נותרו {daysUntilExpiry} ימים
+              </Text>
+              <Text style={styles.urgencySubtitle}>
+                {workoutCount} אימונים יימחקו אם לא תירשם
+              </Text>
             </View>
-            {daysUntilExpiry <= 7 && (
-              <View style={styles.warningBadge}>
-                <Ionicons name="warning" size={16} color="#F59E0B" />
-                <Text style={styles.warningText}>
-                  הנתונים שלך יימחקו בעוד {daysUntilExpiry} ימים
-                </Text>
-              </View>
-            )}
-            <Text style={styles.infoText}>
-              כל האימונים והנתונים שלך יועברו לחשבון החדש
-            </Text>
-          </View>
+          </LinearGradient>
 
-          {/* טופס הרשמה */}
+          {/* Form */}
           <View style={styles.form}>
-            {/* אימייל */}
+            {/* Name Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>שם מלא</Text>
+              <View
+                style={[styles.inputWrapper, errors.name && styles.inputError]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="הכנס את שמך"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  editable={!loading}
+                />
+              </View>
+              {errors.name && (
+                <Text style={styles.errorText}>{errors.name}</Text>
+              )}
+            </View>
+
+            {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>אימייל</Text>
               <View
-                style={[
-                  styles.inputWrapper,
-                  errors.email && styles.inputWrapperError,
-                ]}
+                style={[styles.inputWrapper, errors.email && styles.inputError]}
               >
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={errors.email ? "#EF4444" : "#6B7280"}
-                  style={styles.inputIcon}
+                  color={colors.textSecondary}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="your@email.com"
-                  placeholderTextColor="#9CA3AF"
                   value={email}
-                  onChangeText={(text) => handleFieldChange("email", text)}
+                  onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  autoCorrect={false}
                   autoComplete="email"
-                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  editable={!loading}
                 />
-                {validateEmail(email) && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color="#10B981"
-                    style={styles.validIcon}
-                  />
-                )}
               </View>
               {errors.email && (
                 <Text style={styles.errorText}>{errors.email}</Text>
               )}
             </View>
 
-            {/* סיסמה */}
+            {/* Password Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>סיסמה</Text>
               <View
                 style={[
                   styles.inputWrapper,
-                  errors.password && styles.inputWrapperError,
+                  errors.password && styles.inputError,
                 ]}
               >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={errors.password ? "#EF4444" : "#6B7280"}
-                  style={styles.inputIcon}
+                  color={colors.textSecondary}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder={`לפחות ${PASSWORD_MIN_LENGTH} תווים`}
-                  placeholderTextColor="#9CA3AF"
+                  placeholder="לפחות 6 תווים"
                   value={password}
-                  onChangeText={(text) => handleFieldChange("password", text)}
+                  onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  autoComplete="password-new"
-                  textContentType="newPassword"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  editable={!loading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={20}
-                    color="#6B7280"
+                    color={colors.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
@@ -327,335 +314,261 @@ export const ConvertGuestScreen: React.FC = () => {
               )}
             </View>
 
-            {/* אימות סיסמה */}
+            {/* Confirm Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>אימות סיסמה</Text>
+              <Text style={styles.label}>אישור סיסמה</Text>
               <View
                 style={[
                   styles.inputWrapper,
-                  errors.confirmPassword && styles.inputWrapperError,
+                  errors.confirmPassword && styles.inputError,
                 ]}
               >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={errors.confirmPassword ? "#EF4444" : "#6B7280"}
-                  style={styles.inputIcon}
+                  color={colors.textSecondary}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="הקלד שוב את הסיסמה"
-                  placeholderTextColor="#9CA3AF"
+                  placeholder="הכנס שוב את הסיסמה"
                   value={confirmPassword}
-                  onChangeText={(text) =>
-                    handleFieldChange("confirmPassword", text)
-                  }
+                  onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
-                  autoComplete="password-new"
-                  textContentType="newPassword"
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={handleConvert}
+                  editable={!loading}
                 />
-                {password && password === confirmPassword && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color="#10B981"
-                    style={styles.validIcon}
-                  />
-                )}
               </View>
               {errors.confirmPassword && (
                 <Text style={styles.errorText}>{errors.confirmPassword}</Text>
               )}
             </View>
-
-            {/* יתרונות */}
-            <View style={styles.benefits}>
-              <BenefitItem
-                icon="cloud-upload"
-                text="גיבוי אוטומטי בענן"
-                color="#3B82F6"
-              />
-              <BenefitItem
-                icon="sync"
-                text="סנכרון בין מכשירים"
-                color="#10B981"
-              />
-              <BenefitItem
-                icon="stats-chart"
-                text="סטטיסטיקות מתקדמות"
-                color="#8B5CF6"
-              />
-              <BenefitItem
-                icon="trophy"
-                text="מעקב הישגים אישיים"
-                color="#F59E0B"
-              />
-            </View>
-
-            {/* כפתור יצירת חשבון */}
-            <TouchableOpacity
-              style={[
-                styles.createButton,
-                (loading || formProgress < 100) && styles.createButtonDisabled,
-              ]}
-              onPress={handleConvert}
-              activeOpacity={0.9}
-              disabled={loading || formProgress < 100}
-            >
-              <LinearGradient
-                colors={
-                  formProgress === 100
-                    ? ["#3B82F6", "#2563EB"]
-                    : ["#4B5563", "#374151"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.createButtonGradient}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <Text style={styles.createButtonText}>
-                      צור חשבון ושמור נתונים
-                    </Text>
-                    <Ionicons name="arrow-forward" size={20} color="white" />
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* הערה */}
-            <Text style={styles.note}>
-              ההרשמה חינמית לחלוטין • ללא כרטיס אשראי
-            </Text>
           </View>
+
+          {/* Benefits */}
+          <View style={styles.benefitsContainer}>
+            <Text style={styles.benefitsTitle}>מה תקבל:</Text>
+            <View style={styles.benefitItem}>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={colors.success}
+              />
+              <Text style={styles.benefitText}>
+                שמירת כל {workoutCount} האימונים שלך
+              </Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={colors.success}
+              />
+              <Text style={styles.benefitText}>גיבוי אוטומטי בענן</Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={colors.success}
+              />
+              <Text style={styles.benefitText}>גישה מכל מכשיר</Text>
+            </View>
+          </View>
+
+          {/* Convert Button */}
+          <TouchableOpacity
+            style={[styles.convertButton, loading && styles.disabledButton]}
+            onPress={handleConvert}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              style={styles.buttonGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>צור חשבון ושמור נתונים</Text>
+                  <Ionicons name="arrow-forward" size={20} color="white" />
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-// רכיב יתרון
-const BenefitItem: React.FC<{
-  icon: string;
-  text: string;
-  color: string;
-}> = ({ icon, text, color }) => (
-  <View style={styles.benefitItem}>
-    <View style={[styles.benefitIcon, { backgroundColor: `${color}15` }]}>
-      <Ionicons name={icon as any} size={16} color={color} />
-    </View>
-    <Text style={styles.benefitText}>{text}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    flexGrow: 1,
+    paddingBottom: 40,
   },
-  header: {
+  centeredContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    padding: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.text,
+    marginTop: 16,
+    marginBottom: 32,
   },
   backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    paddingBottom: 10,
+  },
+  backIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+  titleContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 8,
-    textAlign: "center",
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: "#9CA3AF",
-    textAlign: "center",
-    marginBottom: 24,
+    color: colors.textSecondary,
   },
-  progressContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: "#1F2937",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#3B82F6",
-    borderRadius: 2,
-  },
-  infoCard: {
-    backgroundColor: "#1F2937",
-    marginHorizontal: 20,
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-  },
-  infoRow: {
+  urgencyBanner: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
+    margin: 20,
+    marginTop: 10,
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
   },
-  infoItem: {
-    alignItems: "center",
+  urgencyTextContainer: {
     flex: 1,
   },
-  infoDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#374151",
-  },
-  infoNumber: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#3B82F6",
-    marginBottom: 4,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: "#9CA3AF",
-  },
-  warningBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 12,
-    gap: 6,
-  },
-  warningText: {
-    fontSize: 12,
-    color: "#F59E0B",
+  urgencyTitle: {
+    fontSize: 16,
     fontWeight: "600",
+    color: "white",
+    marginBottom: 2,
   },
-  infoText: {
+  urgencySubtitle: {
     fontSize: 14,
-    color: "#D1D5DB",
-    textAlign: "center",
+    color: "rgba(255, 255, 255, 0.9)",
   },
   form: {
-    paddingHorizontal: 20,
+    padding: 20,
+    paddingTop: 0,
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#D1D5DB",
+    fontSize: 16,
+    fontWeight: "500",
+    color: colors.text,
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1F2937",
+    backgroundColor: colors.surface,
     borderRadius: 12,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#374151",
+    borderColor: "transparent",
   },
-  inputWrapperError: {
-    borderColor: "#EF4444",
-  },
-  inputIcon: {
-    marginLeft: 16,
+  inputError: {
+    borderColor: colors.error,
   },
   input: {
     flex: 1,
-    height: 50,
+    paddingVertical: 16,
     paddingHorizontal: 12,
     fontSize: 16,
-    color: "#fff",
+    color: colors.text,
   },
   eyeButton: {
-    padding: 12,
-  },
-  validIcon: {
-    marginRight: 12,
+    padding: 8,
   },
   errorText: {
-    fontSize: 12,
-    color: "#EF4444",
+    color: colors.error,
+    fontSize: 14,
     marginTop: 4,
     marginLeft: 4,
   },
-  benefits: {
-    marginBottom: 24,
-    gap: 12,
+  benefitsContainer: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  benefitsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 12,
   },
   benefitItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  benefitIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+    marginBottom: 8,
   },
   benefitText: {
-    flex: 1,
     fontSize: 14,
-    color: "#D1D5DB",
+    color: colors.text,
   },
-  createButton: {
+  convertButton: {
+    margin: 20,
+    marginTop: 10,
     borderRadius: 12,
     overflow: "hidden",
-    marginBottom: 16,
   },
-  createButtonDisabled: {
+  disabledButton: {
     opacity: 0.7,
   },
-  createButtonGradient: {
+  buttonGradient: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
     gap: 8,
   },
-  createButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+  buttonText: {
     color: "white",
-  },
-  note: {
-    fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "600",
   },
 });
 

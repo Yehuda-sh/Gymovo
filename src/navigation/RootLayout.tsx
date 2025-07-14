@@ -3,9 +3,9 @@
 
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Toast from "react-native-toast-message";
-import { GestureHandlerRootView } from "react-native-gesture-handler"; // הוספנו!
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // 🛡️ רכיבי אבטחה וטיפול בשגיאות
 import ErrorBoundary from "../components/common/ErrorBoundary";
@@ -19,7 +19,7 @@ import { AppStack } from "./stacks/AppStack";
 import { AuthStack } from "./stacks/AuthStack";
 
 // 📊 ניהול מצב משתמש
-import { UserState, useUserStore } from "../stores/userStore";
+import { useUserStore, initializeUser } from "../stores/userStore";
 
 /**
  * יצירת React Query client עם הגדרות אופטימליות
@@ -32,10 +32,21 @@ const queryClient = new QueryClient(queryClientConfig);
  */
 const RootLayout: React.FC = () => {
   const { isNavigationReady, error } = useNavigationSetup();
-  const status = useUserStore((state: UserState) => state.status);
+  const user = useUserStore((state) => state.user);
+  const isLoading = useUserStore((state) => state.isLoading);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // אתחול משתמש (יצירת אורח אם צריך)
+  useEffect(() => {
+    const init = async () => {
+      await initializeUser();
+      setIsInitialized(true);
+    };
+    init();
+  }, []);
 
   // 🔄 מסך טעינה בזמן אתחול
-  if (!isNavigationReady) {
+  if (!isNavigationReady || !isInitialized || isLoading) {
     return (
       <ErrorBoundary>
         <SplashScreen message="מאתחל את המערכת..." showLogo={true} />
@@ -55,13 +66,8 @@ const RootLayout: React.FC = () => {
         <QueryClientProvider client={queryClient}>
           <DialogProvider>
             <NavigationContainer>
-              {status === "loading" ? (
-                <SplashScreen message="טוען נתונים..." showLogo={false} />
-              ) : status === "authenticated" || status === "guest" ? (
-                <AppStack />
-              ) : (
-                <AuthStack />
-              )}
+              {/* אם יש משתמש (רגיל או אורח) - הצג את האפליקציה */}
+              {user ? <AppStack /> : <AuthStack />}
               <Toast />
             </NavigationContainer>
           </DialogProvider>

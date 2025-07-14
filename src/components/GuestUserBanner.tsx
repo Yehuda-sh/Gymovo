@@ -1,6 +1,6 @@
 // src/components/GuestUserBanner.tsx - באנר משופר למשתמשי אורח
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
-import { useGuestUser } from "../stores/userStore";
+import { useUserStore, useIsGuest } from "../stores/userStore";
 import { colors } from "../theme/colors";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -47,12 +47,23 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
   testID = "guest-user-banner",
 }) => {
   const navigation = useNavigation<NavigationProp>();
-  const guestUserData = useGuestUser();
-  const isGuest = guestUserData?.isGuest ?? false;
-  const daysUntilExpiry = guestUserData?.daysUntilExpiry;
-  const [isVisible, setIsVisible] = useState(true);
+  const user = useUserStore((state) => state.user);
+  const isGuest = useIsGuest();
+  const getGuestExpiryDate = useUserStore((state) => state.getGuestExpiryDate);
+
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
+
+  // חישוב ימים לתפוגה
+  const daysUntilExpiry = useMemo(() => {
+    const expiryDate = getGuestExpiryDate();
+    if (!expiryDate) return 0;
+
+    const today = new Date();
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  }, [getGuestExpiryDate]);
 
   // בחירה אוטומטית של וריאנט על בסיס ימים לתפוגה
   const effectiveVariant = useMemo(() => {
@@ -99,243 +110,193 @@ export const GuestUserBanner: React.FC<GuestUserBannerProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setIsVisible(false);
       onDismiss?.();
     });
   }, [fadeAnim, slideAnim, onDismiss]);
 
-  const handleRegister = useCallback(() => {
+  const handleSignUpPress = useCallback(() => {
     if (Platform.OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    navigation.navigate("Main", { screen: "Register" });
+    navigation.navigate("ConvertGuest");
   }, [navigation]);
 
-  // יצירת תוכן דינמי על בסיס ימים לתפוגה
-  const getDynamicContent = () => {
-    if (!daysUntilExpiry)
-      return { title: "משתמש אורח", subtitle: "הנתונים שלך זמניים" };
-
-    if (daysUntilExpiry <= EXPIRY_WARNINGS.CRITICAL) {
-      return {
-        title: `נותרו ${daysUntilExpiry} ימים בלבד!`,
-        subtitle: "הנתונים שלך עומדים להימחק",
-      };
-    }
-
-    if (daysUntilExpiry <= EXPIRY_WARNINGS.WARNING) {
-      return {
-        title: `נותרו ${daysUntilExpiry} ימים`,
-        subtitle: "הרשם עכשיו כדי לשמור את ההתקדמות",
-      };
-    }
-
-    return {
-      title: "משתמש אורח",
-      subtitle: `${daysUntilExpiry} ימים עד למחיקת הנתונים`,
-    };
-  };
-
-  const renderMinimalBanner = () => {
-    const content = getDynamicContent();
-
-    return (
-      <Animated.View
-        testID={`${testID}-minimal`}
-        style={[
-          styles.minimalContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={[colors.primary, colors.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.minimalGradient}
-        >
-          <TouchableOpacity
-            style={styles.minimalContent}
-            onPress={handleRegister}
-            activeOpacity={0.8}
-            accessibilityLabel="הרשם כדי לשמור את הנתונים"
-            accessibilityRole="button"
-          >
-            <View style={styles.minimalTextContainer}>
-              <Text style={styles.minimalTitle}>{content.title}</Text>
-              <Text style={styles.minimalSubtitle}>{content.subtitle}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleDismiss}
-              style={styles.closeButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="סגור הודעה"
-              accessibilityRole="button"
-            >
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </LinearGradient>
-      </Animated.View>
-    );
-  };
-
-  const renderFullBanner = () => {
-    const benefits = [
-      { icon: "cloud-upload-outline", text: "גיבוי אוטומטי בענן" },
-      { icon: "stats-chart-outline", text: "מעקב התקדמות מלא" },
-      { icon: "share-social-outline", text: "שיתוף תוכניות אימון" },
-      { icon: "medal-outline", text: "הישגים ותגמולים" },
-    ];
-
-    return (
-      <Animated.View
-        testID={`${testID}-full`}
-        style={[
-          styles.fullContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={[colors.surface, colors.background]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.fullGradient}
-        >
-          <View style={styles.fullContent}>
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name="person-add-outline"
-                size={32}
-                color={colors.primary}
-              />
-            </View>
-
-            <Text style={styles.fullTitle}>שדרג לחשבון מלא</Text>
-            <Text style={styles.fullSubtitle}>
-              {daysUntilExpiry
-                ? `נותרו ${daysUntilExpiry} ימים בלבד!`
-                : "קבל את כל היתרונות של Gymovo"}
-            </Text>
-
-            <View style={styles.benefitsContainer}>
-              {benefits.map((benefit, index) => (
-                <View key={index} style={styles.benefitItem}>
-                  <Ionicons
-                    name={benefit.icon as any}
-                    size={20}
-                    color={colors.success}
-                  />
-                  <Text style={styles.benefitText}>{benefit.text}</Text>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={styles.fullButton}
-              onPress={handleRegister}
-              activeOpacity={0.8}
-              accessibilityLabel="הרשם עכשיו"
-              accessibilityRole="button"
-            >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.fullButtonGradient}
-              >
-                <Text style={styles.fullButtonText}>הרשם בחינם</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-    );
-  };
-
-  const renderWarningBanner = () => {
-    return (
-      <Animated.View
-        testID={`${testID}-warning`}
-        style={[
-          styles.warningContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={["#FEF2F2", "#FEE2E2"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.warningGradient}
-        >
-          <View style={styles.warningContent}>
-            <View style={styles.warningIconContainer}>
-              <Ionicons name="warning-outline" size={24} color={colors.error} />
-            </View>
-
-            <View style={styles.warningTextContainer}>
-              <Text style={styles.warningTitle}>
-                {daysUntilExpiry === 1
-                  ? "יום אחרון!"
-                  : `נותרו ${daysUntilExpiry} ימים בלבד!`}
-              </Text>
-              <Text style={styles.warningSubtitle}>
-                הנתונים שלך יימחקו לצמיתות
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.warningButton}
-              onPress={handleRegister}
-              activeOpacity={0.8}
-              accessibilityLabel="הרשם דחוף"
-              accessibilityRole="button"
-            >
-              <Text style={styles.warningButtonText}>הרשם עכשיו</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-    );
-  };
-
-  // בחירת הבאנר המתאים
-  switch (effectiveVariant) {
-    case "full":
-      return renderFullBanner();
-    case "warning":
-      return renderWarningBanner();
-    default:
-      return renderMinimalBanner();
+  // אם המשתמש לא אורח, לא להציג את הבאנר
+  if (!isGuest) {
+    return null;
   }
+
+  // תוכן הבאנר לפי הוריאנט
+  const renderContent = () => {
+    switch (effectiveVariant) {
+      case "minimal":
+        return (
+          <TouchableOpacity
+            style={styles.minimalContainer}
+            onPress={handleSignUpPress}
+            activeOpacity={0.9}
+            testID={`${testID}-minimal`}
+          >
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.minimalGradient}
+            >
+              <View style={styles.minimalContent}>
+                <View style={styles.minimalTextContainer}>
+                  <Text style={styles.minimalTitle}>משתמש אורח</Text>
+                  <Text style={styles.minimalSubtitle}>
+                    {daysUntilExpiry
+                      ? `${daysUntilExpiry} ימים נותרו`
+                      : "הרשם לשמירת הנתונים"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.minimalButton}
+                  onPress={handleSignUpPress}
+                >
+                  <Text style={styles.minimalButtonText}>הרשמה</Text>
+                  <Ionicons name="arrow-forward" size={16} color="white" />
+                </TouchableOpacity>
+              </View>
+              {onDismiss && (
+                <TouchableOpacity
+                  style={styles.dismissButton}
+                  onPress={handleDismiss}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={20} color="white" />
+                </TouchableOpacity>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        );
+
+      case "full":
+        return (
+          <View style={styles.fullContainer} testID={`${testID}-full`}>
+            <LinearGradient
+              colors={["#F3F4F6", "#E5E7EB"]}
+              style={styles.fullGradient}
+            >
+              <View style={styles.fullContent}>
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name="person-outline"
+                    size={32}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text style={styles.fullTitle}>אתה משתמש אורח</Text>
+                <Text style={styles.fullSubtitle}>
+                  {daysUntilExpiry
+                    ? `נותרו ${daysUntilExpiry} ימים עד שהנתונים יימחקו`
+                    : "הרשם עכשיו כדי לשמור את כל ההתקדמות שלך"}
+                </Text>
+
+                <View style={styles.benefitsContainer}>
+                  <View style={styles.benefitItem}>
+                    <Ionicons
+                      name="cloud-upload"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.benefitText}>גיבוי אוטומטי בענן</Text>
+                  </View>
+                  <View style={styles.benefitItem}>
+                    <Ionicons name="sync" size={20} color={colors.primary} />
+                    <Text style={styles.benefitText}>סנכרון בין מכשירים</Text>
+                  </View>
+                  <View style={styles.benefitItem}>
+                    <Ionicons
+                      name="trending-up"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.benefitText}>מעקב התקדמות מתקדם</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.fullButton}
+                  onPress={handleSignUpPress}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryDark]}
+                    style={styles.fullButtonGradient}
+                  >
+                    <Text style={styles.fullButtonText}>הרשם עכשיו</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        );
+
+      case "warning":
+        return (
+          <View style={styles.warningContainer} testID={`${testID}-warning`}>
+            <LinearGradient
+              colors={["#FEF2F2", "#FEE2E2"]}
+              style={styles.warningGradient}
+            >
+              <View style={styles.warningContent}>
+                <View style={styles.warningIconContainer}>
+                  <Ionicons name="warning" size={24} color={colors.error} />
+                </View>
+                <View style={styles.warningTextContainer}>
+                  <Text style={styles.warningTitle}>
+                    נותרו {daysUntilExpiry} ימים בלבד!
+                  </Text>
+                  <Text style={styles.warningSubtitle}>
+                    הנתונים שלך יימחקו לצמיתות
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.warningButton}
+                  onPress={handleSignUpPress}
+                >
+                  <Text style={styles.warningButtonText}>הרשם עכשיו</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }],
+      }}
+    >
+      {renderContent()}
+    </Animated.View>
+  );
 };
 
 const styles = StyleSheet.create({
   // סגנונות לבאנר מינימלי
   minimalContainer: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 30,
-    left: 16,
-    right: 16,
+    margin: 16,
     borderRadius: 12,
     overflow: "hidden",
-    elevation: 5,
+    elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    zIndex: 999,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   minimalGradient: {
     padding: 16,
+    position: "relative",
   },
   minimalContent: {
     flexDirection: "row",
@@ -344,36 +305,44 @@ const styles = StyleSheet.create({
   },
   minimalTextContainer: {
     flex: 1,
-    marginRight: 12,
   },
   minimalTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.text,
+    color: "white",
     marginBottom: 2,
   },
   minimalSubtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: "rgba(255, 255, 255, 0.9)",
   },
-  closeButton: {
-    position: "absolute",
-    top: -12,
-    right: -12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
+  minimalButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  minimalButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  dismissButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    padding: 8,
   },
 
   // סגנונות לבאנר מלא
   fullContainer: {
-    margin: 20,
+    margin: 16,
     borderRadius: 16,
     overflow: "hidden",
-    elevation: 8,
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

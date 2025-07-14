@@ -11,9 +11,9 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { supabase } from "../../lib/supabase";
-import { useUserStore, UserState } from "../../stores/userStore";
+import { useUserStore } from "../../stores/userStore";
 import { RootStackParamList } from "../../types/navigation";
+import { Toast } from "../../components/common/Toast";
 
 import {
   HeaderSection,
@@ -37,223 +37,115 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [age, setAge] = useState("16");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("25");
   const [currentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorModal, setErrorModal] = useState<string | null>(null);
   const totalSteps = 3;
 
-  // Store references
-  const setUser = useUserStore((state: UserState) => state.setUser);
-  const setToken = useUserStore((state: UserState) => state.setToken);
-  const setStatus = useUserStore((state: UserState) => state.setStatus);
+  // Store reference - השתמש בפונקציה register החדשה
+  const register = useUserStore((state) => state.register);
 
-  // אנימציות
+  // Animations
   const animations = useSignupAnimations();
 
-  const handleNext = async () => {
-    console.log("=== התחלת תהליך הרשמה ===");
-    console.log("Email:", email);
-    console.log("Password length:", password.length);
-    console.log("Age:", age);
-
-    // בדיקת תקינות
-    if (!email || !password || !age) {
-      console.log("שגיאה: חסרים שדות");
-      setErrorModal("נא למלא את כל השדות");
-      return;
-    }
-
-    if (password.length < 6) {
-      console.log("שגיאה: סיסמה קצרה מדי");
-      setErrorModal("הסיסמה חייבת להכיל לפחות 6 תווים");
-      return;
-    }
-
-    const ageNumber = parseInt(age);
-    if (isNaN(ageNumber) || ageNumber < 16 || ageNumber > 100) {
-      console.log("שגיאה: גיל לא תקין");
-      setErrorModal("נא להזין גיל תקין (16-100)");
-      return;
-    }
-
+  // Handle signup - עדכון לעבוד עם ה-store החדש
+  const handleSignup = async () => {
     setLoading(true);
+    setErrorModal(null);
 
     try {
-      console.log("שולח בקשת הרשמה ל-Supabase...");
-
-      // Step 1: הרשמת המשתמש
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(),
+      // קריאה לפונקציית register החדשה
+      const result = await register(
+        email.toLowerCase().trim(),
         password,
-        options: {
-          data: {
-            name: email.split("@")[0],
-            age: ageNumber,
+        name.trim(),
+        parseInt(age) || 25
+      );
+
+      if (result.success) {
+        Toast.success("ברוך הבא!", "נרשמת בהצלחה");
+
+        // ניווט לשאלון
+        navigation.navigate("Quiz", {
+          signupData: {
+            email: email.toLowerCase().trim(),
+            password,
+            age: parseInt(age) || 25,
+            name: name.trim(),
           },
-        },
-      });
-
-      console.log("תוצאת הרשמה:", { authData, authError });
-
-      if (authError) {
-        console.error("שגיאת auth:", authError);
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error("לא נוצר משתמש");
-      }
-
-      // Step 2: הפרופיל נוצר אוטומטית ע"י trigger
-      console.log("הפרופיל נוצר אוטומטית עבור משתמש:", authData.user.id);
-
-      // אופציונלי: בדוק שהפרופיל אכן נוצר
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        console.error("שגיאה בשליפת פרופיל:", profileError);
-        throw new Error("הפרופיל לא נוצר כראוי");
-      }
-
-      console.log("פרופיל נמצא:", profile);
-
-      // Step 3: עדכון ה-userStore
-      if (authData.session) {
-        console.log("נוצר session, מעדכן את ה-store...");
-
-        // עדכן את ה-store עם פרטי המשתמש
-        setUser({
-          id: authData.user.id,
-          email: authData.user.email!,
-          name: profile.name || email.split("@")[0],
-          age: profile.age || ageNumber,
-          isGuest: false,
-          createdAt: authData.user.created_at,
-          // שדות אופציונליים מהטיפוס User
-          avatarUrl: profile.avatar_url,
-          phoneNumber: profile.phone_number,
-          preferredLanguage: "he",
-          // אם יש שדה stats
-          stats: {
-            totalWorkouts: 0,
-            totalTime: 0,
-            totalVolume: 0,
-            favoriteExercises: [],
-          },
-        });
-
-        setToken(authData.session.access_token);
-        setStatus("authenticated");
-
-        console.log("Store עודכן בהצלחה!");
-
-        // המתן קצת כדי לתת ל-store להתעדכן
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // ניווט ישיר לשאלון
-        console.log("מנווט לשאלון...");
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Quiz" }],
         });
       } else {
-        // אם אין session, כנראה צריך אימות אימייל
-        console.log("נדרש אימות אימייל");
-
-        setErrorModal(
-          "נשלח אליך אימייל לאימות החשבון. אנא בדוק את תיבת הדואר שלך."
-        );
-
-        setTimeout(() => {
-          navigation.replace("Login");
-        }, 3000);
+        setErrorModal(result.error || "שגיאה בהרשמה");
       }
     } catch (error: any) {
-      console.error("שגיאה כללית:", error);
-
-      let errorMessage = "שגיאה בהרשמה";
-
-      if (
-        error.message?.includes("already registered") ||
-        error.message?.includes("User already registered")
-      ) {
-        errorMessage = "כתובת האימייל כבר רשומה במערכת";
-      } else if (
-        error.message?.includes("Invalid email") ||
-        error.message?.includes("invalid_email")
-      ) {
-        errorMessage = "כתובת אימייל לא תקינה";
-      } else if (
-        error.message?.includes("Password") ||
-        error.message?.includes("password")
-      ) {
-        errorMessage = "הסיסמה חלשה מדי - נסה סיסמה חזקה יותר";
-      } else if (error.code === "23505") {
-        errorMessage = "המשתמש כבר קיים במערכת";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      setErrorModal(errorMessage);
+      console.error("Signup error:", error);
+      setErrorModal(error.message || "שגיאה לא צפויה");
     } finally {
       setLoading(false);
     }
   };
 
+  // Navigate to login
+  const handleLoginPress = () => {
+    navigation.navigate("Login");
+  };
+
+  // Navigate back
   const handleBack = () => {
-    console.log("חוזרים למסך הקודם");
     navigation.goBack();
+  };
+
+  // Close error modal
+  const handleCloseErrorModal = () => {
+    setErrorModal(null);
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
+
+      {/* Background Gradient */}
       <LinearGradient
         colors={[colors.background, colors.surface, colors.gradientDark]}
         style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
       />
 
-      {/* Header Fixed עם Progress */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <ProgressBar
-          progressAnim={animations.fadeAnim}
-          currentStep={currentStep}
-          totalSteps={totalSteps}
-        />
-      </View>
-
-      {/* Main Content */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingTop: insets.top }]}>
+          {/* Progress Bar */}
+          <ProgressBar
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            progressAnim={animations.progressAnim}
+          />
+
+          {/* Header */}
           <HeaderSection
             fadeAnim={animations.fadeAnim}
             slideAnim={animations.slideAnim}
             headerScale={animations.headerScale}
           />
 
+          {/* Form */}
           <SignupForm
             email={email}
             password={password}
             age={age}
-            error={null}
+            error={errorModal}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
             onAgeChange={setAge}
-            formSlide={animations.fadeAnim}
+            formSlide={animations.formSlide}
           />
 
+          {/* Action Buttons */}
           <ActionButtons
-            onNext={handleNext}
+            onNext={handleSignup}
             onBack={handleBack}
             isLoading={loading}
           />
@@ -264,7 +156,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
       <SignupErrorModal
         visible={!!errorModal}
         error={errorModal || ""}
-        onDismiss={() => setErrorModal(null)}
+        onDismiss={handleCloseErrorModal}
       />
     </View>
   );
@@ -273,16 +165,6 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingHorizontal: 24,
-    paddingBottom: 10,
   },
   keyboardView: {
     flex: 1,
@@ -290,8 +172,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: "center",
-    paddingTop: 100,
   },
 });
 
