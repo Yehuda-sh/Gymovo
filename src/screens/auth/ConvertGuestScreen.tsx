@@ -1,6 +1,6 @@
 // src/screens/auth/ConvertGuestScreen.tsx - מסך להמרת משתמש אורח
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,18 +12,30 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
-import { useUserStore, useGuestUser } from "../../stores/userStore";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useUserStore, useGuestUser, UserState } from "../../stores/userStore";
 import { useWorkoutStore } from "../../stores/workoutStore";
+import { RootStackParamList } from "../../types/navigation";
+import { showToast } from "../../utils/toast";
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Regular expressions for validation
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN_LENGTH = 6;
 
 export const ConvertGuestScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const { convertGuestToUser } = useUserStore();
+  const navigation = useNavigation<NavigationProp>();
+  const convertGuestToUser = useUserStore(
+    (state: UserState) => state.convertGuestToUser
+  );
   const { daysUntilExpiry } = useGuestUser();
   const workoutCount = useWorkoutStore((state) => state.workouts.length);
 
@@ -32,26 +44,83 @@ export const ConvertGuestScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
+
+  // Validation functions
+  const validateEmail = useCallback((email: string): boolean => {
+    return EMAIL_REGEX.test(email.trim());
+  }, []);
+
+  const validatePassword = useCallback((password: string): boolean => {
+    return password.length >= PASSWORD_MIN_LENGTH;
+  }, []);
+
+  const validateForm = useCallback((): boolean => {
+    const newErrors: typeof errors = {};
+
+    // Email validation
+    if (!email.trim()) {
+      newErrors.email = "אימייל הוא שדה חובה";
+    } else if (!validateEmail(email)) {
+      newErrors.email = "כתובת אימייל לא תקינה";
+    }
+
+    // Password validation
+    if (!password) {
+      newErrors.password = "סיסמה היא שדה חובה";
+    } else if (!validatePassword(password)) {
+      newErrors.password = `הסיסמה חייבת להכיל לפחות ${PASSWORD_MIN_LENGTH} תווים`;
+    }
+
+    // Confirm password validation
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "אימות סיסמה הוא שדה חובה";
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "הסיסמאות לא תואמות";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [email, password, confirmPassword, validateEmail, validatePassword]);
+
+  // Clear error for specific field when user starts typing
+  const handleFieldChange = useCallback(
+    (field: keyof typeof errors, value: string) => {
+      switch (field) {
+        case "email":
+          setEmail(value);
+          if (errors.email) {
+            setErrors((prev) => ({ ...prev, email: undefined }));
+          }
+          break;
+        case "password":
+          setPassword(value);
+          if (errors.password) {
+            setErrors((prev) => ({ ...prev, password: undefined }));
+          }
+          break;
+        case "confirmPassword":
+          setConfirmPassword(value);
+          if (errors.confirmPassword) {
+            setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+          }
+          break;
+      }
+    },
+    [errors]
+  );
 
   const handleConvert = useCallback(async () => {
-    // ולידציות
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("שגיאה", "נא למלא את כל השדות");
-      return;
-    }
+    // Dismiss keyboard
+    Keyboard.dismiss();
 
-    if (!email.includes("@")) {
-      Alert.alert("שגיאה", "כתובת אימייל לא תקינה");
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert("שגיאה", "הסיסמה חייבת להכיל לפחות 6 תווים");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert("שגיאה", "הסיסמאות לא תואמות");
+    // Validate form
+    if (!validateForm()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
@@ -59,29 +128,50 @@ export const ConvertGuestScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const result = await convertGuestToUser(email, password);
+      const result = await convertGuestToUser(
+        email.trim().toLowerCase(),
+        password
+      );
 
       if (result.success) {
-        Alert.alert("הצלחה! 🎉", "החשבון שלך נוצר בהצלחה וכל הנתונים נשמרו", [
-          {
-            text: "מעולה",
-            onPress: () => {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Main" as never }],
-              });
-            },
-          },
-        ]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast("החשבון נוצר בהצלחה! 🎉", "success");
+
+        // Navigate to main screen
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main" }],
+        });
       } else {
-        Alert.alert("שגיאה", result.error || "משהו השתבש");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+        // Handle specific errors
+        if (
+          result.error?.includes("already exists") ||
+          result.error?.includes("already registered")
+        ) {
+          setErrors({ email: "כתובת האימייל כבר רשומה במערכת" });
+        } else {
+          Alert.alert("שגיאה", result.error || "לא הצלחנו ליצור את החשבון");
+        }
       }
     } catch (error) {
-      Alert.alert("שגיאה", "לא הצלחנו ליצור את החשבון");
+      console.error("Convert guest error:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("שגיאה", "אירעה שגיאה בלתי צפויה. אנא נסה שוב מאוחר יותר.");
     } finally {
       setLoading(false);
     }
-  }, [email, password, confirmPassword, convertGuestToUser, navigation]);
+  }, [email, password, validateForm, convertGuestToUser, navigation]);
+
+  // Calculate form completion percentage
+  const formProgress = useMemo(() => {
+    let completed = 0;
+    if (validateEmail(email)) completed++;
+    if (validatePassword(password)) completed++;
+    if (password && password === confirmPassword) completed++;
+    return (completed / 3) * 100;
+  }, [email, password, confirmPassword, validateEmail, validatePassword]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -92,6 +182,7 @@ export const ConvertGuestScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* כותרת ראשית */}
           <View style={styles.header}>
@@ -116,6 +207,15 @@ export const ConvertGuestScreen: React.FC = () => {
             </Text>
           </View>
 
+          {/* Progress bar */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View
+                style={[styles.progressFill, { width: `${formProgress}%` }]}
+              />
+            </View>
+          </View>
+
           {/* כרטיס מידע */}
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
@@ -129,6 +229,14 @@ export const ConvertGuestScreen: React.FC = () => {
                 <Text style={styles.infoLabel}>ימים נותרו</Text>
               </View>
             </View>
+            {daysUntilExpiry <= 7 && (
+              <View style={styles.warningBadge}>
+                <Ionicons name="warning" size={16} color="#F59E0B" />
+                <Text style={styles.warningText}>
+                  הנתונים שלך יימחקו בעוד {daysUntilExpiry} ימים
+                </Text>
+              </View>
+            )}
             <Text style={styles.infoText}>
               כל האימונים והנתונים שלך יועברו לחשבון החדש
             </Text>
@@ -139,11 +247,16 @@ export const ConvertGuestScreen: React.FC = () => {
             {/* אימייל */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>אימייל</Text>
-              <View style={styles.inputWrapper}>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  errors.email && styles.inputWrapperError,
+                ]}
+              >
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color="#6B7280"
+                  color={errors.email ? "#EF4444" : "#6B7280"}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -151,35 +264,56 @@ export const ConvertGuestScreen: React.FC = () => {
                   placeholder="your@email.com"
                   placeholderTextColor="#9CA3AF"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => handleFieldChange("email", text)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
                 />
+                {validateEmail(email) && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color="#10B981"
+                    style={styles.validIcon}
+                  />
+                )}
               </View>
+              {errors.email && (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              )}
             </View>
 
             {/* סיסמה */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>סיסמה</Text>
-              <View style={styles.inputWrapper}>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  errors.password && styles.inputWrapperError,
+                ]}
+              >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#6B7280"
+                  color={errors.password ? "#EF4444" : "#6B7280"}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="לפחות 6 תווים"
+                  placeholder={`לפחות ${PASSWORD_MIN_LENGTH} תווים`}
                   placeholderTextColor="#9CA3AF"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => handleFieldChange("password", text)}
                   secureTextEntry={!showPassword}
+                  autoComplete="password-new"
+                  textContentType="newPassword"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -188,16 +322,24 @@ export const ConvertGuestScreen: React.FC = () => {
                   />
                 </TouchableOpacity>
               </View>
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
             </View>
 
             {/* אימות סיסמה */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>אימות סיסמה</Text>
-              <View style={styles.inputWrapper}>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  errors.confirmPassword && styles.inputWrapperError,
+                ]}
+              >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#6B7280"
+                  color={errors.confirmPassword ? "#EF4444" : "#6B7280"}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -205,10 +347,25 @@ export const ConvertGuestScreen: React.FC = () => {
                   placeholder="הקלד שוב את הסיסמה"
                   placeholderTextColor="#9CA3AF"
                   value={confirmPassword}
-                  onChangeText={setConfirmPassword}
+                  onChangeText={(text) =>
+                    handleFieldChange("confirmPassword", text)
+                  }
                   secureTextEntry={!showPassword}
+                  autoComplete="password-new"
+                  textContentType="newPassword"
                 />
+                {password && password === confirmPassword && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color="#10B981"
+                    style={styles.validIcon}
+                  />
+                )}
               </View>
+              {errors.confirmPassword && (
+                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+              )}
             </View>
 
             {/* יתרונות */}
@@ -239,14 +396,18 @@ export const ConvertGuestScreen: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.createButton,
-                loading && styles.createButtonDisabled,
+                (loading || formProgress < 100) && styles.createButtonDisabled,
               ]}
               onPress={handleConvert}
               activeOpacity={0.9}
-              disabled={loading}
+              disabled={loading || formProgress < 100}
             >
               <LinearGradient
-                colors={["#3B82F6", "#2563EB"]}
+                colors={
+                  formProgress === 100
+                    ? ["#3B82F6", "#2563EB"]
+                    : ["#4B5563", "#374151"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.createButtonGradient}
@@ -337,6 +498,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 24,
   },
+  progressContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: "#1F2937",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#3B82F6",
+    borderRadius: 2,
+  },
   infoCard: {
     backgroundColor: "#1F2937",
     marginHorizontal: 20,
@@ -369,6 +545,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#9CA3AF",
   },
+  warningBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 6,
+  },
+  warningText: {
+    fontSize: 12,
+    color: "#F59E0B",
+    fontWeight: "600",
+  },
   infoText: {
     fontSize: 14,
     color: "#D1D5DB",
@@ -394,6 +586,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#374151",
   },
+  inputWrapperError: {
+    borderColor: "#EF4444",
+  },
   inputIcon: {
     marginLeft: 16,
   },
@@ -406,6 +601,15 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 12,
+  },
+  validIcon: {
+    marginRight: 12,
+  },
+  errorText: {
+    fontSize: 12,
+    color: "#EF4444",
+    marginTop: 4,
+    marginLeft: 4,
   },
   benefits: {
     marginBottom: 24,
@@ -454,3 +658,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+
+export default ConvertGuestScreen;
