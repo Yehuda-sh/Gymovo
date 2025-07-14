@@ -1,13 +1,14 @@
 // src/hooks/useExercises.ts - Hook משופר לניהול תרגילים
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 import { wgerApi } from "../services/wgerApi";
 import { Exercise } from "../types/exercise";
-import { useNetworkStatus } from "../utils/network";
+import { useNetworkStatus } from "./useNetworkStatus"; // 🔧 שינוי ה-import
 import { useUserStore } from "../stores/userStore";
+import { Toast } from "../components/common/Toast"; // 🎨 הוספת Toast
 
 // קבועים
 const CACHE_CONFIG = {
@@ -15,6 +16,7 @@ const CACHE_CONFIG = {
   EXERCISE_DETAILS: 1000 * 60 * 60 * 24 * 7, // שבוע
   FAVORITES_KEY: "@gymovo_favorite_exercises",
   CUSTOM_EXERCISES_KEY: "@gymovo_custom_exercises",
+  RECENT_EXERCISES_KEY: "@gymovo_recent_exercises", // 🚀 הוספת מפתח לאחרונים
 } as const;
 
 // טיפוסים נוספים
@@ -35,12 +37,20 @@ interface CustomExercise extends Omit<Exercise, "id"> {
   createdAt: string;
 }
 
+// 🚀 טיפוס לתרגיל אחרון
+interface RecentExercise {
+  exerciseId: string;
+  lastUsed: string;
+  frequency: number;
+}
+
 interface UseExercisesReturn {
   // נתונים
   exercises: Exercise[];
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
+  isRefreshing: boolean; // 🔧 הוספת מצב רענון
 
   // מעדפים ומותאמים אישית
   favoriteExercises: Set<string>;
@@ -60,6 +70,7 @@ interface UseExercisesReturn {
     exerciseId: string,
     updates: Partial<Exercise>
   ) => Promise<void>;
+  trackExerciseUse: (exerciseId: string) => Promise<void>; // 🚀 מעקב שימוש
 
   // חיפוש וסינון
   searchExercises: (query: string) => Exercise[];
@@ -81,7 +92,11 @@ interface UseExercisesReturn {
  * כולל תמיכה במעדפים, תרגילים מותאמים אישית, סינון וחיפוש
  */
 export const useExercises = (): UseExercisesReturn => {
-  const { isConnected } = useNetworkStatus();
+  const queryClient = useQueryClient();
+  const { isConnected, isSlowConnection, connectionDescription } =
+    useNetworkStatus({
+      showToasts: false,
+    });
   const user = useUserStore((state) => state.user);
 
   // State
@@ -89,23 +104,57 @@ export const useExercises = (): UseExercisesReturn => {
     new Set()
   );
   const [customExercises, setCustomExercises] = useState<CustomExercise[]>([]);
+  const [recentExercises, setRecentExercises] = useState<RecentExercise[]>([]); // 🚀
 
-  // טעינת תרגילים מה-API
+  // טעינת תרגילים מה-API עם error handling משופר
   const {
     data: apiExercises = [],
     isLoading,
     isError,
     error,
     refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ["exercises"],
-    queryFn: wgerApi.fetchAllExercises,
+    queryFn: async () => {
+      try {
+        // 🔧 הודעה על חיבור איטי
+        if (isSlowConnection) {
+          Toast.show(`טוען תרגילים ב${connectionDescription}...`);
+        }
+
+        const data = await wgerApi.fetchAllExercises();
+
+        // 🎨 בעתיד: העשרת נתונים עם תמונות מ-AI
+        // enrichExercisesWithAI(data);
+
+        return data;
+      } catch (error) {
+        if (!isConnected) {
+          throw new Error("NO_CONNECTION");
+        }
+        throw error;
+      }
+    },
     staleTime: CACHE_CONFIG.EXERCISES_LIST,
     gcTime: CACHE_CONFIG.EXERCISES_LIST * 2,
     refetchOnWindowFocus: false,
     retry: isConnected ? 3 : 0,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // 🔧 Offline support
+    networkMode: "offlineFirst",
   });
+
+  // 🔧 טיפול בשגיאות
+  useEffect(() => {
+    if (isError && error) {
+      if (error.message === "NO_CONNECTION") {
+        Toast.show("התרגילים יטענו כשתתחבר לאינטרנט");
+      } else {
+        Toast.error("שגיאה בטעינת התרגילים");
+      }
+    }
+  }, [isError, error]);
 
   // טעינת מעדפים מהאחסון המקומי
   useEffect(() => {
@@ -135,9 +184,27 @@ export const useExercises = (): UseExercisesReturn => {
       }
     };
 
+    // 🚀 טעינת תרגילים אחרונים
+    const loadRecentExercises = async () => {
+      try {
+        const key = `${CACHE_CONFIG.RECENT_EXERCISES_KEY}_${
+          user?.id || "guest"
+        }`;
+        const stored = await AsyncStorage.getItem(key);
+        if (stored) {
+          setRecentExercises(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error("Error loading recent exercises:", error);
+      }
+    };
+
     const loadData = async () => {
-      await loadFavorites();
-      await loadCustomExercises();
+      await Promise.all([
+        loadFavorites(),
+        loadCustomExercises(),
+        loadRecentExercises(),
+      ]);
     };
     loadData();
   }, [user?.id]);
@@ -147,15 +214,17 @@ export const useExercises = (): UseExercisesReturn => {
     return [...apiExercises, ...customExercises];
   }, [apiExercises, customExercises]);
 
-  // החלפת מעדיף/לא מעדיף
+  // החלפת מעדיף/לא מעדיף עם אנימציה
   const toggleFavorite = useCallback(
     async (exerciseId: string) => {
       const newFavorites = new Set(favoriteExercises);
 
       if (newFavorites.has(exerciseId)) {
         newFavorites.delete(exerciseId);
+        // 🎨 בעתיד: אנימציית הסרה
       } else {
         newFavorites.add(exerciseId);
+        // 🎨 בעתיד: אנימציית הוספה עם haptic feedback
       }
 
       setFavoriteExercises(newFavorites);
@@ -166,14 +235,65 @@ export const useExercises = (): UseExercisesReturn => {
           key,
           JSON.stringify(Array.from(newFavorites))
         );
+
+        // 🎨 הודעה חלקה
+        const exercise = exercises.find((e) => e.id === exerciseId);
+        if (exercise) {
+          Toast.show(
+            newFavorites.has(exerciseId)
+              ? `${exercise.name} נוסף למועדפים ⭐`
+              : `${exercise.name} הוסר מהמועדפים`
+          );
+        }
       } catch (error) {
         console.error("Error saving favorites:", error);
+        Toast.error("שגיאה בשמירת המועדפים");
       }
     },
-    [favoriteExercises, user?.id]
+    [favoriteExercises, user?.id, exercises]
   );
 
-  // יצירת תרגיל מותאם אישית
+  // 🚀 מעקב אחר שימוש בתרגיל
+  const trackExerciseUse = useCallback(
+    async (exerciseId: string) => {
+      const updatedRecent = [...recentExercises];
+      const existingIndex = updatedRecent.findIndex(
+        (r) => r.exerciseId === exerciseId
+      );
+
+      if (existingIndex >= 0) {
+        updatedRecent[existingIndex].lastUsed = new Date().toISOString();
+        updatedRecent[existingIndex].frequency += 1;
+      } else {
+        updatedRecent.push({
+          exerciseId,
+          lastUsed: new Date().toISOString(),
+          frequency: 1,
+        });
+      }
+
+      // שמור רק 20 אחרונים
+      updatedRecent.sort(
+        (a, b) =>
+          new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
+      );
+      const trimmed = updatedRecent.slice(0, 20);
+
+      setRecentExercises(trimmed);
+
+      try {
+        const key = `${CACHE_CONFIG.RECENT_EXERCISES_KEY}_${
+          user?.id || "guest"
+        }`;
+        await AsyncStorage.setItem(key, JSON.stringify(trimmed));
+      } catch (error) {
+        console.error("Error saving recent exercises:", error);
+      }
+    },
+    [recentExercises, user?.id]
+  );
+
+  // יצירת תרגיל מותאם אישית משופר
   const createCustomExercise = useCallback(
     async (
       exercise: Omit<
@@ -182,13 +302,19 @@ export const useExercises = (): UseExercisesReturn => {
       >
     ) => {
       if (!exercise.name?.trim()) {
-        Alert.alert("שגיאה", "חובה להזין שם לתרגיל");
+        Toast.error("חובה להזין שם לתרגיל");
+        return;
+      }
+
+      // 🔧 בדיקות נוספות
+      if (!exercise.category) {
+        Toast.error("חובה לבחור קטגוריה");
         return;
       }
 
       const newExercise: CustomExercise = {
         ...exercise,
-        id: `custom_${Date.now()}`,
+        id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         isCustom: true,
         createdBy: user?.id || "guest",
         createdAt: new Date().toISOString(),
@@ -202,13 +328,18 @@ export const useExercises = (): UseExercisesReturn => {
           user?.id || "guest"
         }`;
         await AsyncStorage.setItem(key, JSON.stringify(updatedExercises));
+
+        // 🎨 הודעת הצלחה משופרת
+        Toast.success(`התרגיל "${newExercise.name}" נוצר בהצלחה! 💪`);
+
+        // 🚀 Prefetch לפרטי התרגיל
+        queryClient.setQueryData(["exercise", newExercise.id], newExercise);
       } catch (error) {
         console.error("Error saving custom exercises:", error);
+        Toast.error("שגיאה בשמירת התרגיל");
       }
-
-      Alert.alert("הצלחה", "התרגיל נוצר בהצלחה!");
     },
-    [customExercises, user?.id]
+    [customExercises, user?.id, queryClient]
   );
 
   // עדכון תרגיל מותאם אישית
@@ -219,7 +350,7 @@ export const useExercises = (): UseExercisesReturn => {
       );
 
       if (exerciseIndex === -1) {
-        Alert.alert("שגיאה", "התרגיל לא נמצא");
+        Toast.error("התרגיל לא נמצא");
         return;
       }
 
@@ -236,22 +367,38 @@ export const useExercises = (): UseExercisesReturn => {
           user?.id || "guest"
         }`;
         await AsyncStorage.setItem(key, JSON.stringify(updatedExercises));
+
+        Toast.success("התרגיל עודכן בהצלחה");
+
+        // 🚀 עדכון במטמון
+        queryClient.setQueryData(
+          ["exercise", exerciseId],
+          updatedExercises[exerciseIndex]
+        );
       } catch (error) {
         console.error("Error saving custom exercises:", error);
+        Toast.error("שגיאה בעדכון התרגיל");
       }
     },
-    [customExercises, user?.id]
+    [customExercises, user?.id, queryClient]
   );
 
-  // מחיקת תרגיל מותאם אישית
+  // מחיקת תרגיל מותאם אישית משופרת
   const deleteCustomExercise = useCallback(
     async (exerciseId: string) => {
       Alert.alert("מחיקת תרגיל", "האם אתה בטוח שברצונך למחוק את התרגיל?", [
-        { text: "ביטול", style: "cancel" },
+        {
+          text: "ביטול",
+          style: "cancel",
+        },
         {
           text: "מחק",
           style: "destructive",
           onPress: async () => {
+            const deletedExercise = customExercises.find(
+              (e) => e.id === exerciseId
+            );
+
             const updatedExercises = customExercises.filter(
               (e) => e.id !== exerciseId
             );
@@ -262,16 +409,12 @@ export const useExercises = (): UseExercisesReturn => {
                 user?.id || "guest"
               }`;
               await AsyncStorage.setItem(key, JSON.stringify(updatedExercises));
-            } catch (error) {
-              console.error("Error saving custom exercises:", error);
-            }
 
-            // הסרה גם מהמעדפים
-            const newFavorites = new Set(favoriteExercises);
-            newFavorites.delete(exerciseId);
-            setFavoriteExercises(newFavorites);
+              // הסרה גם מהמעדפים
+              const newFavorites = new Set(favoriteExercises);
+              newFavorites.delete(exerciseId);
+              setFavoriteExercises(newFavorites);
 
-            try {
               const favKey = `${CACHE_CONFIG.FAVORITES_KEY}_${
                 user?.id || "guest"
               }`;
@@ -279,35 +422,68 @@ export const useExercises = (): UseExercisesReturn => {
                 favKey,
                 JSON.stringify(Array.from(newFavorites))
               );
+
+              // 🎨 הודעת מחיקה
+              Toast.show(`התרגיל "${deletedExercise?.name}" נמחק`);
+
+              // 🚀 הסרה מהמטמון
+              queryClient.removeQueries({
+                queryKey: ["exercise", exerciseId],
+              });
             } catch (error) {
-              console.error("Error saving favorites:", error);
+              console.error("Error deleting exercise:", error);
+              Toast.error("שגיאה במחיקת התרגיל");
             }
           },
         },
       ]);
     },
-    [customExercises, favoriteExercises, user?.id]
+    [customExercises, favoriteExercises, user?.id, queryClient]
   );
 
-  // חיפוש תרגילים
+  // חיפוש תרגילים משופר
   const searchExercises = useCallback(
     (query: string): Exercise[] => {
       if (!query.trim()) return exercises;
 
       const searchTerm = query.toLowerCase().trim();
-      return exercises.filter((exercise) => {
-        return (
-          exercise.name.toLowerCase().includes(searchTerm) ||
-          exercise.description?.toLowerCase().includes(searchTerm) ||
-          exercise.category?.toLowerCase().includes(searchTerm) ||
-          exercise.targetMuscleGroups?.some((muscle) =>
-            muscle.toLowerCase().includes(searchTerm)
-          ) ||
-          exercise.equipment?.some((equip) =>
-            equip.toLowerCase().includes(searchTerm)
+
+      // 🚀 חיפוש חכם עם ניקוד
+      return exercises
+        .map((exercise) => {
+          let score = 0;
+          const name = exercise.name.toLowerCase();
+          const description = exercise.description?.toLowerCase() || "";
+
+          // התאמה מדויקת בשם
+          if (name === searchTerm) score += 100;
+          else if (name.startsWith(searchTerm)) score += 50;
+          else if (name.includes(searchTerm)) score += 30;
+
+          // התאמה בתיאור
+          if (description.includes(searchTerm)) score += 20;
+
+          // התאמה בשרירים
+          if (
+            exercise.targetMuscleGroups?.some((muscle) =>
+              muscle.toLowerCase().includes(searchTerm)
+            )
           )
-        );
-      });
+            score += 15;
+
+          // התאמה בציוד
+          if (
+            exercise.equipment?.some((equip) =>
+              equip.toLowerCase().includes(searchTerm)
+            )
+          )
+            score += 10;
+
+          return { exercise, score };
+        })
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(({ exercise }) => exercise);
     },
     [exercises]
   );
@@ -394,55 +570,99 @@ export const useExercises = (): UseExercisesReturn => {
     [exercises]
   );
 
-  // קבלת תרגילים קשורים
+  // קבלת תרגילים קשורים משופר
   const getRelatedExercises = useCallback(
     (exerciseId: string): Exercise[] => {
       const exercise = getExerciseById(exerciseId);
       if (!exercise) return [];
 
-      // מחפשים תרגילים עם אותם שרירים או קטגוריה
+      // 🚀 אלגוריתם חכם יותר
       return exercises
-        .filter((e) => {
-          if (e.id === exerciseId) return false;
+        .filter((e) => e.id !== exerciseId)
+        .map((e) => {
+          let relevanceScore = 0;
 
-          const sameMuscles = e.targetMuscleGroups?.some((muscle) =>
-            exercise.targetMuscleGroups?.includes(muscle)
-          );
-          const sameCategory = e.category === exercise.category;
-          const sameEquipment = e.equipment?.some((equip) =>
-            exercise.equipment?.includes(equip)
-          );
+          // אותם שרירים
+          const commonMuscles =
+            e.targetMuscleGroups?.filter((muscle) =>
+              exercise.targetMuscleGroups?.includes(muscle)
+            ).length || 0;
+          relevanceScore += commonMuscles * 3;
 
-          return sameMuscles || sameCategory || sameEquipment;
+          // אותה קטגוריה
+          if (e.category === exercise.category) relevanceScore += 2;
+
+          // אותו ציוד
+          const commonEquipment =
+            e.equipment?.filter((equip) => exercise.equipment?.includes(equip))
+              .length || 0;
+          relevanceScore += commonEquipment;
+
+          // אותה רמת קושי
+          if (e.difficulty === exercise.difficulty) relevanceScore += 1;
+
+          return { exercise: e, score: relevanceScore };
         })
-        .slice(0, 6); // מגבילים ל-6 תרגילים
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6)
+        .map(({ exercise }) => exercise);
     },
     [exercises, getExerciseById]
   );
 
-  // תרגילים מומלצים (לפי היסטוריה או פופולריות)
+  // תרגילים מומלצים חכמים
   const getSuggestedExercises = useCallback((): Exercise[] => {
-    // בגרסה מלאה - לפי היסטוריית אימונים
-    // כרגע מחזירים תרגילים מגוונים
-    const categories = ["חזה", "גב", "רגליים", "כתפיים", "ליבה"];
-    const suggested: Exercise[] = [];
+    // 🚀 המלצות מבוססות על היסטוריה ומעדפים
+    const suggestions: Exercise[] = [];
 
+    // 1. תרגילים מועדפים שלא השתמשת בהם לאחרונה
+    const recentIds = recentExercises.map((r) => r.exerciseId);
+    const unusedFavorites = exercises.filter(
+      (e) => favoriteExercises.has(e.id) && !recentIds.includes(e.id)
+    );
+    suggestions.push(...unusedFavorites.slice(0, 2));
+
+    // 2. תרגילים פופולריים מקטגוריות שונות
+    const categories = ["חזה", "גב", "רגליים", "כתפיים", "ליבה"];
     for (const category of categories) {
       const categoryExercises = exercises.filter(
-        (e) => e.category === category
+        (e) => e.category === category && !suggestions.includes(e)
       );
       if (categoryExercises.length > 0) {
-        suggested.push(categoryExercises[0]);
+        suggestions.push(categoryExercises[0]);
       }
     }
 
-    return suggested.slice(0, 5);
-  }, [exercises]);
+    // 3. תרגילים דומים לאחרונים
+    if (recentExercises.length > 0) {
+      const lastUsed = getExerciseById(recentExercises[0].exerciseId);
+      if (lastUsed) {
+        const related = getRelatedExercises(lastUsed.id).filter(
+          (e) => !suggestions.includes(e)
+        );
+        suggestions.push(...related.slice(0, 2));
+      }
+    }
 
-  // תרגילים פופולריים
+    return suggestions.slice(0, 8);
+  }, [
+    exercises,
+    favoriteExercises,
+    recentExercises,
+    getExerciseById,
+    getRelatedExercises,
+  ]);
+
+  // תרגילים פופולריים משופר
   const getPopularExercises = useCallback((): Exercise[] => {
-    // בגרסה מלאה - לפי סטטיסטיקות שימוש
-    // כרגע מחזירים תרגילים בסיסיים נפוצים
+    // 🚀 שילוב של פופולריות גלובלית ואישית
+    const popularByFrequency = recentExercises
+      .sort((a, b) => b.frequency - a.frequency)
+      .slice(0, 5)
+      .map((r) => exercises.find((e) => e.id === r.exerciseId))
+      .filter(Boolean) as Exercise[];
+
     const popularNames = [
       "לחיצת חזה",
       "סקוואט",
@@ -452,17 +672,23 @@ export const useExercises = (): UseExercisesReturn => {
       "כפיפות בטן",
     ];
 
-    return exercises
+    const popularGlobal = exercises
       .filter((e) => popularNames.some((name) => e.name.includes(name)))
-      .slice(0, 10);
-  }, [exercises]);
+      .filter((e) => !popularByFrequency.includes(e));
+
+    return [...popularByFrequency, ...popularGlobal].slice(0, 10);
+  }, [exercises, recentExercises]);
 
   // תרגילים אחרונים שנעשה בהם שימוש
   const getRecentlyUsedExercises = useCallback((): Exercise[] => {
-    // בגרסה מלאה - מהיסטוריית אימונים
-    // כרגע מחזירים רשימה ריקה
-    return [];
-  }, []);
+    return recentExercises
+      .sort(
+        (a, b) =>
+          new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
+      )
+      .map((r) => exercises.find((e) => e.id === r.exerciseId))
+      .filter(Boolean) as Exercise[];
+  }, [recentExercises, exercises]);
 
   return {
     // נתונים
@@ -470,6 +696,7 @@ export const useExercises = (): UseExercisesReturn => {
     isLoading,
     isError,
     error: error as Error | null,
+    isRefreshing: isRefetching, // 🔧 הוספה
 
     // מעדפים ומותאמים אישית
     favoriteExercises,
@@ -481,6 +708,7 @@ export const useExercises = (): UseExercisesReturn => {
     createCustomExercise,
     deleteCustomExercise,
     updateCustomExercise,
+    trackExerciseUse, // 🚀 הוספה
 
     // חיפוש וסינון
     searchExercises,
@@ -498,19 +726,9 @@ export const useExercises = (): UseExercisesReturn => {
   };
 };
 
-// Hook לפרטי תרגיל בודד
-export const useExerciseDetails = (exerciseId: string) => {
-  const { isConnected } = useNetworkStatus();
-
-  return useQuery({
-    queryKey: ["exercise", exerciseId],
-    queryFn: () => wgerApi.fetchExerciseById(exerciseId),
-    staleTime: CACHE_CONFIG.EXERCISE_DETAILS,
-    gcTime: CACHE_CONFIG.EXERCISE_DETAILS * 2,
-    enabled: !!exerciseId && isConnected === true,
-    retry: 2,
-  });
-};
+// Hook לפרטי תרגיל בודד - כבר קיים ב-useExerciseDetails.ts
+// אז נייצא רק לצורך תאימות לאחור
+export { useExerciseDetails } from "./useExerciseDetails";
 
 // Export ברירת מחדל
 export default useExercises;
