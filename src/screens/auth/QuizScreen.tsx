@@ -1,7 +1,8 @@
 // src/screens/auth/QuizScreen.tsx - שאלון מותאם אישית
 
-import React from "react";
-import { View, StatusBar } from "react-native";
+import React, { useCallback } from "react";
+import { View, StatusBar, BackHandler, Alert } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { colors } from "../../theme/colors";
 import {
   LoadingScreen,
@@ -17,7 +18,7 @@ import {
 import { QUIZ_QUESTIONS } from "./quiz/data";
 
 const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
-  const { signupData } = route.params;
+  const { signupData } = route.params || {};
 
   // אנימציות
   const { slideAnim, fadeAnim, animateToNextQuestion } = useQuizAnimations();
@@ -42,6 +43,33 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
     signupData,
   });
 
+  // טיפול בכפתור חזרה של המכשיר (אופציונלי)
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (state.currentQuestionIndex > 0) {
+          Alert.alert("יציאה מהשאלון", "האם אתה בטוח שברצונך לצאת?", [
+            { text: "ביטול", style: "cancel" },
+            {
+              text: "יציאה",
+              style: "destructive",
+              onPress: () => navigation.goBack(),
+            },
+          ]);
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+
+      return () => subscription.remove();
+    }, [state.currentQuestionIndex, navigation])
+  );
+
   // טיפול במעבר לשאלה הבאה עם אנימציה
   const handleNextWithAnimation = async () => {
     if (!isLastQuestion) {
@@ -50,12 +78,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
     await handleNext();
   };
 
-  // טיפול בחזרה
+  // טיפול בחזרה משופר
   const handleBackPress = () => {
     if (state.currentQuestionIndex > 0) {
       handleBack();
     } else {
-      navigation.goBack();
+      Alert.alert("יציאה מהשאלון", "האם אתה בטוח שברצונך לצאת?", [
+        { text: "ביטול", style: "cancel" },
+        { text: "יציאה", onPress: () => navigation.goBack() },
+      ]);
     }
   };
 
