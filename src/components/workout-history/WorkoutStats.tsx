@@ -3,23 +3,22 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
-import { useAnimatedValue } from "../../hooks/useAnimatedValue";
 import { WorkoutStats, modernColors } from "./types";
 
 // רכיב הסטטיסטיקות הראשי - מציג 4 נתונים מרכזיים עם אנימציות ועיצוב מושך
 export const StatsOverview = ({ stats }: { stats: WorkoutStats }) => {
-  const fadeAnim = useAnimatedValue(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // אנימציה של כניסה חלקה וקלילה
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, []); // fadeAnim is a ref, doesn't need to be in dependencies
 
   return (
     <Animated.View style={[styles.statsContainer, { opacity: fadeAnim }]}>
@@ -54,7 +53,7 @@ export const StatsOverview = ({ stats }: { stats: WorkoutStats }) => {
             <Text style={styles.statValue}>
               {Math.round(stats.totalDuration / 60)}h
             </Text>
-            <Text style={styles.statLabel}>סה"כ זמן</Text>
+            <Text style={styles.statLabel}>סה&quot;כ זמן</Text>
           </View>
 
           <View style={styles.statDivider} />
@@ -73,39 +72,48 @@ export const StatsOverview = ({ stats }: { stats: WorkoutStats }) => {
   );
 };
 
-// סטיילים למרכיב הסטטיסטיקות - עיצוב מודרני עם גרדיינט ומרווחים נכונים
+// סטיילים לפאנל הסטטיסטיקות - עיצוב גרדיאנט מרשים עם חלוקה ברורה
 const styles = StyleSheet.create({
   statsContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: "white",
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: modernColors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   statsGradient: {
-    borderRadius: 16,
     padding: 20,
   },
   statsGrid: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "space-between",
     alignItems: "center",
   },
   statItem: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   statValue: {
     fontSize: 24,
     fontWeight: "bold",
     color: "white",
     marginTop: 8,
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 4,
+    textAlign: "center",
   },
   statDivider: {
     width: 1,
     height: 40,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
+    marginHorizontal: 10,
   },
 });

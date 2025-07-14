@@ -1,7 +1,7 @@
 // src/components/workout-history/types.ts
 // קובץ זה מכיל את כל הטיפוסים והקבועים לניהול היסטוריית אימונים
 
-import { Workout, WorkoutSortBy } from "../../types/workout";
+import { Workout } from "../../types/workout";
 
 // ממשק לסינון היסטוריית אימונים - מאפשר סינון לפי תקופה, דירוג, משך ועוד
 export interface WorkoutHistoryFilters {
@@ -29,6 +29,16 @@ export interface WorkoutCardProps {
   index: number;
 }
 
+// enum למיון אימונים
+export enum WorkoutSortBy {
+  DATE_DESC = "date_desc",
+  DATE_ASC = "date_asc",
+  DURATION_DESC = "duration_desc",
+  DURATION_ASC = "duration_asc",
+  EXERCISES_DESC = "exercises_desc",
+  EXERCISES_ASC = "exercises_asc",
+}
+
 // פלטת צבעים מודרנית למסך ההיסטוריה - עיצוב אחיד ומקצועי
 export const modernColors = {
   primary: "#007AFF",
@@ -41,10 +51,10 @@ export const modernColors = {
   cardBg: "#FFFFFF",
   text: "#1C1C1E",
   textSecondary: "#8E8E93",
-  muted: "#8E8E93", // הוספת הצבע החסר
+  muted: "#8E8E93",
   border: "#E5E5EA",
   shadow: "#000000",
 };
 
 // ייצוא כל הטיפוסים בצורה נוחה
-export type { Workout, WorkoutSortBy };
+export type { Workout };

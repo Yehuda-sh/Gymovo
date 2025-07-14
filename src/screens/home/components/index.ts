@@ -14,4 +14,3 @@ export { default as StatCard } from "./StatCard";
 export { default as StatsButton } from "./StatsButton";
 export { default as WeeklyStats } from "./WeeklyStats";
 export { default as WelcomeMessage } from "./WelcomeMessage";
-export { default as WorkoutCard } from "./WorkoutCard";
