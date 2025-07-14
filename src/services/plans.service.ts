@@ -1,17 +1,18 @@
 // src/services/plans.service.ts
+// שירות ניהול תוכניות אימון - מתוקן
 
 import { Plan } from "../types/plan";
 import {
-  loadPlans as loadPlansFromStorage,
-  savePlan,
-  deletePlan,
+  getPlansByUserId,
+  savePlan as savePlanToStorage,
+  deletePlan as deletePlanFromStorage,
 } from "../data/storage";
 
 class PlansService {
   // Get all plans for a user
   async getPlans(userId: string): Promise<Plan[]> {
     try {
-      const plans = await loadPlansFromStorage(userId);
+      const plans = await getPlansByUserId(userId);
       return plans || [];
     } catch (error) {
       console.error("Error loading plans:", error);
@@ -26,7 +27,7 @@ class PlansService {
   }
 
   // Create a new plan
-  async createPlan(plan: Plan, userId: string): Promise<boolean> {
+  async createPlan(plan: Plan, userId: string): Promise<Plan> {
     try {
       const newPlan: Plan = {
         ...plan,
@@ -34,7 +35,7 @@ class PlansService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      return await savePlan(newPlan, userId);
+      return await savePlanToStorage(userId, newPlan);
     } catch (error) {
       console.error("Error creating plan:", error);
       throw error;
@@ -42,13 +43,13 @@ class PlansService {
   }
 
   // Update an existing plan
-  async updatePlan(plan: Plan, userId: string): Promise<boolean> {
+  async updatePlan(plan: Plan, userId: string): Promise<Plan> {
     try {
       const updatedPlan: Plan = {
         ...plan,
         updatedAt: new Date().toISOString(),
       };
-      return await savePlan(updatedPlan, userId);
+      return await savePlanToStorage(userId, updatedPlan);
     } catch (error) {
       console.error("Error updating plan:", error);
       throw error;
@@ -58,7 +59,7 @@ class PlansService {
   // Delete a plan
   async deletePlan(planId: string, userId: string): Promise<boolean> {
     try {
-      return await deletePlan(planId, userId);
+      return await deletePlanFromStorage(userId, planId);
     } catch (error) {
       console.error("Error deleting plan:", error);
       throw error;
@@ -87,69 +88,86 @@ class PlansService {
   }
 
   // Search plans
-  async searchPlans(query: string, userId: string): Promise<Plan[]> {
+  async searchPlans(userId: string, query: string): Promise<Plan[]> {
     const plans = await this.getPlans(userId);
-    const searchTerm = query.toLowerCase();
+    const lowerQuery = query.toLowerCase();
 
-    return plans.filter(
-      (plan) =>
-        plan.name.toLowerCase().includes(searchTerm) ||
-        plan.description?.toLowerCase().includes(searchTerm) ||
-        plan.tags?.some((tag) => tag.toLowerCase().includes(searchTerm))
-    );
+    return plans.filter((plan) => {
+      return (
+        plan.name.toLowerCase().includes(lowerQuery) ||
+        plan.description?.toLowerCase().includes(lowerQuery) ||
+        plan.tags?.some((tag) => tag.toLowerCase().includes(lowerQuery))
+      );
+    });
   }
 
-  // Get recommended plans based on user preferences
-  async getRecommendedPlans(userId: string): Promise<Plan[]> {
-    // This is a placeholder - you can implement recommendation logic based on:
-    // - User's fitness level
-    // - Previous workouts
-    // - Goals
-    // - Preferences
-    const plans = await this.getPlans(userId);
+  // Toggle plan active status
+  async togglePlanActive(planId: string, userId: string): Promise<Plan | null> {
+    const plan = await this.getPlanById(planId, userId);
+    if (!plan) return null;
 
-    // For now, return plans with high ratings or marked as recommended
-    return plans.filter(
-      (plan) =>
-        (plan.rating && plan.rating >= 4) || plan.tags?.includes("recommended")
-    );
-  }
-
-  // Clone a plan
-  async clonePlan(
-    planId: string,
-    userId: string,
-    newName?: string
-  ): Promise<Plan | null> {
-    const originalPlan = await this.getPlanById(planId, userId);
-    if (!originalPlan) return null;
-
-    const clonedPlan: Plan = {
-      ...originalPlan,
-      id: `plan_${Date.now()}`,
-      name: newName || `${originalPlan.name} (העתק)`,
-      userId,
-      createdAt: new Date().toISOString(),
+    const updatedPlan = {
+      ...plan,
+      isActive: !plan.isActive,
       updatedAt: new Date().toISOString(),
-      isTemplate: false,
-      creator: "user",
     };
 
-    const success = await this.createPlan(clonedPlan, userId);
-    return success ? clonedPlan : null;
+    await this.updatePlan(updatedPlan, userId);
+    return updatedPlan;
+  }
+
+  // Duplicate a plan
+  async duplicatePlan(planId: string, userId: string): Promise<Plan | null> {
+    const plan = await this.getPlanById(planId, userId);
+    if (!plan) return null;
+
+    const duplicatedPlan: Plan = {
+      ...plan,
+      id: `plan_${Date.now()}`, // Generate new ID
+      name: `${plan.name} (עותק)`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    return await this.createPlan(duplicatedPlan, userId);
+  }
+
+  // Get plan statistics
+  async getPlanStatistics(userId: string): Promise<{
+    total: number;
+    active: number;
+    byDifficulty: Record<string, number>;
+    byCategory: Record<string, number>;
+  }> {
+    const plans = await this.getPlans(userId);
+
+    const stats = {
+      total: plans.length,
+      active: plans.filter((p) => p.isActive !== false).length,
+      byDifficulty: {} as Record<string, number>,
+      byCategory: {} as Record<string, number>,
+    };
+
+    plans.forEach((plan) => {
+      // Count by difficulty
+      if (plan.difficulty) {
+        stats.byDifficulty[plan.difficulty] =
+          (stats.byDifficulty[plan.difficulty] || 0) + 1;
+      }
+
+      // Count by category
+      if (plan.category) {
+        stats.byCategory[plan.category] =
+          (stats.byCategory[plan.category] || 0) + 1;
+      }
+    });
+
+    return stats;
   }
 }
 
-// Export singleton instance
+// יצירת instance יחיד (Singleton)
 export const plansService = new PlansService();
 
-// Export individual functions for backward compatibility
-export const getPlans = (userId: string) => plansService.getPlans(userId);
-export const getPlanById = (planId: string, userId: string) =>
-  plansService.getPlanById(planId, userId);
-export const createPlan = (plan: Plan, userId: string) =>
-  plansService.createPlan(plan, userId);
-export const updatePlan = (plan: Plan, userId: string) =>
-  plansService.updatePlan(plan, userId);
-export const deletePlanService = (planId: string, userId: string) =>
-  plansService.deletePlan(planId, userId);
+// ייצוא ברירת מחדל
+export default plansService;
