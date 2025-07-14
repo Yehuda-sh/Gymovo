@@ -12,7 +12,6 @@ import {
   StyleSheet,
   StatusBar,
   Animated,
-  Dimensions,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -30,8 +29,6 @@ import { RootStackParamList } from "../../../types/navigation";
 import { Exercise } from "../../../types/exercise";
 import { useExercises } from "../../../hooks/useExercises";
 import { useWorkoutStore } from "../../../stores/workoutStore";
-
-const { width } = Dimensions.get("window");
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -98,7 +95,7 @@ const CategoryChip: React.FC<{
       friction: 8,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [index, scaleAnim]);
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -167,7 +164,7 @@ const ExerciseCard: React.FC<{
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [index, fadeAnim, slideAnim]);
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -300,7 +297,7 @@ const ExerciseCard: React.FC<{
 // המסך הראשי
 const ExerciseSelectionScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { data: exercises, isLoading } = useExercises();
+  const { exercises, isLoading } = useExercises();
   const { startCustomWorkout } = useWorkoutStore();
 
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -331,7 +328,7 @@ const ExerciseSelectionScreen: React.FC = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, headerSlide, buttonScale]);
 
   // סינון תרגילים
   const filteredExercises = useMemo(() => {
@@ -342,9 +339,9 @@ const ExerciseSelectionScreen: React.FC = () => {
     // סינון לפי קטגוריה
     if (selectedCategory !== "all") {
       filtered = filtered.filter(
-        (exercise) =>
+        (exercise: Exercise) =>
           exercise.category?.toLowerCase() === selectedCategory ||
-          exercise.targetMuscleGroups?.some((muscle) =>
+          exercise.targetMuscleGroups?.some((muscle: string) =>
             muscle.toLowerCase().includes(selectedCategory)
           )
       );
@@ -354,7 +351,7 @@ const ExerciseSelectionScreen: React.FC = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (exercise) =>
+        (exercise: Exercise) =>
           exercise.name.toLowerCase().includes(query) ||
           exercise.description?.toLowerCase().includes(query)
       );

@@ -430,10 +430,7 @@ export const useExercises = (): UseExercisesReturn => {
               );
 
               // 🎨 הודעת מחיקה
-              Toast.info(
-                "התרגיל נמחק",
-                `התרגיל "${deletedExercise?.name}" נמחק`
-              );
+              Toast.info("התרגיל נמחק", `התרגיל "${deletedExercise?.name}" נמחק`);
 
               // 🚀 הסרה מהמטמון
               queryClient.removeQueries({
