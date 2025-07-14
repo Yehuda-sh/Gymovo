@@ -146,7 +146,7 @@ const ExercisesPickerScreen = () => {
 
   // API Data
   const {
-    data: allExercises = [],
+    exercises: allExercises = [],
     isLoading,
     isError,
     refetch,
@@ -258,7 +258,7 @@ const ExercisesPickerScreen = () => {
       exercises: selectedExercises,
     };
 
-    updateDay(dayId, updatedDay);
+    updateDay(dayId || "", updatedDay);
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Toast.show(`נבחרו ${selectedExercises.length} תרגילים`, "success");

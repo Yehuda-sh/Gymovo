@@ -1,7 +1,7 @@
 // src/hooks/usePlans.ts - Hook משופר לניהול תוכניות אימון
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 import { getPlansByUserId, savePlan, deletePlan } from "../data/storage";
@@ -9,7 +9,6 @@ import { fetchPublicPlans } from "../services/wgerApi";
 import { getDemoPlanForUser } from "../constants/demoUsers";
 import { useUserStore } from "../stores/userStore";
 import { Plan, PlanProgress, PlanStats } from "../types/plan";
-import { useNetworkStatus } from "../utils/networkUtils";
 
 // קבועים לניהול cache
 const CACHE_TIME = {
@@ -44,13 +43,9 @@ interface PlansState {
 export const usePlans = (): PlansState => {
   const user = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
-  const { isConnected } = useNetworkStatus();
+  // const { isConnected } = useNetworkStatus();
 
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [planProgress, setPlanProgress] = useState<Map<string, PlanProgress>>(
-    new Map()
-  );
-  const [planStats, setPlanStats] = useState<Map<string, PlanStats>>(new Map());
 
   // שליפת תוכניות המשתמש
   const {
@@ -86,7 +81,7 @@ export const usePlans = (): PlansState => {
     },
     enabled: !!user?.id,
     staleTime: CACHE_TIME.USER_PLANS,
-    cacheTime: CACHE_TIME.USER_PLANS * 2,
+    gcTime: CACHE_TIME.USER_PLANS * 2,
     retry: 2,
     retryDelay: 1000,
   });
@@ -100,9 +95,9 @@ export const usePlans = (): PlansState => {
     queryKey: ["public-plans"],
     queryFn: fetchPublicPlans,
     staleTime: CACHE_TIME.PUBLIC_PLANS,
-    cacheTime: CACHE_TIME.PUBLIC_PLANS * 2,
-    retry: isConnected ? 2 : 0, // אל תנסה אם אין רשת
-    enabled: isConnected, // טען רק אם יש רשת
+    gcTime: CACHE_TIME.PUBLIC_PLANS * 2,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   // עדכון state כשהנתונים משתנים
@@ -171,8 +166,8 @@ export const usePlans = (): PlansState => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // מחיקת progress ו-stats
-      planProgress.delete(planId);
-      planStats.delete(planId);
+      // planProgress.delete(planId);
+      // planStats.delete(planId);
     },
     onError: (error: Error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -231,27 +226,25 @@ export const usePlans = (): PlansState => {
   const getPlanProgress = useCallback(
     (planId: string): PlanProgress | undefined => {
       // בגרסה מלאה - לטעון מ-storage
-      return planProgress.get(planId);
+      return undefined;
     },
-    [planProgress]
+    []
   );
 
   // קבלת סטטיסטיקות תוכנית
   const getPlanStats = useCallback(
     (planId: string): PlanStats | undefined => {
       // בגרסה מלאה - לחשב מהיסטוריית אימונים
-      return planStats.get(planId);
+      return undefined;
     },
-    [planStats]
+    []
   );
 
   // פונקציית refetch משולבת
   const refetch = useCallback(() => {
     refetchUser();
-    if (isConnected) {
-      queryClient.invalidateQueries({ queryKey: ["public-plans"] });
-    }
-  }, [refetchUser, isConnected, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ["public-plans"] });
+  }, [refetchUser, queryClient]);
 
   // חישוב מצבי טעינה ושגיאה
   const isLoading = isLoadingUser || isLoadingPublic;
