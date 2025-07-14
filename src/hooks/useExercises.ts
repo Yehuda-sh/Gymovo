@@ -120,7 +120,7 @@ export const useExercises = (): UseExercisesReturn => {
       try {
         // 🔧 הודעה על חיבור איטי
         if (isSlowConnection) {
-          Toast.show(`טוען תרגילים ב${connectionDescription}...`);
+          Toast.info("טוען תרגילים", `חיבור איטי: ${connectionDescription}`);
         }
 
         const data = await wgerApi.fetchAllExercises();
@@ -149,7 +149,7 @@ export const useExercises = (): UseExercisesReturn => {
   useEffect(() => {
     if (isError && error) {
       if (error.message === "NO_CONNECTION") {
-        Toast.show("התרגילים יטענו כשתתחבר לאינטרנט");
+        Toast.error("שגיאה", "לא ניתן לטעון את רשימת התרגילים");
       } else {
         Toast.error("שגיאה בטעינת התרגילים");
       }
@@ -239,11 +239,17 @@ export const useExercises = (): UseExercisesReturn => {
         // 🎨 הודעה חלקה
         const exercise = exercises.find((e) => e.id === exerciseId);
         if (exercise) {
-          Toast.show(
-            newFavorites.has(exerciseId)
-              ? `${exercise.name} נוסף למועדפים ⭐`
-              : `${exercise.name} הוסר מהמועדפים`
-          );
+          if (newFavorites.has(exerciseId)) {
+            Toast.info(
+              "הוסר מהמועדפים",
+              `התרגיל ${exercise.name} הוסר מרשימת המועדפים`
+            );
+          } else {
+            Toast.success(
+              "נוסף למועדפים",
+              `התרגיל ${exercise.name} נוסף לרשימת המועדפים`
+            );
+          }
         }
       } catch (error) {
         console.error("Error saving favorites:", error);
@@ -424,7 +430,10 @@ export const useExercises = (): UseExercisesReturn => {
               );
 
               // 🎨 הודעת מחיקה
-              Toast.show(`התרגיל "${deletedExercise?.name}" נמחק`);
+              Toast.info(
+                "התרגיל נמחק",
+                `התרגיל "${deletedExercise?.name}" נמחק`
+              );
 
               // 🚀 הסרה מהמטמון
               queryClient.removeQueries({
