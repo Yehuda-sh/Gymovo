@@ -1,6 +1,6 @@
 // src/screens/workouts/start-workout/hooks/index.ts
 
-export { usePlans } from "./usePlans";
+export { usePlans } from "../hooks/usePlans";
 export { useWorkoutStart } from "./useWorkoutStart";
 export { useWorkoutAnimations } from "./useWorkoutAnimations";
 export { useOfflineMode } from "./useOfflineMode";

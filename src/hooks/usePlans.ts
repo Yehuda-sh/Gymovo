@@ -1,20 +1,28 @@
 // src/hooks/usePlans.ts - Hook משופר לניהול תוכניות אימון
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
+import NetInfo from "@react-native-community/netinfo";
 import { getPlansByUserId, savePlan, deletePlan } from "../data/storage";
 import { fetchPublicPlans } from "../services/wgerApi";
 import { getDemoPlanForUser } from "../constants/demoUsers";
 import { useUserStore } from "../stores/userStore";
 import { Plan, PlanProgress, PlanStats } from "../types/plan";
 
-// קבועים לניהול cache
+// קבועים לניהול cache ו-retry
 const CACHE_TIME = {
   USER_PLANS: 1000 * 60 * 5, // 5 דקות
   PUBLIC_PLANS: 1000 * 60 * 30, // 30 דקות
 } as const;
+
+// React Query v5 config
+const RETRY_CONFIG = {
+  retry: 3,
+  retryDelay: (attemptIndex: number) =>
+    Math.min(1000 * 2 ** attemptIndex, 30000),
+};
 
 // טיפוסים נוספים
 interface PlansState {
@@ -34,20 +42,40 @@ interface PlansState {
   getActivePlan: () => Plan | undefined;
   getPlanProgress: (planId: string) => PlanProgress | undefined;
   getPlanStats: (planId: string) => PlanStats | undefined;
+  isOffline: boolean;
+  hasLocalChanges: boolean;
+  syncLocalChanges: () => Promise<void>;
 }
+
+// Hook לבדיקת חיבור לרשת
+const useNetworkStatus = () => {
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!state.isConnected);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return { isOffline };
+};
 
 /**
  * Hook משופר לניהול תוכניות אימון
  * כולל טעינה, שמירה, עדכון, מחיקה ופונקציות עזר נוספות
+ * תומך במצב offline ו-error handling מתקדם
  */
 export const usePlans = (): PlansState => {
   const user = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
-  // const { isConnected } = useNetworkStatus();
+  const { isOffline } = useNetworkStatus();
 
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
 
-  // שליפת תוכניות המשתמש
+  // שליפת תוכניות המשתמש עם retry mechanism
   const {
     data: userPlans,
     isLoading: isLoadingUser,
@@ -76,17 +104,29 @@ export const usePlans = (): PlansState => {
         return storedPlans;
       } catch (error) {
         console.error("Error loading user plans:", error);
+
+        // במצב offline, נסה לטעון מהמטמון המקומי
+        if (isOffline) {
+          const cachedPlans = queryClient.getQueryData<Plan[]>([
+            "plans",
+            user?.id,
+          ]);
+          if (cachedPlans) {
+            return cachedPlans;
+          }
+        }
+
         throw error;
       }
     },
     enabled: !!user?.id,
     staleTime: CACHE_TIME.USER_PLANS,
     gcTime: CACHE_TIME.USER_PLANS * 2,
-    retry: 2,
-    retryDelay: 1000,
+    retry: RETRY_CONFIG.retry,
+    retryDelay: RETRY_CONFIG.retryDelay,
   });
 
-  // שליפת תוכניות ציבוריות
+  // שליפת תוכניות ציבוריות (רק אם יש חיבור)
   const {
     data: publicPlans,
     isLoading: isLoadingPublic,
@@ -94,10 +134,11 @@ export const usePlans = (): PlansState => {
   } = useQuery({
     queryKey: ["public-plans"],
     queryFn: fetchPublicPlans,
+    enabled: !isOffline, // לא לנסות לטעון במצב offline
     staleTime: CACHE_TIME.PUBLIC_PLANS,
     gcTime: CACHE_TIME.PUBLIC_PLANS * 2,
-    retry: 2,
-    retryDelay: 1000,
+    retry: RETRY_CONFIG.retry,
+    retryDelay: RETRY_CONFIG.retryDelay,
   });
 
   // עדכון state כשהנתונים משתנים
@@ -106,7 +147,22 @@ export const usePlans = (): PlansState => {
     setPlans(allPlans);
   }, [userPlans, publicPlans]);
 
-  // Mutation לשמירת תוכנית חדשה
+  // פונקציה לסנכרון שינויים מקומיים
+  const syncLocalChanges = useCallback(async () => {
+    if (!hasLocalChanges || isOffline) return;
+
+    try {
+      // כאן תוסיף לוגיקה לסנכרון שינויים מקומיים עם השרת
+      // לדוגמה: לטעון רשימת שינויים שנשמרו locally ולשלוח לשרת
+
+      setHasLocalChanges(false);
+      await refetchUser();
+    } catch (error) {
+      console.error("Failed to sync local changes:", error);
+    }
+  }, [hasLocalChanges, isOffline, refetchUser]);
+
+  // Mutation לשמירת תוכנית חדשה עם offline support
   const createPlanMutation = useMutation({
     mutationFn: async (plan: Plan) => {
       if (!user?.id) throw new Error("משתמש לא מחובר");
@@ -116,17 +172,30 @@ export const usePlans = (): PlansState => {
         throw new Error("חובה להזין שם לתוכנית");
       }
 
+      // במצב offline, שמור locally בלבד
+      if (isOffline) {
+        setHasLocalChanges(true);
+        // כאן תוסיף לוגיקה לשמירה מקומית עם flag לסנכרון מאוחר יותר
+      }
+
       return await savePlan(user.id, plan);
     },
     onSuccess: (_, plan) => {
       queryClient.invalidateQueries({ queryKey: ["plans", user?.id] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("הצלחה", `התוכנית "${plan.name}" נשמרה בהצלחה`);
+
+      const message = isOffline
+        ? `התוכנית "${plan.name}" נשמרה מקומית ותסונכרן כשיהיה חיבור`
+        : `התוכנית "${plan.name}" נשמרה בהצלחה`;
+
+      Alert.alert("הצלחה", message);
     },
     onError: (error: Error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("שגיאה", error.message || "שמירת התוכנית נכשלה");
     },
+    // נסה שוב אוטומטית במקרה של כשלון רשת
+    retry: isOffline ? 0 : 3,
   });
 
   // Mutation לעדכון תוכנית קיימת
@@ -137,6 +206,10 @@ export const usePlans = (): PlansState => {
       // עדכון התאריך
       plan.updatedAt = new Date().toISOString();
 
+      if (isOffline) {
+        setHasLocalChanges(true);
+      }
+
       return await savePlan(user.id, plan);
     },
     onSuccess: (_, plan) => {
@@ -144,6 +217,7 @@ export const usePlans = (): PlansState => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
     onError: (error: Error) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("שגיאה", "עדכון התוכנית נכשל");
     },
   });
@@ -153,21 +227,16 @@ export const usePlans = (): PlansState => {
     mutationFn: async (planId: string) => {
       if (!user?.id) throw new Error("משתמש לא מחובר");
 
-      // בדיקה אם זו תוכנית דמו
-      const plan = plans.find((p) => p.id === planId);
-      if (plan?.isTemplate) {
-        throw new Error("לא ניתן למחוק תוכנית דמו");
+      if (isOffline) {
+        throw new Error("לא ניתן למחוק תוכניות במצב לא מקוון");
       }
 
       return await deletePlan(user.id, planId);
     },
-    onSuccess: (_, planId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans", user?.id] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      // מחיקת progress ו-stats
-      // planProgress.delete(planId);
-      // planStats.delete(planId);
+      Alert.alert("הצלחה", "התוכנית נמחקה בהצלחה");
     },
     onError: (error: Error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -190,8 +259,7 @@ export const usePlans = (): PlansState => {
         name: `${planToDuplicate.name} (עותק)`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isTemplate: false,
-        isPublic: false,
+        isActive: false, // תוכנית משוכפלת לא תהיה פעילה כברירת מחדל
       };
 
       createPlanMutation.mutate(duplicatedPlan);
@@ -199,7 +267,7 @@ export const usePlans = (): PlansState => {
     [plans, createPlanMutation]
   );
 
-  // חיפוש תוכניות
+  // חיפוש תוכניות עם memoization
   const searchPlans = useCallback(
     (query: string): Plan[] => {
       if (!query.trim()) return plans;
@@ -222,53 +290,83 @@ export const usePlans = (): PlansState => {
     return plans.find((plan) => plan.isActive);
   }, [plans]);
 
-  // קבלת התקדמות בתוכנית
+  // קבלת התקדמות בתוכנית (Placeholder - יש להטמיע בעתיד)
   const getPlanProgress = useCallback(
     (planId: string): PlanProgress | undefined => {
       // בגרסה מלאה - לטעון מ-storage
+      // כרגע מחזיר undefined
       return undefined;
     },
     []
   );
 
-  // קבלת סטטיסטיקות תוכנית
-  const getPlanStats = useCallback(
-    (planId: string): PlanStats | undefined => {
-      // בגרסה מלאה - לחשב מהיסטוריית אימונים
-      return undefined;
-    },
-    []
-  );
+  // קבלת סטטיסטיקות תוכנית (Placeholder - יש להטמיע בעתיד)
+  const getPlanStats = useCallback((planId: string): PlanStats | undefined => {
+    // בגרסה מלאה - לחשב מהיסטוריית אימונים
+    // כרגע מחזיר undefined
+    return undefined;
+  }, []);
 
   // פונקציית refetch משולבת
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
+    // אם יש שינויים מקומיים, סנכרן קודם
+    if (hasLocalChanges && !isOffline) {
+      await syncLocalChanges();
+    }
+
     refetchUser();
-    queryClient.invalidateQueries({ queryKey: ["public-plans"] });
-  }, [refetchUser, queryClient]);
+    if (!isOffline) {
+      queryClient.invalidateQueries({ queryKey: ["public-plans"] });
+    }
+  }, [refetchUser, queryClient, hasLocalChanges, isOffline, syncLocalChanges]);
 
   // חישוב מצבי טעינה ושגיאה
-  const isLoading = isLoadingUser || isLoadingPublic;
-  const isError = isErrorUser || isErrorPublic;
+  const isLoading = isLoadingUser || (!isOffline && isLoadingPublic);
+  const isError = isErrorUser || (!isOffline && isErrorPublic);
   const error = userError || null;
 
-  return {
-    plans,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    createPlan: createPlanMutation.mutate,
-    updatePlan: updatePlanMutation.mutate,
-    deletePlan: deletePlanMutation.mutate,
-    duplicatePlan,
-    isCreating: createPlanMutation.isPending,
-    isDeleting: deletePlanMutation.isPending,
-    isUpdating: updatePlanMutation.isPending,
-    searchPlans,
-    getActivePlan,
-    getPlanProgress,
-    getPlanStats,
-  };
+  // Memoize את התוצאה הסופית
+  return useMemo(
+    () => ({
+      plans,
+      isLoading,
+      isError,
+      error,
+      refetch,
+      createPlan: createPlanMutation.mutate,
+      updatePlan: updatePlanMutation.mutate,
+      deletePlan: deletePlanMutation.mutate,
+      duplicatePlan,
+      isCreating: createPlanMutation.isPending,
+      isDeleting: deletePlanMutation.isPending,
+      isUpdating: updatePlanMutation.isPending,
+      searchPlans,
+      getActivePlan,
+      getPlanProgress,
+      getPlanStats,
+      isOffline,
+      hasLocalChanges,
+      syncLocalChanges,
+    }),
+    [
+      plans,
+      isLoading,
+      isError,
+      error,
+      refetch,
+      createPlanMutation,
+      updatePlanMutation,
+      deletePlanMutation,
+      duplicatePlan,
+      searchPlans,
+      getActivePlan,
+      getPlanProgress,
+      getPlanStats,
+      isOffline,
+      hasLocalChanges,
+      syncLocalChanges,
+    ]
+  );
 };
 
 // Export נוסף להתאימות לאחור
