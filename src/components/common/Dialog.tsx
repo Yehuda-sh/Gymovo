@@ -1,42 +1,287 @@
-// src/components/common/Dialog.tsx - פופ-אפ מעוצב לשיחלף Alert.alert
+// src/components/common/Dialog.tsx - דיאלוג מתקדם עם אנימציות ואפשרויות גמישות
 
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  BackHandler,
+  Modal,
+  TouchableWithoutFeedback,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { colors } from "../../theme/colors";
+import Button from "./Button";
 
-// 🎭 טיפוסי הדיאלוג
-export type DialogType = "info" | "success" | "warning" | "error" | "confirm";
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export interface DialogButton {
+export interface DialogAction {
   text: string;
-  style?: "default" | "cancel" | "destructive";
-  onPress?: () => void;
+  onPress: () => void | Promise<void>;
+  variant?: "primary" | "secondary" | "danger" | "outline";
+  loading?: boolean;
+  disabled?: boolean;
 }
 
-export interface DialogConfig {
+interface DialogProps {
+  visible: boolean;
+  onClose?: () => void;
   title: string;
   message?: string;
-  type?: DialogType;
-  buttons?: DialogButton[];
-  cancelable?: boolean;
-  icon?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
+  actions?: DialogAction[];
+  type?: "info" | "warning" | "error" | "success" | "confirm";
+  closeOnBackdrop?: boolean;
+  showCloseButton?: boolean;
+  customContent?: React.ReactNode;
+  animationType?: "fade" | "slide" | "bounce";
+  blurBackground?: boolean;
 }
 
-// 🎯 מנהל הדיאלוגים
+const Dialog: React.FC<DialogProps> = ({
+  visible,
+  onClose,
+  title,
+  message,
+  icon,
+  iconColor,
+  actions = [],
+  type = "info",
+  closeOnBackdrop = true,
+  showCloseButton = false,
+  customContent,
+  animationType = "bounce",
+  blurBackground = true,
+}) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const [actionLoadingStates, setActionLoadingStates] = useState<{
+    [key: number]: boolean;
+  }>({});
+
+  useEffect(() => {
+    if (visible) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      animateIn();
+    } else {
+      animateOut();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const animateIn = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: animationType === "bounce" ? 50 : 100,
+        friction: animationType === "bounce" ? 8 : 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const animateOut = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const getTypeConfig = () => {
+    switch (type) {
+      case "success":
+        return {
+          defaultIcon: "checkmark-circle" as const,
+          defaultColor: "#4CAF50",
+          gradientColors: ["#4CAF50", "#45a049"],
+        };
+      case "error":
+        return {
+          defaultIcon: "alert-circle" as const,
+          defaultColor: "#FF4B4B",
+          gradientColors: ["#FF4B4B", "#f44336"],
+        };
+      case "warning":
+        return {
+          defaultIcon: "warning" as const,
+          defaultColor: "#FFA726",
+          gradientColors: ["#FFA726", "#FB8C00"],
+        };
+      case "confirm":
+        return {
+          defaultIcon: "help-circle" as const,
+          defaultColor: colors.primary,
+          gradientColors: [colors.primary, colors.secondary],
+        };
+      default:
+        return {
+          defaultIcon: "information-circle" as const,
+          defaultColor: colors.primary,
+          gradientColors: [colors.primary, colors.secondary],
+        };
+    }
+  };
+
+  const typeConfig = getTypeConfig();
+  const displayIcon = icon || typeConfig.defaultIcon;
+  const displayIconColor = iconColor || typeConfig.defaultColor;
+
+  const handleBackdropPress = () => {
+    if (closeOnBackdrop && onClose) {
+      onClose();
+    }
+  };
+
+  const handleActionPress = async (action: DialogAction, index: number) => {
+    if (action.loading || action.disabled) return;
+
+    setActionLoadingStates({ ...actionLoadingStates, [index]: true });
+
+    try {
+      await action.onPress();
+      if (onClose) onClose();
+    } catch (error) {
+      console.error("Dialog action error:", error);
+    } finally {
+      setActionLoadingStates({ ...actionLoadingStates, [index]: false });
+    }
+  };
+
+  // Default actions if none provided
+  const displayActions =
+    actions.length > 0
+      ? actions
+      : type === "confirm"
+      ? [
+          {
+            text: "ביטול",
+            onPress: onClose || (() => {}),
+            variant: "outline" as const,
+          },
+          {
+            text: "אישור",
+            onPress: onClose || (() => {}),
+            variant: "primary" as const,
+          },
+        ]
+      : [
+          {
+            text: "סגור",
+            onPress: onClose || (() => {}),
+            variant: "primary" as const,
+          },
+        ];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <TouchableWithoutFeedback onPress={handleBackdropPress}>
+        <Animated.View
+          style={[
+            styles.backdrop,
+            {
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          {blurBackground && (
+            <BlurView
+              intensity={20}
+              tint="dark"
+              style={StyleSheet.absoluteFillObject}
+            />
+          )}
+        </Animated.View>
+      </TouchableWithoutFeedback>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          style={[
+            styles.dialog,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          {showCloseButton && onClose && (
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.iconContainer}>
+            <View
+              style={[
+                styles.iconBackground,
+                { backgroundColor: `${displayIconColor}20` },
+              ]}
+            >
+              <Ionicons name={displayIcon} size={48} color={displayIconColor} />
+            </View>
+          </View>
+
+          <Text style={styles.title}>{title}</Text>
+
+          {message && <Text style={styles.message}>{message}</Text>}
+
+          {customContent && (
+            <View style={styles.customContent}>{customContent}</View>
+          )}
+
+          <View style={styles.actions}>
+            {displayActions.map((action, index) => (
+              <Button
+                key={index}
+                title={action.text}
+                onPress={() => handleActionPress(action, index)}
+                variant={action.variant || "primary"}
+                loading={actionLoadingStates[index] || action.loading}
+                disabled={action.disabled}
+                fullWidth
+                style={index > 0 ? styles.actionButtonSpacing : undefined}
+              />
+            ))}
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
+// Dialog Manager for easy usage
 class DialogManager {
   private static instance: DialogManager;
-  private listeners: ((config: DialogConfig | null) => void)[] = [];
+  private showDialogCallback?: (props: DialogProps) => void;
 
   static getInstance(): DialogManager {
     if (!DialogManager.instance) {
@@ -45,313 +290,164 @@ class DialogManager {
     return DialogManager.instance;
   }
 
-  subscribe(listener: (config: DialogConfig | null) => void) {
-    this.listeners.push(listener);
-    return () => {
-      this.listeners = this.listeners.filter((l) => l !== listener);
-    };
+  setShowDialogCallback(callback: (props: DialogProps) => void) {
+    this.showDialogCallback = callback;
   }
 
-  show(config: DialogConfig) {
-    this.listeners.forEach((listener) => listener(config));
-
-    // Haptic feedback
-    if (config.type === "error") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } else if (config.type === "success") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else if (config.type === "warning") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+  show(props: DialogProps) {
+    this.showDialogCallback?.(props);
   }
 
-  hide() {
-    this.listeners.forEach((listener) => listener(null));
+  // Convenience methods
+  info(title: string, message?: string, actions?: DialogAction[]) {
+    this.show({
+      visible: true,
+      type: "info",
+      title,
+      message,
+      actions,
+    });
+  }
+
+  success(title: string, message?: string, actions?: DialogAction[]) {
+    this.show({
+      visible: true,
+      type: "success",
+      title,
+      message,
+      actions,
+    });
+  }
+
+  error(title: string, message?: string, actions?: DialogAction[]) {
+    this.show({
+      visible: true,
+      type: "error",
+      title,
+      message,
+      actions,
+    });
+  }
+
+  warning(title: string, message?: string, actions?: DialogAction[]) {
+    this.show({
+      visible: true,
+      type: "warning",
+      title,
+      message,
+      actions,
+    });
+  }
+
+  confirm(
+    title: string,
+    message: string,
+    onConfirm: () => void | Promise<void>,
+    onCancel?: () => void
+  ) {
+    this.show({
+      visible: true,
+      type: "confirm",
+      title,
+      message,
+      actions: [
+        {
+          text: "ביטול",
+          onPress: onCancel || (() => {}),
+          variant: "outline",
+        },
+        {
+          text: "אישור",
+          onPress: onConfirm,
+          variant: "primary",
+        },
+      ],
+    });
   }
 }
 
-// 🎨 רכיב הדיאלוג
+// Dialog Provider Component
 export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [dialogConfig, setDialogConfig] = useState<DialogConfig | null>(null);
+  const [dialogProps, setDialogProps] = useState<DialogProps | null>(null);
 
-  useEffect(() => {
-    const manager = DialogManager.getInstance();
-    const unsubscribe = manager.subscribe(setDialogConfig);
-    return unsubscribe;
+  React.useEffect(() => {
+    DialogManager.getInstance().setShowDialogCallback((props) => {
+      setDialogProps(props);
+    });
   }, []);
 
   return (
     <>
       {children}
-      {dialogConfig && (
-        <DialogModal
-          config={dialogConfig}
-          onClose={() => setDialogConfig(null)}
+      {dialogProps && (
+        <Dialog
+          {...dialogProps}
+          onClose={() => {
+            dialogProps.onClose?.();
+            setDialogProps(null);
+          }}
         />
       )}
     </>
   );
 };
 
-// 🪟 מודל הדיאלוג
-const DialogModal: React.FC<{
-  config: DialogConfig;
-  onClose: () => void;
-}> = ({ config, onClose }) => {
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // אנימציה כניסה
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // טיפול בלחצן חזרה
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (config.cancelable !== false) {
-        handleClose();
-        return true;
-      }
-      return false;
-    });
-
-    return () => backHandler.remove();
-  }, []);
-
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 0.8,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
-  };
-
-  const getIcon = () => {
-    if (config.icon) return config.icon;
-    
-    switch (config.type) {
-      case "success":
-        return "checkmark-circle";
-      case "error":
-        return "close-circle";
-      case "warning":
-        return "warning";
-      case "confirm":
-        return "help-circle";
-      default:
-        return "information-circle";
-    }
-  };
-
-  const getIconColor = () => {
-    switch (config.type) {
-      case "success":
-        return colors.success;
-      case "error":
-        return colors.error;
-      case "warning":
-        return colors.warning;
-      default:
-        return colors.primary;
-    }
-  };
-
-  const buttons = config.buttons || [{ text: "אישור", style: "default" }];
-
-  return (
-    <Modal transparent animationType="none" visible>
-      <BlurView intensity={20} style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={config.cancelable !== false ? handleClose : undefined}
-        />
-        
-        <Animated.View
-          style={[
-            styles.dialog,
-            {
-              opacity: opacityAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          {/* כותרת עם אייקון */}
-          <View style={styles.header}>
-            <View style={[styles.iconContainer, { backgroundColor: getIconColor() + "20" }]}>
-              <Ionicons
-                name={getIcon() as any}
-                size={32}
-                color={getIconColor()}
-              />
-            </View>
-            <Text style={styles.title}>{config.title}</Text>
-          </View>
-
-          {/* הודעה */}
-          {config.message && (
-            <Text style={styles.message}>{config.message}</Text>
-          )}
-
-          {/* כפתורים */}
-          <View style={styles.buttonsContainer}>
-            {buttons.map((button, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.button,
-                  button.style === "destructive" && styles.destructiveButton,
-                  button.style === "cancel" && styles.cancelButton,
-                  buttons.length === 1 && styles.singleButton,
-                ]}
-                onPress={() => {
-                  button.onPress?.();
-                  handleClose();
-                }}
-              >
-                <Text
-                  style={[
-                    styles.buttonText,
-                    button.style === "destructive" && styles.destructiveText,
-                    button.style === "cancel" && styles.cancelText,
-                  ]}
-                >
-                  {button.text}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Animated.View>
-      </BlurView>
-    </Modal>
-  );
-};
-
-// 🔌 API נוח לשימוש
-export const Dialog = {
-  show: (config: DialogConfig) => {
-    DialogManager.getInstance().show(config);
-  },
-
-  alert: (title: string, message?: string, buttons?: DialogButton[]) => {
-    Dialog.show({ title, message, buttons, type: "info" });
-  },
-
-  confirm: (
-    title: string,
-    message?: string,
-    onConfirm?: () => void,
-    onCancel?: () => void
-  ) => {
-    Dialog.show({
-      title,
-      message,
-      type: "confirm",
-      buttons: [
-        { text: "ביטול", style: "cancel", onPress: onCancel },
-        { text: "אישור", style: "default", onPress: onConfirm },
-      ],
-    });
-  },
-
-  success: (title: string, message?: string, onPress?: () => void) => {
-    Dialog.show({
-      title,
-      message,
-      type: "success",
-      buttons: [{ text: "נהדר!", onPress }],
-    });
-  },
-
-  error: (title: string, message?: string, onPress?: () => void) => {
-    Dialog.show({
-      title,
-      message,
-      type: "error",
-      buttons: [{ text: "הבנתי", onPress }],
-    });
-  },
-
-  warning: (title: string, message?: string, buttons?: DialogButton[]) => {
-    Dialog.show({
-      title,
-      message,
-      type: "warning",
-      buttons: buttons || [{ text: "הבנתי" }],
-    });
-  },
-};
+// Export Dialog API
+export const DialogService = DialogManager.getInstance();
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   dialog: {
     backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
-    margin: 20,
-    maxWidth: 340,
-    width: "90%",
+    maxWidth: SCREEN_WIDTH - 48,
+    width: "100%",
+    alignItems: "center",
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 10,
+      height: 2,
     },
     shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 15,
+    shadowRadius: 8,
   },
-  header: {
-    alignItems: "center",
-    marginBottom: 16,
+  closeButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    padding: 4,
+    zIndex: 1,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
+    marginBottom: 16,
+  },
+  iconBackground: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
   },
   title: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.text,
     textAlign: "center",
+    marginBottom: 8,
   },
   message: {
     fontSize: 16,
@@ -360,38 +456,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 24,
   },
-  buttonsContainer: {
-    flexDirection: "row",
-    gap: 12,
+  customContent: {
+    width: "100%",
+    marginBottom: 24,
   },
-  button: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
+  actions: {
+    width: "100%",
   },
-  singleButton: {
-    marginHorizontal: 0,
-  },
-  cancelButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  destructiveButton: {
-    backgroundColor: colors.error,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  cancelText: {
-    color: colors.text,
-  },
-  destructiveText: {
-    color: colors.text,
+  actionButtonSpacing: {
+    marginTop: 12,
   },
 });
 

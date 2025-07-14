@@ -1,7 +1,7 @@
-// src/components/common/Input.tsx - תיקון שגיאות TypeScript + עיצוב משופר
+// src/components/common/Input.tsx - שדה קלט מותאם עם אנימציות ותמיכה ב-RTL
 
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,319 +9,286 @@ import {
   TextInputProps,
   View,
   Animated,
+  TouchableOpacity,
+  I18nManager,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { colors } from "../../theme/colors";
 
-type Props = TextInputProps & {
+interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   iconName?: keyof typeof Ionicons.glyphMap;
-};
+  showPasswordToggle?: boolean;
+  variant?: "default" | "outline" | "filled";
+  size?: "small" | "medium" | "large";
+  helperText?: string;
+  required?: boolean;
+  containerStyle?: any;
+}
 
-const Input = ({
+const Input: React.FC<InputProps> = ({
   label,
   error,
   iconName,
-  style,
+  showPasswordToggle = false,
+  variant = "default",
+  size = "medium",
+  helperText,
+  required = false,
+  containerStyle,
+  secureTextEntry,
+  onFocus,
+  onBlur,
   value,
-  ...restOfProps
-}: Props) => {
-  const focusAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const hasValue = value && value.length > 0;
-  const hasError = Boolean(error);
+  ...props
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
+  const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const shakeAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animation when focused or has value
-    if (hasValue || hasError) {
-      Animated.parallel([
-        Animated.timing(focusAnim, {
-          toValue: 1,
-          duration: 300,
+    Animated.timing(animatedIsFocused, {
+      toValue: isFocused || value ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused, value]);
+
+  useEffect(() => {
+    if (error) {
+      Animated.sequence([
+        Animated.timing(shakeAnimation, {
+          toValue: 10,
+          duration: 100,
           useNativeDriver: true,
         }),
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(glowAnim, {
-              toValue: 1,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(glowAnim, {
-              toValue: 0,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
+        Animated.timing(shakeAnimation, {
+          toValue: -10,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnimation, {
+          toValue: 10,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnimation, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
       ]).start();
-    } else {
-      Animated.timing(focusAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
     }
-  }, [hasValue, hasError, focusAnim, glowAnim]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
 
-  // תיקון שגיאת TypeScript - החזרת arrays במקום פונקציות
-  const getBorderColors = (): [string, string] => {
-    if (hasError) {
-      return ["#ff3366", "#ff6b9d"];
-    } else if (hasValue) {
-      return ["#667eea", "#764ba2"];
-    } else {
-      return ["rgba(255, 255, 255, 0.3)", "rgba(102, 126, 234, 0.2)"];
+  const handleFocus = (e: any) => {
+    setIsFocused(true);
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: any) => {
+    setIsFocused(false);
+    onBlur?.(e);
+  };
+
+  const getSizeStyles = () => {
+    switch (size) {
+      case "small":
+        return {
+          height: 40,
+          fontSize: 14,
+          paddingHorizontal: 12,
+        };
+      case "large":
+        return {
+          height: 56,
+          fontSize: 18,
+          paddingHorizontal: 20,
+        };
+      default:
+        return {
+          height: 48,
+          fontSize: 16,
+          paddingHorizontal: 16,
+        };
     }
   };
 
-  const getBackgroundColors = (): [string, string] => {
-    if (hasError) {
-      return ["rgba(255, 51, 102, 0.1)", "rgba(0, 0, 0, 0.8)"];
-    } else if (hasValue) {
-      return ["rgba(102, 126, 234, 0.1)", "rgba(0, 0, 0, 0.8)"];
-    } else {
-      return ["rgba(255, 255, 255, 0.05)", "rgba(0, 0, 0, 0.8)"];
-    }
-  };
+  const sizeStyles = getSizeStyles();
 
-  const getIconColor = (): string => {
-    if (hasError) {
-      return "#ff3366";
-    } else if (hasValue) {
-      return "#667eea";
-    } else {
-      return "rgba(255, 255, 255, 0.7)";
-    }
-  };
-
-  const getLabelColor = (): string => {
-    if (hasError) {
-      return "#ff3366";
-    } else if (hasValue) {
-      return "#667eea";
-    } else {
-      return "rgba(255, 255, 255, 0.9)";
-    }
+  const labelStyle = {
+    position: "absolute" as const,
+    right: I18nManager.isRTL ? undefined : 16,
+    left: I18nManager.isRTL ? 16 : undefined,
+    top: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [sizeStyles.height / 2 - 8, -10],
+    }),
+    fontSize: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [sizeStyles.fontSize, 12],
+    }),
+    color: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        colors.textSecondary,
+        error ? colors.error : colors.primary,
+      ],
+    }),
+    backgroundColor: colors.background,
+    paddingHorizontal: 4,
   };
 
   return (
-    <View style={styles.container}>
-      {/* Label */}
+    <Animated.View
+      style={[
+        styles.container,
+        containerStyle,
+        { transform: [{ translateX: shakeAnimation }] },
+      ]}
+    >
       {label && (
-        <Text style={[styles.label, { color: getLabelColor() }]}>{label}</Text>
+        <Animated.Text style={labelStyle}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+        </Animated.Text>
       )}
 
-      {/* Input Container */}
-      <View style={styles.inputWrapper}>
-        {/* Glow Effect - תחת הכל */}
-        {(hasValue || hasError) && (
-          <Animated.View
-            style={[
-              styles.glowEffect,
-              {
-                opacity: glowAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.3, 0.8],
-                }),
-              },
-            ]}
-          >
-            <LinearGradient
-              colors={
-                hasError
-                  ? ["#ff3366", "transparent"]
-                  : ["#667eea", "transparent"]
-              }
-              style={styles.glow}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-          </Animated.View>
+      <View
+        style={[
+          styles.inputContainer,
+          {
+            borderColor: error
+              ? colors.error
+              : isFocused
+              ? colors.primary
+              : colors.border,
+            backgroundColor:
+              variant === "filled" ? colors.backgroundSecondary : "transparent",
+          },
+          variant === "outline" && styles.outlineVariant,
+        ]}
+      >
+        {iconName && (
+          <Ionicons
+            name={iconName}
+            size={20}
+            color={
+              error
+                ? colors.error
+                : isFocused
+                ? colors.primary
+                : colors.textSecondary
+            }
+            style={styles.icon}
+          />
         )}
 
-        {/* Border Gradient */}
-        <LinearGradient
-          colors={getBorderColors()}
-          style={styles.borderGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {/* Background */}
-          <LinearGradient
-            colors={getBackgroundColors()}
-            style={styles.inputInner}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+        <TextInput
+          style={[
+            styles.input,
+            sizeStyles,
+            iconName && styles.inputWithIcon,
+            showPasswordToggle && styles.inputWithToggle,
+            { textAlign: I18nManager.isRTL ? "right" : "left" },
+          ]}
+          placeholderTextColor={colors.textSecondary}
+          selectionColor={colors.primary}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          value={value}
+          secureTextEntry={secureTextEntry && !isPasswordVisible}
+          {...props}
+        />
+
+        {showPasswordToggle && secureTextEntry && (
+          <TouchableOpacity
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            style={styles.passwordToggle}
           >
-            {/* Icon */}
-            {iconName && (
-              <View style={styles.iconContainer}>
-                <Ionicons name={iconName} size={22} color={getIconColor()} />
-              </View>
-            )}
-
-            {/* Text Input */}
-            <TextInput
-              style={[
-                styles.input,
-                iconName ? styles.inputWithIcon : null,
-                style,
-              ]}
-              value={value}
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              {...restOfProps}
+            <Ionicons
+              name={isPasswordVisible ? "eye-off" : "eye"}
+              size={20}
+              color={colors.textSecondary}
             />
-
-            {/* Status Indicator */}
-            <View style={styles.statusContainer}>
-              {hasValue && !hasError && (
-                <Animated.View
-                  style={[
-                    styles.statusIcon,
-                    {
-                      opacity: focusAnim,
-                      transform: [
-                        {
-                          scale: focusAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.5, 1],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                >
-                  <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
-                </Animated.View>
-              )}
-              {hasError && (
-                <Animated.View
-                  style={[
-                    styles.statusIcon,
-                    {
-                      opacity: focusAnim,
-                    },
-                  ]}
-                >
-                  <Ionicons name="alert-circle" size={20} color="#ff3366" />
-                </Animated.View>
-              )}
-            </View>
-          </LinearGradient>
-        </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Error Message */}
       {error && (
-        <Animated.View
-          style={[
-            styles.errorContainer,
-            {
-              opacity: focusAnim,
-              transform: [
-                {
-                  translateY: focusAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-10, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <Ionicons name="alert-circle" size={16} color="#ff3366" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={14} color={colors.error} />
           <Text style={styles.errorText}>{error}</Text>
-        </Animated.View>
+        </View>
       )}
-    </View>
+
+      {helperText && !error && (
+        <Text style={styles.helperText}>{helperText}</Text>
+      )}
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: "100%",
-    marginBottom: 16,
+    marginVertical: 8,
   },
-  label: {
-    marginBottom: 10,
-    fontSize: 15,
-    textAlign: "right",
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  inputWrapper: {
-    position: "relative",
-    borderRadius: 16,
-  },
-  glowEffect: {
-    position: "absolute",
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 20,
-    zIndex: -1,
-  },
-  glow: {
-    flex: 1,
-    borderRadius: 20,
-  },
-  borderGradient: {
-    padding: 2,
-    borderRadius: 16,
-  },
-  inputInner: {
-    borderRadius: 14,
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    minHeight: 65,
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: "hidden",
   },
-  iconContainer: {
-    marginRight: 14,
-    width: 28,
-    alignItems: "center",
+  outlineVariant: {
+    borderWidth: 2,
   },
   input: {
     flex: 1,
-    fontSize: 17,
-    color: "#ffffff",
-    textAlign: "right",
-    includeFontPadding: false,
-    padding: 0,
-    fontWeight: "600",
-    letterSpacing: -0.2,
+    color: colors.text,
+    fontFamily: "System",
   },
   inputWithIcon: {
-    paddingRight: 0,
+    paddingLeft: I18nManager.isRTL ? 16 : 40,
+    paddingRight: I18nManager.isRTL ? 40 : 16,
   },
-  statusContainer: {
-    marginLeft: 12,
-    width: 24,
-    alignItems: "center",
-    justifyContent: "center",
+  inputWithToggle: {
+    paddingRight: I18nManager.isRTL ? 16 : 40,
+    paddingLeft: I18nManager.isRTL ? 40 : 16,
   },
-  statusIcon: {
-    // Container for status icon
+  icon: {
+    position: "absolute",
+    left: I18nManager.isRTL ? undefined : 12,
+    right: I18nManager.isRTL ? 12 : undefined,
+  },
+  passwordToggle: {
+    position: "absolute",
+    right: I18nManager.isRTL ? undefined : 12,
+    left: I18nManager.isRTL ? 12 : undefined,
+    padding: 4,
   },
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
-    paddingHorizontal: 18,
-    backgroundColor: "rgba(255, 51, 102, 0.15)",
-    borderRadius: 10,
-    paddingVertical: 10,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
   errorText: {
-    color: "#ff3366",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-    textAlign: "right",
-    flex: 1,
+    color: colors.error,
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  helperText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  required: {
+    color: colors.error,
   },
 });
 
