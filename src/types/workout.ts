@@ -1,332 +1,220 @@
-// src/types/workout.ts - ✅ טיפוסים מלאים ומעודכנים לכל צרכי האפליקציה
+// ============================================
+// types/workout.ts - Complete and Updated
+// ============================================
 
 import { Exercise } from "./exercise";
 
-// 🏋️ סט בודד בתרגיל
+// Basic Set Types
 export interface WorkoutSet {
   id: string;
   reps: number;
   weight: number;
   status: "pending" | "completed" | "skipped";
+  actualReps?: number;
+  actualWeight?: number;
   notes?: string;
-  restTime?: number; // בשניות
-  actualReps?: number; // אם שונה מהמתוכנן
-  actualWeight?: number; // אם שונה מהמתוכנן
-  completedAt?: string;
-  duration?: number; // למשך זמן (פלאנק, וכו') בשניות
-  completed?: boolean; // legacy support
+  restTime?: number; // in seconds
+  tempo?: string; // e.g., "2-0-2-0"
+  difficulty?: "easy" | "medium" | "hard";
+  completedAt?: Date;
 }
 
-// 🎯 תרגיל באימון
+// Exercise within a workout
 export interface WorkoutExercise {
   id: string;
   name: string;
-  exercise?: Exercise; // הפניה לתרגיל המקורי
+  exercise: {
+    id: string;
+    name: string;
+    category: string;
+    primaryMuscle?: string;
+    secondaryMuscles?: string[];
+    equipment?: string;
+    difficulty?: "beginner" | "intermediate" | "advanced";
+  };
   sets: WorkoutSet[];
   notes?: string;
-  supersetWith?: string; // ID של תרגיל אחר
-  restBetweenSets?: number; // בשניות
-  muscleGroup?: string;
-  category?: string;
-  instructions?: string;
-  targetMuscles?: string[];
-  equipment?: string[];
   order?: number;
-  previousBest?: {
-    weight?: number;
-    reps?: number;
-    date?: string;
-  };
+  supersetWith?: string; // ID of another exercise in superset
+  restBetweenSets?: number; // in seconds
+  targetRPE?: number; // Rate of Perceived Exertion (1-10)
+  actualRPE?: number;
 }
 
-// 📊 אימון מלא
+// Main Workout Interface
 export interface Workout {
   id: string;
-  name: string;
-  date?: Date; // או string - תלוי במימוש שלך
-  planId?: string;
-  planDayId?: string;
-  templateId?: string;
+  planId: string;
+  planName: string;
+  dayId: string;
+  dayName: string;
   exercises: WorkoutExercise[];
-
-  // זמנים
-  startedAt?: string;
-  completedAt?: string;
-  pausedAt?: string;
-  duration?: number; // בדקות
-  estimatedDuration?: number;
-
-  // נתונים נוספים
+  date: string; // ISO date string
+  startTime: string; // ISO datetime string
+  endTime?: string; // ISO datetime string
+  duration: number; // in minutes
+  status: "active" | "completed" | "cancelled" | "paused";
   notes?: string;
-  rating?: number; // 1-5
-  difficulty?: "beginner" | "intermediate" | "advanced";
-  mood?: "amazing" | "good" | "ok" | "tired" | "bad";
-
-  // סטטיסטיקות
+  mood?: "great" | "good" | "okay" | "tired" | "bad";
+  energyLevel?: number; // 1-10
+  location?: "gym" | "home" | "outdoor" | "other";
+  totalVolume?: number; // total weight lifted
   totalSets?: number;
   totalReps?: number;
-  totalWeight?: number; // בק"ג
-  totalVolume?: number; // נפח כולל
-  targetMuscles?: string[];
-  completedSets?: number;
-  completedExercises?: number;
-  totalExercises?: number;
-
-  // מטא דאטה
-  userId: string;
-  isTemplate?: boolean;
-  templateName?: string;
-  location?: string;
-  weather?: string;
-  bodyWeight?: number;
-
-  // שדות נוספים
   caloriesBurned?: number;
-  calories?: number; // alias
-  intensityLevel?: 1 | 2 | 3 | 4 | 5;
-  workoutType?: "strength" | "cardio" | "flexibility" | "mixed";
   personalRecords?: PersonalRecord[];
   photos?: WorkoutPhoto[];
-
-  // יעדים ותוצאות
-  goals?: {
-    targetDuration?: number;
-    targetCalories?: number;
-    targetSets?: number;
-  };
-
-  results?: {
-    totalSets: number;
-    completedSets: number;
-    totalWeight?: number;
-    averageRest?: number;
-  };
-
-  // timestamps
-  createdAt?: string;
-  updatedAt?: string;
+  isQuickWorkout?: boolean;
 }
 
-// 🏆 שיא אישי
+// Personal Record
 export interface PersonalRecord {
   exerciseId: string;
   exerciseName: string;
-  type: "weight" | "reps" | "volume" | "time";
+  type: "1RM" | "volume" | "reps" | "time" | "distance";
   value: number;
   previousValue?: number;
-  improvement?: number; // באחוזים
-  achievedAt: string;
+  unit?: string;
+  achievedAt: Date;
 }
 
-// 📷 תמונת אימון
+// Workout Photo
 export interface WorkoutPhoto {
   id: string;
   uri: string;
-  thumbnailUri?: string;
+  thumbnail?: string;
   caption?: string;
-  takenAt: string;
+  uploadedAt: Date;
+  type: "progress" | "form-check" | "achievement";
 }
 
-// 📊 סטטיסטיקות אימון
-export interface WorkoutStats {
-  totalWorkouts: number;
-  weeklyWorkouts: number;
-  monthlyWorkouts: number;
-  totalDuration: number;
-  averageDuration: number;
-  totalWeight: number;
-  averageRating: number;
-  streakDays: number;
-  favoriteExercises: { name: string; count: number }[];
-  muscleGroupDistribution: { muscle: string; percentage: number }[];
-}
-
-// 🔍 פילטרים להיסטוריית אימונים
-export interface WorkoutHistoryFilters {
-  dateFrom?: string;
-  dateTo?: string;
-  dateRange?: "week" | "month" | "3months" | "all";
-  rating?: number;
-  minRating?: number;
-  difficulty?: "beginner" | "intermediate" | "advanced";
-  minDuration?: number;
-  maxDuration?: number;
-  exerciseName?: string;
-  exerciseType?: string;
-  muscles?: string[];
-  targetMuscles?: string[];
-  mood?: Workout["mood"];
-  hasPhotos?: boolean;
-  hasPersonalRecords?: boolean;
-  planId?: string;
-  location?: string;
-}
-
-// 🔄 אפשרויות מיון
-export type WorkoutSortBy =
-  | "date-desc"
-  | "date-asc"
-  | "rating-desc"
-  | "rating-asc"
-  | "duration-desc"
-  | "duration-asc"
-  | "volume-desc"
-  | "volume-asc"
-  | "reps-desc"
-  | "reps-asc";
-
-// 🎯 סוג סופרסט
-export interface Superset {
+// Workout Summary for Lists
+export interface WorkoutSummary {
   id: string;
-  exercises: string[]; // IDs של התרגילים
-  restBetweenRounds?: number;
+  planName: string;
+  dayName: string;
+  date: Date;
+  duration: number;
+  exerciseCount: number;
+  totalVolume: number;
+  status: Workout["status"];
+  mood?: Workout["mood"];
+  hasPersonalRecords: boolean;
+  muscleGroups: string[];
 }
 
-// 📈 מגמת התקדמות
-export interface ProgressTrend {
-  exercise: string;
-  trend: "improving" | "stable" | "declining";
-  changePercentage: number;
-  period: "week" | "month" | "quarter";
-}
-
-// 🏃 אימון פעיל
-export interface ActiveWorkout extends Workout {
-  currentExerciseIndex: number;
-  currentSetIndex: number;
-  restTimer?: {
-    duration: number;
-    startedAt: string;
-    isPaused: boolean;
-  };
-  isPaused: boolean;
-  autoRestEnabled: boolean;
-  isResting: boolean;
-  restTimeLeft: number;
-  elapsedTime: number;
-  setsCompleted: number;
-  totalSetsPlanned: number;
-  estimatedTimeLeft?: number;
-}
-
-// 🎯 תבנית אימון
+// Workout Template (for quick starts)
 export interface WorkoutTemplate {
   id: string;
   name: string;
   description?: string;
-  exercises: Omit<WorkoutExercise, "sets">[];
-  tags?: string[];
-  difficulty?: Workout["difficulty"];
-  estimatedDuration?: number;
-  targetMuscles?: string[];
-  createdAt: string;
-  updatedAt: string;
-  usageCount: number;
-  rating?: number;
-  isPublic?: boolean;
-  creatorId: string;
+  exercises: Omit<WorkoutExercise, "id">[];
+  estimatedDuration: number;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  targetMuscleGroups: string[];
+  equipment: string[];
+  createdBy: "system" | "user";
+  popularity?: number;
+  lastUsed?: Date;
 }
 
-// 📈 התקדמות אימון
-export interface WorkoutProgress {
-  workoutId: string;
-  exerciseId: string;
-  date: string;
-  personalRecord?: {
-    type: "weight" | "reps" | "duration" | "volume";
-    value: number;
-    previousValue?: number;
-    improvement?: number;
+// Active Workout State
+export interface ActiveWorkoutState {
+  workout: Workout | null;
+  currentExerciseIndex: number;
+  currentSetIndex: number;
+  restTimer: {
+    isActive: boolean;
+    timeRemaining: number;
+    totalTime: number;
+  };
+  isPaused: boolean;
+  autoRestTimer: boolean;
+  soundEnabled: boolean;
+}
+
+// Workout Filters
+export interface WorkoutFilters {
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  planIds?: string[];
+  muscleGroups?: string[];
+  minDuration?: number;
+  maxDuration?: number;
+  hasPersonalRecords?: boolean;
+  mood?: Workout["mood"][];
+  location?: Workout["location"][];
+  searchTerm?: string;
+}
+
+// Workout Analytics
+export interface WorkoutAnalytics {
+  totalWorkouts: number;
+  totalDuration: number;
+  totalVolume: number;
+  averageWorkoutDuration: number;
+  averageWorkoutsPerWeek: number;
+  favoriteExercises: Array<{
+    exerciseId: string;
+    name: string;
+    count: number;
+  }>;
+  muscleGroupDistribution: Array<{
+    muscleGroup: string;
+    percentage: number;
+    count: number;
+  }>;
+  progressTrend: "improving" | "maintaining" | "declining";
+  consistency: {
+    currentStreak: number;
+    longestStreak: number;
+    missedLastWeek: number;
   };
 }
 
-// 🔧 Type Guards
-export const isActiveWorkout = (
-  workout: Workout | ActiveWorkout
-): workout is ActiveWorkout => {
-  return "startedAt" in workout && "currentExerciseIndex" in workout;
-};
+// Workout Suggestion
+export interface WorkoutSuggestion {
+  planId: string;
+  planName: string;
+  dayId: string;
+  dayName: string;
+  reason: string;
+  confidence: number; // 0-1
+  muscleGroups: string[];
+  estimatedDuration: number;
+  lastPerformed?: Date;
+  recoveryStatus: {
+    [muscleGroup: string]: "ready" | "recovering" | "needs-rest";
+  };
+  alternativeSuggestions?: Array<{
+    planId: string;
+    dayId: string;
+    reason: string;
+  }>;
+}
 
-export const isWorkoutCompleted = (workout: Workout): boolean => {
-  return !!workout.completedAt;
-};
-
-export const isCompletedWorkout = (workout: Workout): boolean => {
-  return !!workout.completedAt;
-};
-
-// 🔧 Helper Functions
-export const calculateWorkoutVolume = (workout: Workout): number => {
-  return workout.exercises.reduce((total, exercise) => {
-    return (
-      total +
-      exercise.sets.reduce((exerciseTotal, set) => {
-        if (set.status === "completed" || set.completed) {
-          const weight = set.actualWeight || set.weight || 0;
-          const reps = set.actualReps || set.reps || 0;
-          return exerciseTotal + weight * reps;
-        }
-        return exerciseTotal;
-      }, 0)
-    );
-  }, 0);
-};
-
-export const getWorkoutDuration = (workout: Workout): number => {
-  if (workout.duration) return workout.duration;
-  if (workout.startedAt && workout.completedAt) {
-    const start = new Date(workout.startedAt).getTime();
-    const end = new Date(workout.completedAt).getTime();
-    return Math.floor((end - start) / 1000 / 60); // דקות
-  }
-  return 0;
-};
-
-export const getCompletedSetsCount = (workout: Workout): number => {
-  return workout.exercises.reduce((total, exercise) => {
-    return (
-      total +
-      exercise.sets.filter((set) => set.status === "completed" || set.completed)
-        .length
-    );
-  }, 0);
-};
-
-export const getTotalSetsCount = (workout: Workout): number => {
-  return workout.exercises.reduce((total, exercise) => {
-    return total + exercise.sets.length;
-  }, 0);
-};
-
-export const getWorkoutProgress = (workout: Workout): number => {
-  const total = getTotalSetsCount(workout);
-  if (total === 0) return 0;
-  const completed = getCompletedSetsCount(workout);
-  return Math.round((completed / total) * 100);
-};
-
-export const getWorkoutCompletionPercentage = (workout: Workout): number => {
-  return getWorkoutProgress(workout);
-};
-
-export const estimateWorkoutDuration = (workout: Workout): number => {
-  if (workout.estimatedDuration) return workout.estimatedDuration;
-
-  const totalSets = getTotalSetsCount(workout);
-  const avgSetTime = 45; // שניות לסט
-  const avgRestTime = 90; // שניות מנוחה
-
-  return Math.round((totalSets * (avgSetTime + avgRestTime)) / 60); // בדקות
-};
-
-// טיפוסים נוספים
-export type WorkoutStatus = "planned" | "active" | "completed" | "skipped";
-
-export type WorkoutCategory =
-  | "strength"
-  | "cardio"
-  | "flexibility"
-  | "mobility"
-  | "hiit"
-  | "crosstraining"
-  | "rehabilitation";
+// Exercise Performance History
+export interface ExerciseHistory {
+  exerciseId: string;
+  exerciseName: string;
+  performances: Array<{
+    date: Date;
+    sets: Array<{
+      weight: number;
+      reps: number;
+    }>;
+    totalVolume: number;
+    maxWeight: number;
+    totalReps: number;
+    notes?: string;
+  }>;
+  personalBest: {
+    weight: number;
+    reps: number;
+    volume: number;
+    date: Date;
+  };
+  trend: "improving" | "plateau" | "declining";
+}

@@ -94,6 +94,13 @@ export interface Plan {
   // 🔄 תמיכה בשני פורמטים:
   days?: PlanDay[]; // פורמט מובנה (מומלץ)
   workouts?: Workout[]; // פורמט גמיש (לתוכניות מיובאות)
+  goal?:
+    | "strength"
+    | "hypertrophy"
+    | "weight_loss"
+    | "endurance"
+    | "general_fitness";
+  type?: "strength" | "hypertrophy" | "endurance" | "general_fitness";
 
   // 📅 תזמון
   weeklySchedule?: {

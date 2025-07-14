@@ -1,323 +1,179 @@
 // src/screens/workouts/start-workout/components/DayCard.tsx
-// כרטיס יום אימון עם אנימציות ועיצוב משופר
 
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import {
-  Animated,
-  StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  Text,
+  StyleSheet,
+  Animated,
 } from "react-native";
-
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../../theme/colors";
 import { PlanDay } from "../../../../types/plan";
+import * as Haptics from "expo-haptics";
 
 interface DayCardProps {
   day: PlanDay;
   isSelected: boolean;
   onPress: () => void;
-  index?: number;
+  index: number;
 }
 
-const DayCard: React.FC<DayCardProps> = ({
-  day,
-  isSelected,
-  onPress,
-  index = 0,
-}) => {
-  // Animations
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const selectedAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
+// Fixed with displayName and dependency
+const DayCard = React.memo<DayCardProps>(
+  ({ day, isSelected, onPress, index }) => {
+    const scaleAnim = React.useRef(new Animated.Value(1)).current;
+    const rotateAnim = React.useRef(new Animated.Value(0)).current;
 
-  // Entrance animation
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
+    React.useEffect(() => {
+      Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 300,
         delay: index * 50,
         useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        delay: index * 50,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index]);
+      }).start();
+    }, [index, rotateAnim]); // Fixed: Added rotateAnim to dependencies
 
-  // Selection animation
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(selectedAnim, {
-        toValue: isSelected ? 1 : 0,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(glowAnim, {
-        toValue: isSelected ? 1 : 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSelected]);
+    const handlePress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.9,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
 
-    // Bounce animation
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
+      onPress();
+    };
 
-    onPress();
-  };
+    const rotation = rotateAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ["90deg", "0deg"],
+    });
 
-  // Calculate stats
-  const totalSets = day.exercises.reduce((acc, exercise) => {
-    if (typeof exercise.sets === "number") {
-      return acc + exercise.sets;
-    } else if (Array.isArray(exercise.sets)) {
-      return acc + (exercise.sets as any[]).length;
-    }
-    return acc;
-  }, 0);
+    const opacity = rotateAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
 
-  const muscleGroups = [
-    ...new Set(day.exercises.map((ex) => ex.muscleGroup || "כללי")),
-  ];
-
-  return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: fadeAnim,
-          transform: [
-            { translateX: slideAnim },
-            { scale: scaleAnim },
-            {
-              scale: selectedAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.05],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
-        <LinearGradient
-          colors={
-            isSelected
-              ? [colors.primary, colors.primaryDark]
-              : ["#2a2a2a", "#1e1e1e"]
-          }
-          style={styles.card}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {/* Glow effect */}
-          <Animated.View
-            style={[
-              styles.glowEffect,
-              {
-                opacity: glowAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.3],
-                }),
-              },
-            ]}
+    return (
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            opacity,
+            transform: [{ scale: scaleAnim }, { rotateY: rotation }],
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
+          <LinearGradient
+            colors={
+              isSelected
+                ? [colors.primary, colors.secondary]
+                : ["rgba(255,255,255,0.08)", "rgba(255,255,255,0.04)"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={[styles.card, isSelected && styles.selectedCard]}
           >
-            <LinearGradient
-              colors={[colors.primary, "transparent"]}
-              style={StyleSheet.absoluteFillObject}
-              start={{ x: 0.5, y: 0.5 }}
-              end={{ x: 1, y: 1 }}
-            />
-          </Animated.View>
-
-          {/* Content */}
-          <View style={styles.content}>
-            {/* Day name */}
-            <Text
-              style={[styles.dayName, isSelected && styles.selectedDayName]}
-            >
+            <Text style={[styles.dayNumber, isSelected && styles.selectedText]}>
+              יום {index + 1}
+            </Text>
+            <Text style={[styles.dayName, isSelected && styles.selectedText]}>
               {day.name}
             </Text>
-
-            {/* Exercise count */}
-            <View style={styles.exerciseInfo}>
+            <View style={styles.exerciseCount}>
               <Ionicons
-                name="fitness"
-                size={14}
-                color={isSelected ? "white" : "#999"}
+                name="barbell-outline"
+                size={16}
+                color={isSelected ? "white" : "rgba(255,255,255,0.5)"}
               />
               <Text
-                style={[
-                  styles.exerciseCount,
-                  isSelected && styles.selectedExerciseCount,
-                ]}
+                style={[styles.exerciseText, isSelected && styles.selectedText]}
               >
-                {day.exercises.length} תרגילים
+                {day.exercises?.length || 0}
               </Text>
             </View>
-
-            {/* Additional info */}
-            <View style={styles.additionalInfo}>
-              <View style={styles.infoItem}>
-                <Ionicons
-                  name="layers"
-                  size={12}
-                  color={isSelected ? "rgba(255,255,255,0.7)" : "#666"}
-                />
-                <Text
-                  style={[
-                    styles.infoText,
-                    isSelected && styles.selectedInfoText,
-                  ]}
-                >
-                  {totalSets} סטים
-                </Text>
+            {isSelected && (
+              <View style={styles.checkMark}>
+                <Ionicons name="checkmark-circle" size={24} color="white" />
               </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.day.id === nextProps.day.id &&
+      prevProps.isSelected === nextProps.isSelected
+    );
+  }
+);
 
-              {muscleGroups.length > 0 && (
-                <View style={styles.infoItem}>
-                  <Ionicons
-                    name="body"
-                    size={12}
-                    color={isSelected ? "rgba(255,255,255,0.7)" : "#666"}
-                  />
-                  <Text
-                    style={[
-                      styles.infoText,
-                      isSelected && styles.selectedInfoText,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {muscleGroups[0]}
-                  </Text>
-                </View>
-              )}
-            </View>
+// Add display name for debugging
+DayCard.displayName = "DayCard";
 
-            {/* Selection checkmark */}
-            <Animated.View
-              style={[
-                styles.checkmark,
-                {
-                  opacity: selectedAnim,
-                  transform: [
-                    {
-                      scale: selectedAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.5, 1],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Ionicons name="checkmark-circle" size={20} color="white" />
-            </Animated.View>
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
+export { DayCard };
 
 const styles = StyleSheet.create({
   container: {
     marginRight: 12,
   },
   card: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    width: 120,
+    height: 140,
     borderRadius: 16,
-    minWidth: 140,
-    position: "relative",
-    overflow: "hidden",
+    padding: 16,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  glowEffect: {
-    position: "absolute",
-    top: -50,
-    left: -50,
-    right: -50,
-    bottom: -50,
+  selectedCard: {
+    borderColor: "transparent",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  content: {
-    alignItems: "center",
+  dayNumber: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "600",
   },
   dayName: {
     fontSize: 16,
     fontWeight: "700",
     color: "white",
-    marginBottom: 8,
-    letterSpacing: -0.3,
+    marginVertical: 8,
   },
-  selectedDayName: {
+  selectedText: {
     color: "white",
-  },
-  exerciseInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 8,
   },
   exerciseCount: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  exerciseText: {
+    marginLeft: 4,
     fontSize: 14,
-    color: "#999",
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.6)",
   },
-  selectedExerciseCount: {
-    color: "white",
-  },
-  additionalInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  infoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  infoText: {
-    fontSize: 11,
-    color: "#666",
-    fontWeight: "500",
-  },
-  selectedInfoText: {
-    color: "rgba(255,255,255,0.7)",
-  },
-  checkmark: {
+  checkMark: {
     position: "absolute",
     top: 8,
     right: 8,
   },
 });
-
-export default DayCard;

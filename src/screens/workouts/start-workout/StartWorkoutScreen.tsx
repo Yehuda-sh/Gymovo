@@ -1,5 +1,4 @@
-// src/screens/workouts/start-workout/StartWorkoutScreen.tsx
-// מסך התחלת אימון - גרסה מעודכנת עם custom hooks
+// src/ceenrss / workouts / start - workout / StartWorkoutScreen.tsx;
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,11 +18,23 @@ import {
 } from "react-native";
 
 // Components
-import { CardSkeleton } from "../../../components/common/LoadingSkeleton";
-import { PlanCard, DayCard, EmptyState } from "./components";
+import {
+  PlanCard,
+  DayCard,
+  EmptyState,
+  PlansLoadingSkeleton,
+  RecentWorkouts,
+  WorkoutSuggestion,
+  WorkoutErrorBoundary,
+} from "./components";
 
 // Hooks
-import { usePlans, useWorkoutStart, useWorkoutAnimations } from "./hooks";
+import {
+  usePlans,
+  useWorkoutStart,
+  useWorkoutAnimations,
+  useOfflineMode,
+} from "./hooks";
 
 // Data & Services
 import { colors } from "../../../theme/colors";
@@ -32,8 +43,8 @@ import { Plan, PlanDay } from "../../../types/plan";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// Main Component
-const StartWorkoutScreen = () => {
+// Main Component wrapped with Error Boundary
+const StartWorkoutScreenContent = () => {
   const navigation = useNavigation<NavigationProp>();
 
   // Custom hooks
@@ -50,7 +61,8 @@ const StartWorkoutScreen = () => {
   const { isStarting, startWorkout, startQuickWorkout, canStartWorkout } =
     useWorkoutStart();
 
-  const { fadeAnim, getAnimatedStyle } = useWorkoutAnimations();
+  const { fadeAnim, getAnimatedStyle, animatePress } = useWorkoutAnimations();
+  const { isOffline } = useOfflineMode();
 
   // Local state
   const [selectedDay, setSelectedDay] = useState<PlanDay | null>(null);
@@ -82,7 +94,6 @@ const StartWorkoutScreen = () => {
   const handleCustomWorkout = () => {
     navigation.navigate("ExercisesPicker", {
       onSelect: async (exercises: any[]) => {
-        // Convert Exercise[] to WorkoutExercise[]
         const workoutExercises = exercises.map((exercise, index) => ({
           id: `${exercise.id}_${index}`,
           name: exercise.name,
@@ -108,6 +119,35 @@ const StartWorkoutScreen = () => {
     navigation.navigate("CreateOrEditPlan", {});
   };
 
+  // Handle recent workout selection
+  const handleRecentWorkoutSelect = (workout: any) => {
+    // Find the plan and day
+    const plan = plans.find((p: any) => p.id === workout.planId);
+    if (plan) {
+      const day = plan.days?.find((d: any) => d.id === workout.dayId);
+      if (day) {
+        handlePlanSelect(plan);
+        handleDaySelect(day);
+      }
+    }
+  };
+
+  // Handle suggestion accept
+  const handleSuggestionAccept = (suggestion: any) => {
+    const plan = plans.find((p: any) => p.id === suggestion.planId);
+    if (plan) {
+      const day = plan.days?.find((d: any) => d.id === suggestion.dayId);
+      if (day) {
+        handlePlanSelect(plan);
+        handleDaySelect(day);
+        // Auto-start after a delay
+        setTimeout(() => {
+          handleStartWorkout();
+        }, 500);
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -115,13 +155,24 @@ const StartWorkoutScreen = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
+      {/* Offline Banner */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline" size={16} color="white" />
+          <Text style={styles.offlineText}>אין חיבור לאינטרנט</Text>
+        </View>
+      )}
+
       {/* Header */}
       <Animated.View
         style={[styles.header, getAnimatedStyle({ rotate: false })]}
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            animatePress();
+            navigation.goBack();
+          }}
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -144,11 +195,7 @@ const StartWorkoutScreen = () => {
           </TouchableOpacity>
         </View>
       ) : isLoading ? (
-        <View style={styles.loadingContainer}>
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-        </View>
+        <PlansLoadingSkeleton />
       ) : plans.length === 0 ? (
         <EmptyState
           onCreatePlan={handleCreatePlan}
@@ -167,8 +214,14 @@ const StartWorkoutScreen = () => {
             />
           }
         >
+          {/* Smart Suggestion */}
+          <WorkoutSuggestion onAccept={handleSuggestionAccept} />
+
+          {/* Recent Workouts */}
+          <RecentWorkouts onSelectWorkout={handleRecentWorkoutSelect} />
+
           {/* Plans list */}
-          {plans.map((plan, index) => (
+          {plans.map((plan: any, index: any) => (
             <Animated.View
               key={plan.id}
               style={{
@@ -216,7 +269,7 @@ const StartWorkoutScreen = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.dayListContent}
               >
-                {selectedPlan.days?.map((day, idx) => (
+                {selectedPlan.days?.map((day: any, idx: any) => (
                   <DayCard
                     key={day.id}
                     day={day}
@@ -235,20 +288,22 @@ const StartWorkoutScreen = () => {
       <View style={styles.bottomSection}>
         {canStartWorkout(selectedPlan, selectedDay) ? (
           <TouchableOpacity
-            onPress={handleStartWorkout}
             style={styles.startButton}
+            onPress={handleStartWorkout}
             disabled={isStarting}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={[colors.primary, colors.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={styles.startButtonGradient}
             >
               {isStarting ? (
                 <Text style={styles.startButtonText}>מתחיל...</Text>
               ) : (
                 <>
-                  <Ionicons name="play" size={24} color="white" />
                   <Text style={styles.startButtonText}>התחל אימון</Text>
+                  <Ionicons name="play-circle" size={24} color="white" />
                 </>
               )}
             </LinearGradient>
@@ -256,25 +311,25 @@ const StartWorkoutScreen = () => {
         ) : (
           <>
             <TouchableOpacity
-              onPress={handleCustomWorkout}
               style={styles.customWorkoutButton}
+              onPress={handleCustomWorkout}
             >
               <LinearGradient
-                colors={["#2a2a2a", "#1e1e1e"]}
+                colors={["rgba(59, 130, 246, 0.3)", "rgba(147, 51, 234, 0.3)"]}
                 style={styles.customWorkoutGradient}
               >
-                <Ionicons name="fitness" size={20} color="white" />
+                <Ionicons name="add-circle-outline" size={22} color="white" />
                 <Text style={styles.customWorkoutText}>אימון מותאם אישית</Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={handleCreatePlan}
               style={styles.createPlanButton}
+              onPress={handleCreatePlan}
             >
               <View style={styles.createPlanContent}>
                 <Ionicons
-                  name="add-circle-outline"
+                  name="create-outline"
                   size={22}
                   color={colors.primary}
                 />
@@ -288,30 +343,53 @@ const StartWorkoutScreen = () => {
   );
 };
 
+// Export with Error Boundary
+const StartWorkoutScreen = () => (
+  <WorkoutErrorBoundary>
+    <StartWorkoutScreenContent />
+  </WorkoutErrorBoundary>
+);
+
+// Styles remain the same as original
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#0a0a0a",
   },
-
-  // Header
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+  offlineBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.error,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    paddingTop: 50,
+    paddingBottom: 10,
+    zIndex: 1000,
+  },
+  offlineText: {
+    color: "white",
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: "center",
-    alignItems: "center",
     borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerContent: {
     flex: 1,
@@ -321,70 +399,59 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: "white",
-    letterSpacing: -0.5,
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.6)",
   },
-
-  // Content
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
     paddingBottom: 180,
   },
-
-  // Day Selector
-  daySelector: {
-    marginTop: 24,
-  },
-  daySelectorTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "white",
-    marginBottom: 12,
-  },
-  dayListContent: {
-    paddingRight: 20,
-  },
-
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    padding: 20,
-  },
-
-  // Error state
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
+    padding: 20,
   },
   errorText: {
-    fontSize: 18,
-    color: "white",
+    fontSize: 16,
+    color: colors.error,
+    textAlign: "center",
     marginTop: 16,
     marginBottom: 24,
-    textAlign: "center",
   },
   retryButton: {
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   retryButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
   },
-
-  // Bottom Section
+  loadingContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  daySelector: {
+    marginTop: 24,
+  },
+  daySelectorTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "white",
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  dayListContent: {
+    paddingHorizontal: 20,
+  },
   bottomSection: {
     position: "absolute",
     bottom: 0,

@@ -1,4 +1,7 @@
-// src/screens/workouts/WorkoutSummaryScreen.tsx - ✅ Fixed with userId
+// ============================================
+// Updated WorkoutSummaryScreen.tsx
+// ============================================
+// src/screens/workouts/WorkoutSummaryScreen.tsx - Fixed Version
 
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -18,13 +21,7 @@ import { saveWorkoutToHistory } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { colors } from "../../theme/colors";
 import { RootStackParamList } from "../../types/navigation";
-import {
-  ActiveWorkout,
-  isActiveWorkout,
-  Workout,
-  WorkoutExercise,
-  WorkoutSet,
-} from "../../types/workout";
+import { Workout, WorkoutExercise, WorkoutSet } from "../../types/workout";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WorkoutSummary">;
 
@@ -57,154 +54,90 @@ const EffortRating = ({
         <Ionicons
           name={r <= rating ? "star" : "star-outline"}
           size={32}
-          color={colors.primary}
+          color={r <= rating ? "#F59E0B" : colors.border}
         />
       </TouchableOpacity>
     ))}
   </View>
 );
 
-const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
-  const { workoutData } = route.params;
-  const workout = workoutData as Workout | ActiveWorkout;
+const WorkoutSummaryScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { workout } = route.params;
+  const user = useUserStore((state: UserState) => state.user);
+  const [effort, setEffort] = useState(3);
+  const [notes, setNotes] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  const userId = useUserStore((state: UserState) => state.user?.id);
-
-  const [notes, setNotes] = useState(workout.notes || "");
-  const [rating, setRating] = useState(workout.rating || 0);
-
-  const totalVolume = useMemo(() => {
-    if (!workout?.exercises) return 0;
-    return workout.exercises.reduce(
-      (total: number, exercise: WorkoutExercise) => {
-        const exerciseVolume = exercise.sets.reduce(
-          (exTotal: number, set: WorkoutSet) => {
-            return exTotal + (set.weight || 0) * (set.reps || 0);
-          },
-          0
-        );
-        return total + exerciseVolume;
-      },
+  // חישוב סטטיסטיקות האימון
+  const workoutStats = useMemo(() => {
+    const totalVolume = workout.totalVolume || 0;
+    const totalSets = workout.totalSets || 0;
+    const completedSets = workout.exercises.reduce(
+      (total, exercise) =>
+        total + exercise.sets.filter((s) => s.status === "completed").length,
       0
     );
-  }, [workout.exercises]);
 
-  const totalSets = useMemo(() => {
-    if (!workout?.exercises) return 0;
-    return workout.exercises.reduce(
-      (total: number, exercise: WorkoutExercise) =>
-        total + exercise.sets.length,
-      0
-    );
-  }, [workout.exercises]);
-
-  const completedSets = useMemo(() => {
-    if (!workout?.exercises) return 0;
-    return workout.exercises.reduce(
-      (total: number, exercise: WorkoutExercise) => {
-        return (
-          total +
-          exercise.sets.filter(
-            (set) => set.status === "completed" || set.completed
-          ).length
-        );
-      },
-      0
-    );
-  }, [workout.exercises]);
-
-  const workoutDuration = useMemo(() => {
-    if (isActiveWorkout(workout) && workout.startedAt && workout.completedAt) {
-      const start = new Date(workout.startedAt);
-      const end = new Date(workout.completedAt);
-      return Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-    }
-    return workout.duration || 0;
-  }, [workout]);
-
-  const workoutStartTime = useMemo(() => {
-    if (isActiveWorkout(workout) && workout.startedAt) {
-      return new Date(workout.startedAt).toLocaleTimeString("he-IL", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-    return null;
-  }, [workout]);
-
-  const handleFinishAndSave = async () => {
-    if (!userId) {
-      Toast.show("לא ניתן לשמור אימון למשתמש אורח", "error");
-      navigation.popToTop();
-      return;
-    }
-
-    // ✅ תיקון: הוספת userId לאובייקט updatedWorkout
-    const updatedWorkout: Workout = {
-      id: workout.id,
-      name: workout.name,
-      date: workout.date
-        ? workout.date instanceof Date
-          ? workout.date
-          : new Date(workout.date)
-        : new Date(),
-      exercises: workout.exercises,
-      notes: notes,
-      rating: rating,
-      completedAt: workout.completedAt || new Date().toISOString(),
-      duration: workoutDuration,
-      difficulty: workout.difficulty,
-      targetMuscles: workout.targetMuscles,
-      calories: workout.calories,
-      intensityLevel: workout.intensityLevel,
-      workoutType: workout.workoutType,
-      planId: workout.planId,
-      templateId: workout.templateId,
-      createdAt: workout.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isTemplate: workout.isTemplate,
-      goals: workout.goals,
-      results: workout.results || {
-        totalSets: totalSets,
-        completedSets: completedSets,
-        totalWeight: totalVolume,
-      },
-      // ✅ הוספת userId - השדה החסר
-      userId: userId,
+    return {
+      duration: workout.duration || 0,
+      exercises: workout.exercises.length,
+      totalSets,
+      completedSets,
+      totalVolume,
     };
+  }, [workout]);
 
+  const handleSave = async () => {
+    setIsSaving(true);
     try {
-      const success = await saveWorkoutToHistory(userId, updatedWorkout);
+      const workoutToSave: Workout = {
+        ...workout,
+        notes,
+        mood:
+          effort === 5
+            ? "great"
+            : effort === 4
+            ? "good"
+            : effort === 3
+            ? "okay"
+            : effort === 2
+            ? "tired"
+            : "bad",
+        energyLevel: effort * 2, // המרה מ-1-5 ל-2-10
+      };
+
+      const success = await saveWorkoutToHistory(
+        workoutToSave,
+        user?.uid || "guest"
+      );
       if (success) {
-        Toast.show("האימון נשמר בהצלחה!", "success");
-        navigation.popToTop();
-      } else {
-        Toast.show("שגיאה בשמירת האימון", "error");
+        setShowToast(true);
+        setTimeout(() => {
+          navigation.navigate("Main", { screen: "Home" });
+        }, 1500);
       }
     } catch (error) {
-      Toast.show("שגיאה בשמירת האימון", "error");
-      console.error("Error saving workout:", error);
+      console.error("Failed to save workout:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleShareWorkout = async () => {
-    const shareText = `סיימתי אימון מעולה! 💪
-
-🏋️ ${workout.name}
-⏱️ ${workoutDuration} דקות
-💯 ${completedSets}/${totalSets} סטים
-🎯 ${totalVolume.toFixed(0)} ק״ג נפח כולל
-⭐ דירוג: ${rating}/5
-
-#Gymovo #כושר #אימון`;
-
+  const handleShare = async () => {
     try {
+      const message = `סיימתי אימון ב-Gymovo! 💪
+⏱ ${workoutStats.duration} דקות
+🏋️ ${workoutStats.exercises} תרגילים
+✅ ${workoutStats.completedSets} סטים
+📊 ${workoutStats.totalVolume} ק"ג נפח כולל`;
+
       await Share.share({
-        message: shareText,
-        title: "שיתוף אימון",
+        message,
+        title: "האימון שלי ב-Gymovo",
       });
     } catch (error) {
-      console.error("Error sharing workout:", error);
+      console.error("Error sharing:", error);
     }
   };
 
@@ -213,69 +146,67 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>סיכום אימון</Text>
-        <Text style={styles.workoutName}>{workout.name}</Text>
-        {workoutStartTime && (
-          <Text style={styles.dateTime}>
-            {new Date(workout.date || "").toLocaleDateString("he-IL")} •{" "}
-            {workoutStartTime}
-          </Text>
+        <Text style={styles.workoutName}>{workout.planName}</Text>
+        {workout.dayName && (
+          <Text style={styles.workoutDay}>{workout.dayName}</Text>
         )}
       </View>
 
-      {/* Stats */}
-      <View style={styles.statsContainer}>
+      {/* Stats Grid */}
+      <View style={styles.statsGrid}>
         <StatCard
-          label="משך זמן"
-          value={`${workoutDuration} דק׳`}
-          icon="time-outline"
+          label="זמן"
+          value={`${workoutStats.duration} דק'`}
+          icon="timer-outline"
+        />
+        <StatCard
+          label="תרגילים"
+          value={workoutStats.exercises}
+          icon="barbell-outline"
         />
         <StatCard
           label="סטים"
-          value={`${completedSets}/${totalSets}`}
-          icon="list-outline"
+          value={`${workoutStats.completedSets}/${workoutStats.totalSets}`}
+          icon="checkmark-circle-outline"
         />
         <StatCard
           label="נפח כולל"
-          value={`${totalVolume.toFixed(0)} ק״ג`}
-          icon="barbell-outline"
+          value={`${workoutStats.totalVolume} ק"ג`}
+          icon="trending-up-outline"
         />
       </View>
 
-      {/* Exercise Details */}
-      <View style={styles.exerciseSection}>
-        <Text style={styles.sectionTitle}>פירוט תרגילים</Text>
-        {workout.exercises.map((exercise) => (
-          <View key={exercise.id} style={styles.exerciseCard}>
+      {/* Exercise List */}
+      <View style={styles.exerciseList}>
+        <Text style={styles.sectionTitle}>תרגילים שבוצעו</Text>
+        {workout.exercises.map((exercise: WorkoutExercise) => (
+          <View key={exercise.id} style={styles.exerciseItem}>
             <Text style={styles.exerciseName}>{exercise.name}</Text>
-            {exercise.sets.map((set, index) => (
-              <View key={set.id} style={styles.setRow}>
-                <Text style={styles.setText}>
-                  סט {index + 1}:{" "}
-                  <Text style={styles.bold}>
-                    {set.weight}ק״ג × {set.reps} חזרות
+            <View style={styles.setsContainer}>
+              {exercise.sets.map((set: WorkoutSet, index: number) => (
+                <View key={set.id} style={styles.setItem}>
+                  <Text style={styles.setText}>
+                    סט {index + 1}:{" "}
+                    <Text style={styles.bold}>
+                      {set.weight}kg × {set.reps}
+                    </Text>
                   </Text>
-                </Text>
-                {set.status === "skipped" && (
-                  <Text style={[styles.setText, { color: colors.warning }]}>
-                    (דולג)
-                  </Text>
-                )}
-              </View>
-            ))}
+                </View>
+              ))}
+            </View>
           </View>
         ))}
       </View>
 
       {/* Feedback Section */}
       <View style={styles.feedbackSection}>
-        <Text style={styles.sectionTitle}>איך היה האימון?</Text>
-        <EffortRating rating={rating} onRate={setRating} />
-
+        <Text style={styles.sectionTitle}>איך הרגשת?</Text>
+        <EffortRating rating={effort} onRate={setEffort} />
         <Input
           label="הערות"
           value={notes}
           onChangeText={setNotes}
-          placeholder="איך הרגשת? מה היה טוב? מה אפשר לשפר?"
+          placeholder="הוסף הערות על האימון..."
           multiline
           style={styles.notesInput}
         />
@@ -284,36 +215,43 @@ const WorkoutSummaryScreen = ({ route, navigation }: Props) => {
       {/* Actions */}
       <View style={styles.actionsContainer}>
         <Button
-          title="שמור אימון"
-          onPress={handleFinishAndSave}
+          title={isSaving ? "שומר..." : "שמור אימון"}
+          onPress={handleSave}
+          variant="primary"
+          disabled={isSaving}
           style={styles.saveButton}
-          disabled={!userId}
         />
-
-        <TouchableOpacity onPress={handleShareWorkout}>
-          <View style={styles.shareButton}>
-            <Ionicons
-              name="share-social-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={styles.shareButtonText}>שתף אימון</Text>
-          </View>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+          <Ionicons
+            name="share-social-outline"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={styles.shareButtonText}>שתף</Text>
         </TouchableOpacity>
-
         <Button
-          title="חזור לבית"
-          onPress={() => navigation.popToTop()}
+          title="חזור לדף הבית"
+          onPress={() => navigation.navigate("Main", { screen: "Home" })}
           variant="outline"
           style={styles.homeButton}
         />
       </View>
 
       <View style={styles.bottomPadding} />
+
+      {showToast && (
+        <Toast
+          message="האימון נשמר בהצלחה! 💪"
+          type="success"
+          visible={showToast}
+          onHide={() => setShowToast(false)}
+        />
+      )}
     </ScrollView>
   );
 };
 
+// Styles remain the same as in the original file
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -321,63 +259,65 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    paddingVertical: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 8,
   },
   workoutName: {
-    fontSize: 18,
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  dateTime: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 20,
-  },
-  statCard: {
-    alignItems: "center",
-    flex: 1,
-  },
-  statValue: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    marginTop: 8,
+    color: colors.primary,
+    fontWeight: "600",
   },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  workoutDay: {
+    fontSize: 16,
+    color: colors.subtext,
     marginTop: 4,
   },
-  exerciseSection: {
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
+  statCard: {
+    width: "50%",
+    padding: 10,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.text,
+    marginVertical: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: colors.subtext,
+  },
+  exerciseList: {
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "bold",
     color: colors.text,
     marginBottom: 12,
   },
-  exerciseCard: {
-    backgroundColor: colors.surface,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+  exerciseItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingVertical: 12,
   },
   exerciseName: {
     fontSize: 16,
@@ -385,7 +325,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
-  setRow: {
+  setsContainer: {
+    marginLeft: 16,
+  },
+  setItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 4,

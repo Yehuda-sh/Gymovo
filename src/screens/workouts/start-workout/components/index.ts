@@ -1,6 +1,16 @@
 // src/screens/workouts/start-workout/components/index.ts
-// ייצוא מרכזי של כל רכיבי מסך התחלת אימון
 
-export { default as PlanCard } from "./PlanCard";
-export { default as DayCard } from "./DayCard";
-export { default as EmptyState } from "./EmptyState";
+// Error Handling
+export { WorkoutErrorBoundary } from "./WorkoutErrorBoundary";
+
+// Loading States
+export { PlansLoadingSkeleton } from "./PlansLoadingSkeleton";
+
+// Core Components
+export { PlanCard } from "./PlanCard";
+export { DayCard } from "./DayCard";
+export { EmptyState } from "./EmptyState";
+
+// New Enhanced Components
+export { RecentWorkouts } from "./RecentWorkouts";
+export { WorkoutSuggestion } from "./WorkoutSuggestion";

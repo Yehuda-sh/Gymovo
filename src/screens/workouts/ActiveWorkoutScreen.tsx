@@ -1,4 +1,4 @@
-// src/screens/workouts/ActiveWorkoutScreen.tsx - ✅ Enhanced Version with RTL Support
+// src/screens/workouts/ActiveWorkoutScreen.tsx - Fixed Version
 
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -22,6 +22,7 @@ import {
   workoutColors,
 } from "./active-workout";
 import { activeWorkoutStyles } from "./active-workout/styles";
+import { Workout } from "../../types/workout";
 
 // הפעלת RTL
 I18nManager.allowRTL(true);
@@ -77,8 +78,25 @@ const ActiveWorkoutScreen = () => {
 
   const handleNextExercise = () => {
     const hasNext = goToNextExercise();
-    if (!hasNext) {
-      // האימון הסתיים
+    if (!hasNext && activeWorkout) {
+      // האימון הסתיים - יצירת אובייקט Workout מלא
+      const completedWorkout: Workout = {
+        id: `workout_${Date.now()}`,
+        planId: activeWorkout.planId || "quick",
+        planName: activeWorkout.planName || "אימון מותאם אישית",
+        dayId: activeWorkout.dayId || "quick",
+        dayName: activeWorkout.dayName || "אימון חופשי",
+        exercises: activeWorkout.exercises,
+        date: new Date().toISOString(),
+        startTime: workoutStartTime,
+        endTime: new Date().toISOString(),
+        duration: Math.floor(elapsedTime / 60), // המרה לדקות
+        status: "completed",
+        totalVolume: calculateTotalVolume(activeWorkout.exercises),
+        totalSets: calculateTotalSets(activeWorkout.exercises),
+        totalReps: calculateTotalReps(activeWorkout.exercises),
+      };
+
       Alert.alert("כל הכבוד! 🎉", "סיימת את האימון בהצלחה!", [
         {
           text: "סיים אימון",
@@ -86,12 +104,7 @@ const ActiveWorkoutScreen = () => {
           onPress: () => {
             finishWorkout();
             navigation.navigate("WorkoutSummary", {
-              workoutData: {
-                ...activeWorkout,
-                startedAt: workoutStartTime,
-                completedAt: new Date().toISOString(),
-                duration: elapsedTime,
-              },
+              workout: completedWorkout,
             });
           },
         },
@@ -104,6 +117,8 @@ const ActiveWorkoutScreen = () => {
   };
 
   const handleFinishWorkout = () => {
+    if (!activeWorkout) return;
+
     Alert.alert("סיום אימון", "האם אתה בטוח שברצונך לסיים את האימון?", [
       {
         text: "ביטול",
@@ -113,18 +128,69 @@ const ActiveWorkoutScreen = () => {
         text: "סיים אימון",
         style: "destructive",
         onPress: () => {
+          // יצירת אובייקט Workout מלא
+          const completedWorkout: Workout = {
+            id: `workout_${Date.now()}`,
+            planId: activeWorkout.planId || "quick",
+            planName: activeWorkout.planName || "אימון מותאם אישית",
+            dayId: activeWorkout.dayId || "quick",
+            dayName: activeWorkout.dayName || "אימון חופשי",
+            exercises: activeWorkout.exercises,
+            date: new Date().toISOString(),
+            startTime: workoutStartTime,
+            endTime: new Date().toISOString(),
+            duration: Math.floor(elapsedTime / 60), // המרה לדקות
+            status: "completed",
+            totalVolume: calculateTotalVolume(activeWorkout.exercises),
+            totalSets: calculateTotalSets(activeWorkout.exercises),
+            totalReps: calculateTotalReps(activeWorkout.exercises),
+          };
+
           finishWorkout();
           navigation.navigate("WorkoutSummary", {
-            workoutData: {
-              ...activeWorkout,
-              startedAt: workoutStartTime,
-              completedAt: new Date().toISOString(),
-              duration: elapsedTime,
-            },
+            workout: completedWorkout,
           });
         },
       },
     ]);
+  };
+
+  // פונקציות עזר לחישוב סטטיסטיקות
+  const calculateTotalVolume = (exercises: any[]) => {
+    return exercises.reduce((total, exercise) => {
+      return (
+        total +
+        exercise.sets.reduce((exTotal: number, set: any) => {
+          if (set.status === "completed") {
+            return exTotal + set.weight * set.reps;
+          }
+          return exTotal;
+        }, 0)
+      );
+    }, 0);
+  };
+
+  const calculateTotalSets = (exercises: any[]) => {
+    return exercises.reduce((total, exercise) => {
+      return (
+        total +
+        exercise.sets.filter((set: any) => set.status === "completed").length
+      );
+    }, 0);
+  };
+
+  const calculateTotalReps = (exercises: any[]) => {
+    return exercises.reduce((total, exercise) => {
+      return (
+        total +
+        exercise.sets.reduce((exTotal: number, set: any) => {
+          if (set.status === "completed") {
+            return exTotal + set.reps;
+          }
+          return exTotal;
+        }, 0)
+      );
+    }, 0);
   };
 
   if (!activeWorkout || !currentExercise) {
@@ -138,7 +204,7 @@ const ActiveWorkoutScreen = () => {
         <Text style={activeWorkoutStyles.emptyText}>אין אימון פעיל</Text>
         <Button
           title="התחל אימון חדש"
-          onPress={() => navigation.navigate("StartWorkout")}
+          onPress={() => navigation.navigate("StartWorkout", {})}
           variant="primary"
         />
       </View>
@@ -155,7 +221,7 @@ const ActiveWorkoutScreen = () => {
 
         <View style={activeWorkoutStyles.headerCenter}>
           <Text style={activeWorkoutStyles.workoutTitle}>
-            {activeWorkout.name}
+            {activeWorkout.planName}
           </Text>
           <View style={activeWorkoutStyles.timerContainer}>
             <Ionicons
