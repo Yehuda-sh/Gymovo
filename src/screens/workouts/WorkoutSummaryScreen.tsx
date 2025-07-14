@@ -1,6 +1,3 @@
-// ============================================
-// Updated WorkoutSummaryScreen.tsx
-// ============================================
 // src/screens/workouts/WorkoutSummaryScreen.tsx - Fixed Version
 
 import { Ionicons } from "@expo/vector-icons";
@@ -16,7 +13,7 @@ import {
 } from "react-native";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
-import { Toast } from "../../components/common/Toast";
+import Toast from "../../components/common/Toast"; // שינוי מ-named import ל-default
 import { saveWorkoutToHistory } from "../../data/storage";
 import { UserState, useUserStore } from "../../stores/userStore";
 import { colors } from "../../theme/colors";
@@ -108,17 +105,18 @@ const WorkoutSummaryScreen: React.FC<Props> = ({ route, navigation }) => {
       };
 
       const success = await saveWorkoutToHistory(
-        workoutToSave,
-        user?.uid || "guest"
+        user?.id || "guest", // שינוי מ-uid ל-id
+        workoutToSave // הפרמטרים בסדר הנכון
       );
       if (success) {
-        setShowToast(true);
+        Toast.success("האימון נשמר בהצלחה! 💪");
         setTimeout(() => {
           navigation.navigate("Main", { screen: "Home" });
         }, 1500);
       }
     } catch (error) {
       console.error("Failed to save workout:", error);
+      Toast.error("שגיאה בשמירת האימון");
     } finally {
       setIsSaving(false);
     }
@@ -238,20 +236,11 @@ const WorkoutSummaryScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
 
       <View style={styles.bottomPadding} />
-
-      {showToast && (
-        <Toast
-          message="האימון נשמר בהצלחה! 💪"
-          type="success"
-          visible={showToast}
-          onHide={() => setShowToast(false)}
-        />
-      )}
     </ScrollView>
   );
 };
 
-// Styles remain the same as in the original file
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -276,7 +265,7 @@ const styles = StyleSheet.create({
   },
   workoutDay: {
     fontSize: 16,
-    color: colors.subtext,
+    color: colors.textSecondary, // שינוי מ-subtext
     marginTop: 4,
   },
   statsGrid: {
@@ -297,7 +286,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 14,
-    color: colors.subtext,
+    color: colors.textSecondary, // שינוי מ-subtext
   },
   exerciseList: {
     backgroundColor: colors.surface,

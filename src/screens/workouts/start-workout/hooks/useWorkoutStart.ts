@@ -9,7 +9,7 @@ import { Alert } from "react-native";
 import { useWorkoutStore } from "../../../../stores/workoutStore";
 import { RootStackParamList } from "../../../../types/navigation";
 import { Plan, PlanDay, PlanExercise } from "../../../../types/plan";
-import { WorkoutExercise } from "../../../../types/workout";
+import { Workout, WorkoutExercise } from "../../../../types/workout";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -38,8 +38,8 @@ export const useWorkoutStart = (): UseWorkoutStartReturn => {
         },
         sets: Array.from({ length: planEx.sets || 3 }, (_, i) => ({
           id: `${planEx.id}_set_${i}_${Date.now()}`,
-          reps: planEx.targetReps || planEx.reps || 10,
-          weight: 0,
+          reps: planEx.reps || 10,
+          weight: planEx.weight || 0,
           status: "pending" as const,
         })),
       };
@@ -59,17 +59,27 @@ export const useWorkoutStart = (): UseWorkoutStartReturn => {
           (exercise, index) => createWorkoutExercise(exercise, index)
         );
 
-        // Start workout in store
-        startWorkoutStore({
+        // Create workout object
+        const workout: Workout = {
+          id: `workout_${Date.now()}`,
           planId: plan.id,
           planName: plan.name,
           dayId: day.id,
           dayName: day.name,
           exercises: workoutExercises,
-        });
+          date: new Date().toISOString(),
+          startTime: new Date().toISOString(),
+          duration: 0,
+          status: "active",
+          totalSets: workoutExercises.reduce((sum, ex) => sum + ex.sets.length, 0),
+          totalVolume: 0,
+        };
+
+        // Start workout in store
+        startWorkoutStore(workout, plan);
 
         // Navigate to active workout
-        navigation.navigate("ActiveWorkout");
+        navigation.navigate("ActiveWorkout", { workout, plan });
       } catch (error) {
         console.error("Failed to start workout:", error);
         Alert.alert("שגיאה", "לא הצלחנו להתחיל את האימון");
@@ -87,15 +97,26 @@ export const useWorkoutStart = (): UseWorkoutStartReturn => {
         setIsStarting(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        startWorkoutStore({
+        // Create workout object
+        const workout: Workout = {
+          id: `workout_${Date.now()}`,
           planId: "quick",
           planName: "אימון מותאם אישית",
           dayId: "quick",
           dayName: "אימון חופשי",
           exercises,
-        });
+          date: new Date().toISOString(),
+          startTime: new Date().toISOString(),
+          duration: 0,
+          status: "active",
+          totalSets: exercises.reduce((sum, ex) => sum + ex.sets.length, 0),
+          totalVolume: 0,
+          isQuickWorkout: true,
+        };
 
-        navigation.navigate("ActiveWorkout");
+        startWorkoutStore(workout);
+
+        navigation.navigate("ActiveWorkout", { workout });
       } catch (error) {
         console.error("Failed to start quick workout:", error);
         Alert.alert("שגיאה", "לא הצלחנו להתחיל את האימון");
