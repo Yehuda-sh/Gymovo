@@ -1,7 +1,7 @@
 // src/screens/plans/plans-screen/PlanCard.tsx
 // כרטיס תוכנית מתקדם עם אנימציות וגרדיאנטים - גרסה משופרת
 
-import React, { useRef, useEffect, memo } from "react";
+import React, { useRef, useEffect, memo, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,22 +9,78 @@ import {
   StyleSheet,
   Animated,
   ScrollView,
+  Platform,
+  useColorScheme,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { designSystem } from "../../../theme/designSystem";
+import { colors } from "../../../theme/colors";
 import { Plan } from "../../../types/plan";
 import { getDifficultyGradient, getAnimationDelay } from "./utils";
 import Tag from "./Tag";
 
+// הגדרת designSystem מקומית
+const designSystem = {
+  colors: {
+    primary: {
+      main: colors.primary,
+      dark: colors.primaryDark,
+    },
+    secondary: {
+      main: colors.secondary,
+    },
+    background: {
+      elevated: colors.surface,
+    },
+    neutral: {
+      text: {
+        primary: colors.text,
+        secondary: colors.textSecondary,
+        tertiary: colors.textMuted,
+      },
+      border: colors.border,
+    },
+    semantic: {
+      error: colors.error,
+    },
+  },
+  shadows: {
+    lg: Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  animations: {
+    easings: {
+      spring: {
+        tension: 40,
+        friction: 7,
+        useNativeDriver: true,
+      },
+      bounce: {
+        tension: 50,
+        friction: 5,
+        useNativeDriver: true,
+      },
+    },
+  },
+};
+
 export interface PlanCardProps {
-  plan: Plan;
+  plan: Plan & { isAiGenerated?: boolean };
   index: number;
   onPress: () => void;
   onShare: () => void;
   onDelete?: () => void;
-  isUserPlan?: boolean; // האם זו תוכנית של המשתמש
+  isUserPlan?: boolean;
 }
 
 // רכיב כרטיס תוכנית עם אנימציות מרשימות
@@ -33,6 +89,8 @@ const PlanCard: React.FC<PlanCardProps> = memo(
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     useEffect(() => {
       Animated.parallel([
@@ -46,57 +104,100 @@ const PlanCard: React.FC<PlanCardProps> = memo(
           toValue: 0,
           delay: getAnimationDelay(index),
           ...designSystem.animations.easings.spring,
-          useNativeDriver: true,
         }),
         Animated.spring(scaleAnim, {
           toValue: 1,
           delay: getAnimationDelay(index),
           ...designSystem.animations.easings.bounce,
-          useNativeDriver: true,
         }),
       ]).start();
     }, [index, fadeAnim, slideAnim, scaleAnim]);
 
     // טיפול בלחיצה על הכרטיס
-    const handlePress = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const handlePress = useCallback(() => {
+      if (Platform.OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       onPress();
-    };
+    }, [onPress]);
+
+    // טיפול בשיתוף
+    const handleShare = useCallback(() => {
+      if (Platform.OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onShare();
+    }, [onShare]);
+
+    // טיפול במחיקה
+    const handleDelete = useCallback(() => {
+      if (Platform.OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onDelete?.();
+    }, [onDelete]);
 
     // קבלת גרדיאנט רמת קושי - תיקון לתמיכה במערך של צבעים
-    const difficultyGradient = getDifficultyGradient(
-      plan.difficulty || "beginner"
-    ) as [string, string, ...string[]];
+    const difficultyGradient = useMemo(() => {
+      const gradient = getDifficultyGradient(plan.difficulty || "beginner");
+      return gradient.length >= 2 ? gradient : [gradient[0], gradient[0]];
+    }, [plan.difficulty]);
 
     // חישוב סטטיסטיקות התוכנית עם fallbacks
-    const totalExercises =
-      plan.days?.reduce((sum, day) => sum + (day.exercises?.length || 0), 0) ||
-      0;
+    const stats = useMemo(() => {
+      const totalExercises =
+        plan.days?.reduce(
+          (sum, day) => sum + (day.exercises?.length || 0),
+          0
+        ) || 0;
+      const totalDuration =
+        plan.days?.reduce(
+          (sum, day) => sum + (day.estimatedDuration || 30),
+          0
+        ) || 0;
+      const daysPerWeek = plan.days?.length || 0;
+      const avgDuration =
+        daysPerWeek > 0 ? Math.round(totalDuration / daysPerWeek) : 0;
 
-    const totalDuration =
-      plan.days?.reduce((sum, day) => sum + (day.estimatedDuration || 30), 0) ||
-      0;
+      return { totalExercises, totalDuration, daysPerWeek, avgDuration };
+    }, [plan.days]);
 
-    const daysPerWeek = plan.days?.length || 0;
     const muscleGroups = plan.targetMuscleGroups || [];
 
     // מיפוי רמת קושי לטקסט בעברית
-    const difficultyText = {
-      beginner: "מתחילים",
-      intermediate: "מתקדמים",
-      advanced: "מומחים",
-    }[plan.difficulty || "beginner"];
+    const difficultyText = useMemo(
+      () =>
+        ({
+          beginner: "מתחילים",
+          intermediate: "מתקדמים",
+          advanced: "מומחים",
+        }[plan.difficulty || "beginner"]),
+      [plan.difficulty]
+    );
 
     // מיפוי אייקונים לתגים
-    const getTagIcon = (tag: string) => {
-      const lowerTag = tag.toLowerCase();
-      if (lowerTag.includes("כוח")) return "fitness";
-      if (lowerTag.includes("היפרטרופיה")) return "body";
-      if (lowerTag.includes("חיטוב")) return "flash";
-      if (lowerTag.includes("ביתי")) return "home";
-      if (lowerTag.includes("מכון")) return "barbell";
-      return "pricetag";
-    };
+    const getTagIcon = useCallback(
+      (tag: string): keyof typeof Ionicons.glyphMap => {
+        const lowerTag = tag.toLowerCase();
+        if (lowerTag.includes("כוח")) return "fitness";
+        if (lowerTag.includes("היפרטרופיה")) return "body";
+        if (lowerTag.includes("חיטוב")) return "flash";
+        if (lowerTag.includes("ביתי")) return "home";
+        if (lowerTag.includes("מכון")) return "barbell";
+        return "pricetag";
+      },
+      []
+    );
+
+    // צבעים דינמיים לפי תמה
+    const dynamicColors = useMemo(
+      () => ({
+        cardBg: isDark ? colors.surface : "#FFFFFF",
+        textPrimary: isDark ? colors.text : "#1F2937",
+        textSecondary: isDark ? colors.textSecondary : "#64748B",
+      }),
+      [isDark]
+    );
 
     return (
       <Animated.View
@@ -105,6 +206,7 @@ const PlanCard: React.FC<PlanCardProps> = memo(
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+            backgroundColor: dynamicColors.cardBg,
           },
         ]}
       >
@@ -115,7 +217,7 @@ const PlanCard: React.FC<PlanCardProps> = memo(
         >
           {/* כותרת עם גרדיאנט */}
           <LinearGradient
-            colors={difficultyGradient}
+            colors={difficultyGradient as any}
             style={styles.cardHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -141,7 +243,14 @@ const PlanCard: React.FC<PlanCardProps> = memo(
 
             {/* רמת קושי */}
             <View style={styles.difficultyBadge}>
-              <Text style={styles.difficultyText}>{difficultyText}</Text>
+              <Text
+                style={[
+                  styles.difficultyText,
+                  { color: dynamicColors.textPrimary },
+                ]}
+              >
+                {difficultyText}
+              </Text>
             </View>
           </LinearGradient>
 
@@ -150,12 +259,23 @@ const PlanCard: React.FC<PlanCardProps> = memo(
             {/* כותרת התוכנית */}
             <View style={styles.planHeader}>
               <View style={styles.planInfo}>
-                <Text style={styles.planName} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.planName,
+                    { color: dynamicColors.textPrimary },
+                  ]}
+                  numberOfLines={2}
+                >
                   {plan.name}
                 </Text>
                 {plan.creator && (
-                  <Text style={styles.planCreator}>
-                    נוצר ע"י {plan.creator}
+                  <Text
+                    style={[
+                      styles.planCreator,
+                      { color: dynamicColors.textSecondary },
+                    ]}
+                  >
+                    נוצר ע&quot;י {plan.creator}
                   </Text>
                 )}
               </View>
@@ -188,7 +308,13 @@ const PlanCard: React.FC<PlanCardProps> = memo(
 
             {/* תיאור */}
             {plan.description && (
-              <Text style={styles.planDescription} numberOfLines={2}>
+              <Text
+                style={[
+                  styles.planDescription,
+                  { color: dynamicColors.textSecondary },
+                ]}
+                numberOfLines={2}
+              >
                 {plan.description}
               </Text>
             )}
@@ -199,37 +325,71 @@ const PlanCard: React.FC<PlanCardProps> = memo(
                 <Ionicons
                   name="calendar-outline"
                   size={16}
-                  color={designSystem.colors.neutral.text.secondary}
+                  color={dynamicColors.textSecondary}
                 />
-                <Text style={styles.statText}>{daysPerWeek} ימים בשבוע</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color={designSystem.colors.neutral.text.secondary}
-                />
-                <Text style={styles.statText}>
-                  {Math.round(totalDuration / daysPerWeek)} דק׳ לאימון
+                <Text
+                  style={[
+                    styles.statText,
+                    { color: dynamicColors.textSecondary },
+                  ]}
+                >
+                  {stats.daysPerWeek} ימים בשבוע
                 </Text>
               </View>
+
+              {stats.avgDuration > 0 && (
+                <View style={styles.statItem}>
+                  <Ionicons
+                    name="time-outline"
+                    size={16}
+                    color={dynamicColors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.statText,
+                      { color: dynamicColors.textSecondary },
+                    ]}
+                  >
+                    {stats.avgDuration} דק׳ לאימון
+                  </Text>
+                </View>
+              )}
 
               <View style={styles.statItem}>
                 <Ionicons
                   name="barbell-outline"
                   size={16}
-                  color={designSystem.colors.neutral.text.secondary}
+                  color={dynamicColors.textSecondary}
                 />
-                <Text style={styles.statText}>{totalExercises} תרגילים</Text>
+                <Text
+                  style={[
+                    styles.statText,
+                    { color: dynamicColors.textSecondary },
+                  ]}
+                >
+                  {stats.totalExercises} תרגילים
+                </Text>
               </View>
             </View>
 
             {/* קבוצות שרירים */}
             {muscleGroups.length > 0 && (
               <View style={styles.muscleGroups}>
-                <Text style={styles.muscleGroupsTitle}>קבוצות שרירים:</Text>
-                <Text style={styles.muscleGroupsList} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.muscleGroupsTitle,
+                    { color: dynamicColors.textSecondary },
+                  ]}
+                >
+                  קבוצות שרירים:
+                </Text>
+                <Text
+                  style={[
+                    styles.muscleGroupsList,
+                    { color: dynamicColors.textPrimary },
+                  ]}
+                  numberOfLines={1}
+                >
                   {muscleGroups.join(", ")}
                 </Text>
               </View>
@@ -242,10 +402,12 @@ const PlanCard: React.FC<PlanCardProps> = memo(
                 onPress={handlePress}
               >
                 <LinearGradient
-                  colors={[
-                    designSystem.colors.primary.main,
-                    designSystem.colors.primary.dark,
-                  ]}
+                  colors={
+                    [
+                      designSystem.colors.primary.main,
+                      designSystem.colors.primary.dark,
+                    ] as any
+                  }
                   style={styles.startButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -261,15 +423,13 @@ const PlanCard: React.FC<PlanCardProps> = memo(
               <View style={styles.quickActions}>
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onShare();
-                  }}
+                  onPress={handleShare}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons
                     name="share-outline"
                     size={20}
-                    color={designSystem.colors.neutral.text.secondary}
+                    color={dynamicColors.textSecondary}
                   />
                 </TouchableOpacity>
 
@@ -277,10 +437,8 @@ const PlanCard: React.FC<PlanCardProps> = memo(
                 {isUserPlan && onDelete && (
                   <TouchableOpacity
                     style={styles.iconButton}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      onDelete();
-                    }}
+                    onPress={handleDelete}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <Ionicons
                       name="trash-outline"
@@ -305,7 +463,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 8,
     borderRadius: 20,
-    backgroundColor: designSystem.colors.background.elevated,
     ...designSystem.shadows.lg,
   },
   card: {
@@ -359,7 +516,6 @@ const styles = StyleSheet.create({
   difficultyText: {
     fontSize: 13,
     fontWeight: "600",
-    color: designSystem.colors.neutral.text.primary,
   },
   planContent: {
     padding: 20,
@@ -376,13 +532,11 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 20,
     fontWeight: "bold",
-    color: designSystem.colors.neutral.text.primary,
     marginBottom: 4,
     textAlign: "right",
   },
   planCreator: {
     fontSize: 14,
-    color: designSystem.colors.neutral.text.secondary,
     textAlign: "right",
   },
   tagsContainer: {
@@ -394,7 +548,6 @@ const styles = StyleSheet.create({
   },
   planDescription: {
     fontSize: 15,
-    color: designSystem.colors.neutral.text.secondary,
     lineHeight: 22,
     marginBottom: 16,
     textAlign: "right",
@@ -415,7 +568,6 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 13,
-    color: designSystem.colors.neutral.text.secondary,
   },
   muscleGroups: {
     marginBottom: 16,
@@ -423,13 +575,11 @@ const styles = StyleSheet.create({
   muscleGroupsTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: designSystem.colors.neutral.text.secondary,
     marginBottom: 4,
     textAlign: "right",
   },
   muscleGroupsList: {
     fontSize: 14,
-    color: designSystem.colors.neutral.text.primary,
     textAlign: "right",
   },
   planActions: {

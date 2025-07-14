@@ -44,8 +44,30 @@ import { loadQuizProgress } from "../../../services/quizProgressService";
 // Stores & Types
 import { useUserStore } from "../../../stores/userStore";
 import { useNavigation } from "@react-navigation/native";
-import { designSystem } from "../../../theme/designSystem";
+import { colors } from "../../../theme/colors"; // שינוי ל-colors במקום designSystem
 import { Plan } from "../../../types/plan";
+
+// הגדרת designSystem מקומית עד שיווצר הקובץ
+const designSystem = {
+  colors: {
+    primary: {
+      main: colors.primary,
+    },
+    background: {
+      primary: colors.background,
+    },
+    neutral: {
+      text: {
+        secondary: colors.textSecondary,
+      },
+    },
+  },
+  gradients: {
+    primary: {
+      colors: [colors.primary, colors.primaryDark],
+    },
+  },
+};
 
 // הרחבה זמנית של Plan עד לעדכון הטיפוס הראשי
 interface PlanWithAI extends Plan {
@@ -85,13 +107,21 @@ const PlansScreen = () => {
 
       // 2. טען תוכנית AI אישית אם קיימת
       if (user?.id) {
-        const userAiPlan = await loadQuizProgress(user.id);
-        if (userAiPlan) {
-          // ודא שהתוכנית מסומנת כ-AI
+        const quizProgress = await loadQuizProgress(user.id);
+        if (quizProgress && quizProgress.isCompleted) {
+          // יצירת תוכנית AI מההתקדמות בשאלון
           const aiPlanWithFlag: PlanWithAI = {
-            ...userAiPlan,
+            id: `ai-plan-${user.id}`,
+            name: "התוכנית האישית שלי",
+            description: "תוכנית אימונים מותאמת אישית שנוצרה על ידי AI",
+            userId: user.id,
+            createdAt: quizProgress.completedAt || new Date().toISOString(),
+            updatedAt: quizProgress.lastUpdated || new Date().toISOString(),
             isAiGenerated: true,
             creator: "AI Assistant",
+            difficulty: quizProgress.answers.experience || "intermediate",
+            targetMuscleGroups: quizProgress.answers.equipment || [],
+            days: [], // יתמלא מאוחר יותר בהתאם לתשובות
           };
           setUserPlans([aiPlanWithFlag]);
         }
@@ -154,7 +184,8 @@ const PlansScreen = () => {
                   Haptics.NotificationFeedbackType.Success
                 );
               }
-            } catch (err) {
+            } catch (error) {
+              console.error("Error deleting plan:", error);
               Alert.alert("שגיאה", "לא ניתן למחוק את התוכנית");
             }
           },
@@ -237,7 +268,7 @@ ${plan.description || ""}
       ]}
     >
       <LinearGradient
-        colors={designSystem.gradients.primary.colors}
+        colors={designSystem.gradients.primary.colors as any}
         style={styles.headerGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
