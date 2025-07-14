@@ -2,12 +2,12 @@
 // Hook נוח לשימוש באנליטיקה במסכי האימון
 
 import { useEffect, useState, useCallback } from "react";
-import { useWorkoutStore } from "../../stores/workoutStore";
+import { useWorkoutStore } from "../stores/workoutStore";
 import {
   workoutAnalytics,
   WorkoutAnalytics,
-} from "../../services/workoutAnalytics.service";
-import { showToast } from "../../utils/toast";
+} from "../services/workoutAnalytics.service";
+import { showToast } from "../utils/toast";
 
 export const useWorkoutAnalytics = () => {
   const workoutState = useWorkoutStore();

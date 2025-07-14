@@ -8,7 +8,7 @@ import Toast from "react-native-toast-message";
 import { GestureHandlerRootView } from "react-native-gesture-handler"; // הוספנו!
 
 // 🛡️ רכיבי אבטחה וטיפול בשגיאות
-import { ErrorBoundary } from "../components/common/ErrorBoundary";
+import ErrorBoundary from "../components/common/ErrorBoundary";
 import { DialogProvider } from "../components/common/Dialog";
 
 // 🎯 רכיבים וקונפיגורציה של הניווט
