@@ -1,7 +1,7 @@
 // src/screens/exercises/exercise-selection/utils/constants.ts
 // קבועים ופונקציות עזר למסך בחירת תרגילים
 
-import { designSystem } from "../../../../theme/designSystem";
+import { designSystem } from "../../../../theme/designSystem"; 
 
 /**
  * פונקציית עזר ליצירת שקיפות צבעים

@@ -1,422 +1,443 @@
 // src/stores/userStore.ts - גרסה משופרת עם ניהול משתמשי אורח
 
-import { produce } from "immer";
-import { create, StateCreator } from "zustand";
+import { create } from "zustand";
 import { devtools, persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { User } from "../types/user"; // משתמשים בטיפוס מ-types/user
+import { produce } from "immer";
+import { User, UserStats } from "../types/user";
+import { generateId } from "../utils/idGenerator";
 
-// טיפוסים נוספים לstore
-export interface RegisterData {
-  email: string;
-  password: string;
-  age: number;
-  name?: string;
-}
-
-type AuthStatus = "loading" | "unauthenticated" | "authenticated" | "guest";
-
-interface LoginResult {
-  success: boolean;
-  error?: string;
-}
-
-interface SignupResult {
-  success: boolean;
-  error?: string;
-}
-
-interface ConversionResult {
-  success: boolean;
-  error?: string;
-}
-
+// 📊 ממשק מלא למצב המשתמש
 export interface UserState {
+  // 👤 נתוני משתמש
   user: User | null;
-  token: string | null;
-  status: AuthStatus;
-  isInitialized: boolean;
+  isLoading: boolean;
+  error: string | null;
 
-  // פונקציות עדכון בסיסיות
+  // 🎯 פעולות משתמש
   setUser: (user: User) => void;
-  setToken: (token: string) => void;
-  setStatus: (status: AuthStatus) => void;
-
-  // פונקציות auth
-  initialize: () => Promise<void>;
-  login: (email: string, password: string) => Promise<LoginResult>;
-  register: (data: RegisterData) => Promise<SignupResult>;
-  becomeGuest: () => void;
-  logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
-  loginAsDemoUser: (demoUser: User) => Promise<void>;
+  loadUser: (userId: string) => Promise<void>;
+  logout: () => void;
+  deleteAccount: () => Promise<void>;
 
-  // ניהול מעבר ממשתמש אורח למשתמש רשום
+  // 👻 ניהול משתמשי אורח
+  createGuestUser: () => void;
   convertGuestToUser: (
     email: string,
-    password: string
-  ) => Promise<ConversionResult>;
-  checkGuestDataExpiry: () => void;
+    password: string,
+    name: string
+  ) => Promise<void>;
+  isGuestUser: () => boolean;
+  getGuestExpiryDate: () => Date | null;
 
-  // פעולות עזר
-  getGuestId: () => string;
-  isGuestExpired: () => boolean;
+  // 📈 סטטיסטיקות
+  updateStats: (updates: Partial<UserStats>) => void;
+  incrementStat: (stat: keyof UserStats, value: number) => void;
+  addFavoriteExercise: (exerciseId: string) => void;
+  removeFavoriteExercise: (exerciseId: string) => void;
+
+  // 🔄 פעולות עזר
+  resetError: () => void;
+  clearAll: () => void;
 }
 
-// יוצר מזהה ייחודי למשתמש אורח
-const createGuestId = (): string => {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 9);
-  return `guest_${timestamp}_${random}`;
+// ⏰ קבועים
+const GUEST_DATA_EXPIRY_DAYS = 30; // נתוני אורח נשמרים ל-30 יום
+const USER_STORAGE_KEY = "gymovo_user_";
+
+// 🔧 פונקציות עזר
+const createGuestUserData = (): User => {
+  const now = new Date();
+  const expiryDate = new Date(now);
+  expiryDate.setDate(expiryDate.getDate() + GUEST_DATA_EXPIRY_DAYS);
+
+  return {
+    id: `guest_${generateId()}`,
+    email: "",
+    name: "אורח",
+    isGuest: true,
+    guestCreatedAt: now.toISOString(),
+    guestDataExpiry: expiryDate.toISOString(),
+    createdAt: now.toISOString(),
+    stats: {
+      totalWorkouts: 0,
+      totalTime: 0,
+      totalVolume: 0,
+      favoriteExercises: [],
+    },
+  };
 };
 
-// בודק אם נתוני האורח פגו (אחרי 30 יום כברירת מחדל)
-const isGuestDataExpired = (expiryDate?: string): boolean => {
-  if (!expiryDate) return false;
-  return new Date(expiryDate) < new Date();
+const isGuestExpired = (user: User): boolean => {
+  if (!user.isGuest || !user.guestDataExpiry) return false;
+  return new Date() > new Date(user.guestDataExpiry);
 };
 
-// יצירת Store מתוקן
-const storeCreator: StateCreator<UserState> = (set, get) => ({
-  user: null,
-  token: null,
-  status: "loading",
-  isInitialized: false,
+// פונקציות אחסון מקומיות
+const saveUserToStorage = async (userId: string, user: User): Promise<void> => {
+  try {
+    const key = `${USER_STORAGE_KEY}${userId}`;
+    await AsyncStorage.setItem(key, JSON.stringify(user));
+  } catch (error) {
+    console.error("Failed to save user:", error);
+    throw error;
+  }
+};
 
-  // פונקציות עדכון בסיסיות
-  setUser: (user: User) => set({ user }),
-  setToken: (token: string) => set({ token }),
-  setStatus: (status: AuthStatus) => set({ status }),
+const getUserFromStorage = async (userId: string): Promise<User | null> => {
+  try {
+    const key = `${USER_STORAGE_KEY}${userId}`;
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error("Failed to get user:", error);
+    return null;
+  }
+};
 
-  // אתחול - בודק אם יש משתמש אורח שמור
-  initialize: async () => {
-    try {
-      set({ status: "loading" });
+const deleteUserFromStorage = async (userId: string): Promise<void> => {
+  try {
+    const key = `${USER_STORAGE_KEY}${userId}`;
+    await AsyncStorage.removeItem(key);
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    throw error;
+  }
+};
 
-      // בדוק אם יש נתוני משתמש שמורים
-      const savedUserData = await AsyncStorage.getItem("gymovo-user-storage");
-
-      if (savedUserData) {
-        const parsed = JSON.parse(savedUserData);
-
-        // אם זה משתמש אורח, בדוק תוקף
-        if (parsed.state?.user?.isGuest) {
-          const user = parsed.state.user;
-
-          if (isGuestDataExpired(user.guestDataExpiry)) {
-            // נתוני האורח פגו - אפס
-            console.log("🕐 Guest data expired, clearing...");
-            await AsyncStorage.removeItem("gymovo-user-storage");
-            set({
-              user: null,
-              token: null,
-              status: "unauthenticated",
-              isInitialized: true,
-            });
-          } else {
-            // נתוני האורח תקפים
-            set({
-              user: user,
-              token: null,
-              status: "guest",
-              isInitialized: true,
-            });
-          }
-        } else if (parsed.state?.user && parsed.state?.token) {
-          // משתמש רשום רגיל
-          set({
-            user: parsed.state.user,
-            token: parsed.state.token,
-            status: "authenticated",
-            isInitialized: true,
-          });
-        } else {
-          // נתונים לא תקינים
-          set({
-            status: "unauthenticated",
-            isInitialized: true,
-          });
-        }
-      } else {
-        // אין נתונים שמורים
-        set({
-          status: "unauthenticated",
-          isInitialized: true,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to initialize user:", error);
-      set({
-        status: "unauthenticated",
-        isInitialized: true,
-      });
-    }
-  },
-
-  // התחברות
-  login: async (email: string, password: string) => {
-    try {
-      // בגרסה האמיתית, כאן תהיה קריאה ל-API
-      if (email && password.length >= 6) {
-        const mockUser: User = {
-          id: `user_${Date.now()}`,
-          email,
-          name: email.split("@")[0],
-          age: 25,
-          isGuest: false,
-        };
-
-        set({
-          user: mockUser,
-          token: `token_${Date.now()}`,
-          status: "authenticated",
-          isInitialized: true,
-        });
-
-        return { success: true };
-      }
-
-      return { success: false, error: "אימייל או סיסמה לא תקינים" };
-    } catch (error) {
-      return { success: false, error: "שגיאה בהתחברות" };
-    }
-  },
-
-  // הרשמה
-  register: async (data: RegisterData) => {
-    try {
-      if (data.email && data.password.length >= 6) {
-        const newUser: User = {
-          id: `user_${Date.now()}`,
-          email: data.email,
-          name: data.name || data.email.split("@")[0],
-          age: data.age,
-          isGuest: false,
-        };
-
-        set({
-          user: newUser,
-          token: `token_${Date.now()}`,
-          status: "authenticated",
-          isInitialized: true,
-        });
-
-        return { success: true };
-      }
-
-      return { success: false, error: "נתונים לא תקינים" };
-    } catch (error) {
-      return { success: false, error: "שגיאה ברישום" };
-    }
-  },
-
-  // כניסה כאורח משופרת
-  becomeGuest: () => {
-    const guestId = createGuestId();
-    const now = new Date();
-
-    // יצירת תאריך פקיעה - 30 יום מהיום
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 30);
-
-    const guestUser: User = {
-      id: guestId,
-      email: `${guestId}@gymovo.app`,
-      name: "משתמש אורח",
-      age: 25,
-      isGuest: true,
-      createdAt: now.toISOString(),
-      guestCreatedAt: now.toISOString(),
-      guestDataExpiry: expiryDate.toISOString(),
-      stats: {
-        totalWorkouts: 0,
-        totalTime: 0,
-        totalVolume: 0,
-        favoriteExercises: [],
-      },
-    };
-
-    set({
-      user: guestUser,
-      token: null,
-      status: "guest",
-      isInitialized: true,
-    });
-
-    console.log(`🎭 Created guest user: ${guestId}`);
-    console.log(
-      `📅 Guest data will expire on: ${expiryDate.toLocaleDateString("he-IL")}`
-    );
-  },
-
-  // המרת משתמש אורח למשתמש רשום
-  convertGuestToUser: async (email: string, password: string) => {
-    const currentUser = get().user;
-
-    if (!currentUser?.isGuest) {
-      return {
-        success: false,
-        error: "לא נמצא משתמש אורח להמרה",
-      };
-    }
-
-    try {
-      // כאן תהיה קריאה ל-API/Supabase להמרת המשתמש
-      // לצורך הדוגמה, נעשה המרה מקומית
-
-      const convertedUser: User = {
-        ...currentUser,
-        email,
-        name: email.split("@")[0],
-        isGuest: false,
-        guestCreatedAt: undefined,
-        guestDataExpiry: undefined,
-      };
-
-      set({
-        user: convertedUser,
-        token: `token_${Date.now()}`, // בפועל יגיע מהשרת
-        status: "authenticated",
-      });
-
-      // שמור את כל נתוני האימונים של האורח
-      console.log("✅ Guest user successfully converted to registered user");
-      console.log("📊 All workout data has been preserved");
-
-      return { success: true };
-    } catch (error) {
-      console.error("Failed to convert guest user:", error);
-      return {
-        success: false,
-        error: "שגיאה בהמרת משתמש אורח",
-      };
-    }
-  },
-
-  // בדיקת תוקף נתוני אורח
-  checkGuestDataExpiry: () => {
-    const user = get().user;
-
-    if (user?.isGuest && isGuestDataExpired(user.guestDataExpiry)) {
-      console.log("⚠️ Guest data has expired");
-      get().logout();
-    }
-  },
-
-  // פעולות עזר
-  getGuestId: () => {
-    const user = get().user;
-    return user?.isGuest ? user.id : "";
-  },
-
-  isGuestExpired: () => {
-    const user = get().user;
-    return user?.isGuest ? isGuestDataExpired(user.guestDataExpiry) : false;
-  },
-
-  // עדכון פרטי משתמש
-  updateUser: (updates: Partial<User>) => {
-    set(
-      produce((state: UserState) => {
-        if (state.user) {
-          Object.assign(state.user, updates);
-        }
-      })
-    );
-  },
-
-  // התחברות כמשתמש דמו
-  loginAsDemoUser: async (demoUser: User) => {
-    const demoToken = `demo_token_${demoUser.id}_${Date.now()}`;
-
-    try {
-      console.log(`🎭 Login as demo user: ${demoUser.name} (${demoUser.id})`);
-
-      set({
-        user: demoUser,
-        token: demoToken,
-        status: "authenticated",
-        isInitialized: true,
-      });
-
-      // טען נתוני דמו ברקע
-      const { getDemoWorkoutHistory } = await import("../constants/demoUsers");
-      const workoutHistory = getDemoWorkoutHistory(demoUser.id);
-      console.log(
-        `📊 Found ${workoutHistory.length} demo workouts for ${demoUser.name}`
-      );
-
-      return;
-    } catch (error) {
-      console.error("Failed to login as demo user:", error);
-      throw error;
-    }
-  },
-
-  // התנתקות משופרת
-  logout: async () => {
-    const user = get().user;
-
-    if (user?.isGuest) {
-      // למשתמש אורח - אזהרה על איבוד נתונים
-      console.log("⚠️ Guest user logging out - all data will be lost!");
-    }
-
-    set({
-      user: null,
-      token: null,
-      status: "unauthenticated",
-      isInitialized: true,
-    });
-  },
-});
-
-// יצירת Store עם persistence משופר
+// 🏭 יצירת Store עם Zustand
 export const useUserStore = create<UserState>()(
   devtools(
-    persist(storeCreator, {
-      name: "gymovo-user-storage",
-      storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        status: state.status,
+    persist(
+      (set, get) => ({
+        // 🏁 מצב התחלתי
+        user: null,
+        isLoading: false,
+        error: null,
+
+        // 👤 הגדרת משתמש
+        setUser: (user: User) => {
+          set({ user, error: null });
+          // שמירה ל-storage
+          if (user.id) {
+            saveUserToStorage(user.id, user).catch(console.error);
+          }
+        },
+
+        // ✏️ עדכון משתמש
+        updateUser: (updates: Partial<User>) => {
+          set(
+            produce((state: UserState) => {
+              if (state.user) {
+                Object.assign(state.user, updates);
+                // שמירה ל-storage
+                if (state.user.id) {
+                  saveUserToStorage(state.user.id, state.user).catch(
+                    console.error
+                  );
+                }
+              }
+            })
+          );
+        },
+
+        // 📥 טעינת משתמש
+        loadUser: async (userId: string) => {
+          set({ isLoading: true, error: null });
+
+          try {
+            const userData = await getUserFromStorage(userId);
+            if (userData) {
+              // בדוק אם משתמש אורח פג תוקף
+              if (userData.isGuest && isGuestExpired(userData)) {
+                console.log("Guest user expired, creating new guest");
+                get().createGuestUser();
+              } else {
+                set({ user: userData, isLoading: false });
+              }
+            } else {
+              set({
+                user: null,
+                isLoading: false,
+                error: "משתמש לא נמצא",
+              });
+            }
+          } catch (error) {
+            console.error("Failed to load user:", error);
+            set({
+              user: null,
+              isLoading: false,
+              error: "שגיאה בטעינת המשתמש",
+            });
+          }
+        },
+
+        // 🚪 התנתקות
+        logout: () => {
+          const currentUser = get().user;
+
+          // אם זה משתמש אורח, מחק את הנתונים
+          if (currentUser?.isGuest && currentUser.id) {
+            deleteUserFromStorage(currentUser.id).catch(console.error);
+          }
+
+          set({
+            user: null,
+            error: null,
+          });
+        },
+
+        // 🗑️ מחיקת חשבון
+        deleteAccount: async () => {
+          const currentUser = get().user;
+          if (!currentUser?.id) return;
+
+          try {
+            await deleteUserFromStorage(currentUser.id);
+            set({ user: null, error: null });
+          } catch (error) {
+            console.error("Failed to delete account:", error);
+            throw error;
+          }
+        },
+
+        // 👻 יצירת משתמש אורח
+        createGuestUser: () => {
+          const guestUser = createGuestUserData();
+          set({ user: guestUser, error: null });
+
+          // שמירה ל-storage
+          saveUserToStorage(guestUser.id, guestUser).catch(console.error);
+
+          console.log(`👻 Created guest user: ${guestUser.id}`);
+        },
+
+        // 🔄 המרת אורח למשתמש רשום
+        convertGuestToUser: async (
+          email: string,
+          password: string,
+          name: string
+        ) => {
+          const currentUser = get().user;
+          if (!currentUser?.isGuest) {
+            throw new Error("Current user is not a guest");
+          }
+
+          try {
+            set({ isLoading: true, error: null });
+
+            // יצירת משתמש חדש עם שמירת הנתונים הקיימים
+            const registeredUser: User = {
+              ...currentUser,
+              id: `user_${generateId()}`, // ID חדש למשתמש רשום
+              email,
+              name,
+              isGuest: false,
+              guestCreatedAt: undefined,
+              guestDataExpiry: undefined,
+              createdAt: new Date().toISOString(),
+            };
+
+            // מחיקת משתמש האורח הישן
+            await deleteUserFromStorage(currentUser.id);
+
+            // שמירת המשתמש החדש
+            await saveUserToStorage(registeredUser.id, registeredUser);
+
+            set({
+              user: registeredUser,
+              isLoading: false,
+              error: null,
+            });
+
+            console.log(
+              `✅ Converted guest ${currentUser.id} to user ${registeredUser.id}`
+            );
+          } catch (error) {
+            console.error("Failed to convert guest to user:", error);
+            set({
+              isLoading: false,
+              error: "שגיאה בהמרת האורח למשתמש",
+            });
+            throw error;
+          }
+        },
+
+        // ❓ בדיקה אם משתמש אורח
+        isGuestUser: () => {
+          return get().user?.isGuest || false;
+        },
+
+        // 📅 קבלת תאריך תפוגה של אורח
+        getGuestExpiryDate: () => {
+          const user = get().user;
+          if (!user?.isGuest || !user.guestDataExpiry) return null;
+          return new Date(user.guestDataExpiry);
+        },
+
+        // 📊 עדכון סטטיסטיקות
+        updateStats: (updates: Partial<UserStats>) => {
+          set(
+            produce((state: UserState) => {
+              if (state.user) {
+                if (!state.user.stats) {
+                  state.user.stats = {
+                    totalWorkouts: 0,
+                    totalTime: 0,
+                    totalVolume: 0,
+                    favoriteExercises: [],
+                  };
+                }
+                Object.assign(state.user.stats, updates);
+
+                // שמירה ל-storage
+                if (state.user.id) {
+                  saveUserToStorage(state.user.id, state.user).catch(
+                    console.error
+                  );
+                }
+              }
+            })
+          );
+        },
+
+        // ➕ הגדלת סטטיסטיקה
+        incrementStat: (stat: keyof UserStats, value: number) => {
+          set(
+            produce((state: UserState) => {
+              if (state.user?.stats) {
+                if (stat === "favoriteExercises") return; // לא ניתן להגדיל מערך
+
+                const currentValue = state.user.stats[stat] as number;
+                (state.user.stats[stat] as number) = currentValue + value;
+
+                // שמירה ל-storage
+                if (state.user.id) {
+                  saveUserToStorage(state.user.id, state.user).catch(
+                    console.error
+                  );
+                }
+              }
+            })
+          );
+        },
+
+        // ⭐ הוספת תרגיל מועדף
+        addFavoriteExercise: (exerciseId: string) => {
+          set(
+            produce((state: UserState) => {
+              if (
+                state.user?.stats &&
+                !state.user.stats.favoriteExercises.includes(exerciseId)
+              ) {
+                state.user.stats.favoriteExercises.push(exerciseId);
+
+                // שמור רק את 10 המועדפים האחרונים
+                if (state.user.stats.favoriteExercises.length > 10) {
+                  state.user.stats.favoriteExercises.shift();
+                }
+
+                // שמירה ל-storage
+                if (state.user.id) {
+                  saveUserToStorage(state.user.id, state.user).catch(
+                    console.error
+                  );
+                }
+              }
+            })
+          );
+        },
+
+        // ❌ הסרת תרגיל מועדף
+        removeFavoriteExercise: (exerciseId: string) => {
+          set(
+            produce((state: UserState) => {
+              if (state.user?.stats) {
+                state.user.stats.favoriteExercises =
+                  state.user.stats.favoriteExercises.filter(
+                    (id) => id !== exerciseId
+                  );
+
+                // שמירה ל-storage
+                if (state.user.id) {
+                  saveUserToStorage(state.user.id, state.user).catch(
+                    console.error
+                  );
+                }
+              }
+            })
+          );
+        },
+
+        // 🔄 איפוס שגיאה
+        resetError: () => {
+          set({ error: null });
+        },
+
+        // 🧹 ניקוי כל הנתונים
+        clearAll: () => {
+          set({
+            user: null,
+            isLoading: false,
+            error: null,
+          });
+        },
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // בדוק תוקף נתוני אורח בכל טעינה
-          setTimeout(() => {
-            state.checkGuestDataExpiry();
-            state.initialize();
-          }, 0);
-        }
-      },
-    }),
+      {
+        name: "user-storage",
+        storage: createJSONStorage(() => AsyncStorage),
+        partialize: (state) => ({
+          user: state.user,
+        }),
+        onRehydrateStorage: () => (state) => {
+          // בדיקה אם משתמש אורח פג תוקף אחרי טעינה מ-storage
+          if (state?.user?.isGuest && state.user.guestDataExpiry) {
+            if (isGuestExpired(state.user)) {
+              console.log("Guest user expired on rehydration, clearing");
+              state.user = null;
+            }
+          }
+        },
+      }
+    ),
     {
       name: "user-store",
     }
   )
 );
 
-// Hook לניהול משתמש אורח
-export const useGuestUser = () => {
-  const { user, status, becomeGuest, convertGuestToUser, isGuestExpired } =
-    useUserStore();
+// 🔧 Hooks נוחים לשימוש
+export const useCurrentUser = () => useUserStore((state) => state.user);
+export const useIsGuest = () => useUserStore((state) => state.isGuestUser());
+export const useUserStats = () => useUserStore((state) => state.user?.stats);
 
-  const isGuest = user?.isGuest ?? false;
-  const daysUntilExpiry = user?.guestDataExpiry
-    ? Math.ceil(
-        (new Date(user.guestDataExpiry).getTime() - Date.now()) /
-          (1000 * 60 * 60 * 24)
-      )
-    : 0;
+// 🛠️ פונקציות עזר גלובליות
+export const initializeUser = async () => {
+  const store = useUserStore.getState();
 
-  return {
-    isGuest,
-    guestId: user?.id,
-    daysUntilExpiry,
-    isExpired: isGuestExpired(),
-    becomeGuest,
-    convertGuestToUser,
-  };
+  // אם יש משתמש ב-storage, הוא ייטען אוטומטית
+  // אחרת, צור משתמש אורח
+  if (!store.user) {
+    store.createGuestUser();
+  }
+};
+
+// 📊 פונקציה לעדכון סטטיסטיקות אחרי אימון
+export const updateUserStatsAfterWorkout = (workoutData: {
+  duration: number;
+  volume: number;
+  exercises: string[];
+}) => {
+  const store = useUserStore.getState();
+
+  // עדכון סטטיסטיקות
+  store.incrementStat("totalWorkouts", 1);
+  store.incrementStat("totalTime", workoutData.duration);
+  store.incrementStat("totalVolume", workoutData.volume);
+
+  // עדכון תרגילים מועדפים
+  workoutData.exercises.forEach((exerciseId) => {
+    store.addFavoriteExercise(exerciseId);
+  });
 };

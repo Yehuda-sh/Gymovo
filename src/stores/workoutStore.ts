@@ -1,4 +1,4 @@
-// src/stores/workoutStore.ts - 💪 Store מלא ומקצועי לניהול אימונים
+// src/stores/workoutStore.ts - 💪 Store משופר לניהול אימונים
 
 import { produce } from "immer";
 import { create } from "zustand";
@@ -23,7 +23,7 @@ export interface WorkoutState {
   currentSetIndex: number;
   isResting: boolean;
   restTimeLeft: number;
-  restTimer: NodeJS.Timeout | null;
+  restTimer: number | null; // שינוי מ-NodeJS.Timeout ל-number
   isPaused: boolean;
 
   // 📅 היסטוריית אימונים
@@ -34,18 +34,18 @@ export interface WorkoutState {
   // 📊 סטטיסטיקות אימון
   currentWorkoutStats: {
     startTime: Date | null;
-    duration: number; // בדקות
+    duration: number;
     completedSets: number;
     totalSets: number;
     calories: number;
-    volume: number; // נפח כולל
+    volume: number;
   };
 
   // 🏆 שיאים אישיים
   personalRecords: PersonalRecord[];
 
   // 🎯 פעולות אימון
-  startWorkout: (workout: Workout, plan?: Plan) => void;
+  startWorkout: (workout: Partial<Workout>, plan?: Plan) => void;
   startCustomWorkout: (exercises: Exercise[]) => Promise<void>;
   startEmptyWorkout: () => void;
   updateSet: (
@@ -95,13 +95,13 @@ export interface WorkoutState {
   clearAll: () => void;
 }
 
-// ⚙️ קבועים
+// ⚙️ קבועים משופרים
 const DEFAULT_REST_TIME = 90; // שניות
 const DEFAULT_SETS_PER_EXERCISE = 3;
 const DEFAULT_REPS_PER_SET = 12;
 const CALORIES_PER_SET = 10; // הערכה בסיסית
 
-// 🔧 פונקציות עזר
+// 🔧 פונקציות עזר משופרות
 const calculateVolume = (exercise: WorkoutExercise): number => {
   return exercise.sets.reduce((total, set) => {
     if (set.status === "completed") {
@@ -111,6 +111,36 @@ const calculateVolume = (exercise: WorkoutExercise): number => {
     }
     return total;
   }, 0);
+};
+
+const calculateCalories = (
+  exercise: WorkoutExercise,
+  duration: number
+): number => {
+  // חישוב קלוריות מתקדם לפי סוג התרגיל ומשך הזמן
+  const baseCalories =
+    exercise.sets.filter((s) => s.status === "completed").length *
+    CALORIES_PER_SET;
+  const intensityMultiplier = 1.0; // יכול להשתנות לפי סוג התרגיל
+  return Math.round(baseCalories * intensityMultiplier);
+};
+
+// יצירת workout חדש מתוך נתונים חלקיים
+const createWorkout = (data: Partial<Workout>, userId: string): Workout => {
+  const now = new Date().toISOString();
+  return {
+    id: data.id || generateId(),
+    planId: data.planId || "custom",
+    planName: data.planName || "אימון מותאם אישית",
+    dayId: data.dayId || "custom",
+    dayName: data.dayName || "אימון חופשי",
+    exercises: data.exercises || [],
+    date: now,
+    startTime: now,
+    duration: 0,
+    status: "active",
+    ...data,
+  };
 };
 
 // 🏭 יצירת Store עם Zustand
@@ -140,8 +170,13 @@ export const useWorkoutStore = create<WorkoutState>()(
         },
 
         // 🚀 התחלת אימון עם תוכנית קיימת
-        startWorkout: (workout: Workout, plan?: Plan) => {
-          console.log(`🏋️ Starting workout: ${workout.name}`);
+        startWorkout: (workoutData: Partial<Workout>, plan?: Plan) => {
+          console.log(
+            `🏋️ Starting workout: ${workoutData.planName || "Custom"}`
+          );
+
+          const userId = useUserStore.getState().user?.id || "guest";
+          const workout = createWorkout(workoutData, userId);
 
           const totalSets = workout.exercises.reduce(
             (total, ex) => total + ex.sets.length,
@@ -149,16 +184,7 @@ export const useWorkoutStore = create<WorkoutState>()(
           );
 
           set({
-            activeWorkout: {
-              ...workout,
-              id: generateId(),
-              date: new Date(),
-              startedAt: new Date().toISOString(),
-              planId: plan?.id,
-              userId: useUserStore.getState().user?.id || "guest",
-              completedExercises: 0,
-              totalExercises: workout.exercises.length,
-            },
+            activeWorkout: workout,
             currentExerciseIndex: 0,
             currentSetIndex: 0,
             isResting: false,
@@ -182,18 +208,24 @@ export const useWorkoutStore = create<WorkoutState>()(
             `🎯 Starting custom workout with ${exercises.length} exercises`
           );
 
-          const userId = useUserStore.getState().user?.id || "guest-user";
-
-          const customWorkout: Workout = {
+          const customWorkout: Partial<Workout> = {
             id: generateId(),
-            name: "אימון מותאם אישית",
-            date: new Date(),
-            userId: userId,
-            startedAt: new Date().toISOString(),
+            planName: "אימון מותאם אישית",
+            dayName: "אימון חופשי",
             exercises: exercises.map((exercise, index) => ({
               id: `${exercise.id}_${generateId()}`,
               name: exercise.name,
-              exercise: exercise,
+              exercise: {
+                id: exercise.id,
+                name: exercise.name,
+                category: exercise.category,
+                primaryMuscle: exercise.targetMuscleGroups?.[0],
+                secondaryMuscles: exercise.targetMuscleGroups?.slice(1),
+                equipment: Array.isArray(exercise.equipment)
+                  ? exercise.equipment.join(", ")
+                  : exercise.equipment?.[0],
+                difficulty: exercise.difficulty,
+              },
               sets: Array.from(
                 { length: DEFAULT_SETS_PER_EXERCISE },
                 (_, i) => ({
@@ -204,73 +236,25 @@ export const useWorkoutStore = create<WorkoutState>()(
                 })
               ),
               order: index,
-              muscleGroup: exercise.category,
-              targetMuscles: exercise.targetMuscleGroups,
-              equipment: exercise.equipment,
+              notes: "",
             })),
-            completedExercises: 0,
-            totalExercises: exercises.length,
           };
 
-          const totalSets = customWorkout.exercises.reduce(
-            (total, ex) => total + ex.sets.length,
-            0
-          );
-
-          set({
-            activeWorkout: customWorkout,
-            currentExerciseIndex: 0,
-            currentSetIndex: 0,
-            isResting: false,
-            restTimeLeft: 0,
-            restTimer: null,
-            isPaused: false,
-            currentWorkoutStats: {
-              startTime: new Date(),
-              duration: 0,
-              completedSets: 0,
-              totalSets,
-              calories: 0,
-              volume: 0,
-            },
-          });
+          get().startWorkout(customWorkout);
         },
 
         // 🆕 התחלת אימון ריק
         startEmptyWorkout: () => {
-          const userId = useUserStore.getState().user?.id || "guest-user";
-
-          const emptyWorkout: Workout = {
-            id: generateId(),
-            name: "אימון חדש",
-            date: new Date(),
-            userId: userId,
-            startedAt: new Date().toISOString(),
+          const emptyWorkout: Partial<Workout> = {
+            planName: "אימון חדש",
+            dayName: "אימון חופשי",
             exercises: [],
-            completedExercises: 0,
-            totalExercises: 0,
           };
 
-          set({
-            activeWorkout: emptyWorkout,
-            currentExerciseIndex: 0,
-            currentSetIndex: 0,
-            isResting: false,
-            restTimeLeft: 0,
-            restTimer: null,
-            isPaused: false,
-            currentWorkoutStats: {
-              startTime: new Date(),
-              duration: 0,
-              completedSets: 0,
-              totalSets: 0,
-              calories: 0,
-              volume: 0,
-            },
-          });
+          get().startWorkout(emptyWorkout);
         },
 
-        // ⚖️ עדכון נתוני סט
+        // ⚖️ עדכון נתוני סט משופר
         updateSet: (
           exerciseId: string,
           setId: string,
@@ -284,6 +268,11 @@ export const useWorkoutStore = create<WorkoutState>()(
               if (exercise) {
                 const setItem = exercise.sets.find((s) => s.id === setId);
                 if (setItem) {
+                  const previousValues = {
+                    weight: setItem.actualWeight || setItem.weight,
+                    reps: setItem.actualReps || setItem.reps,
+                  };
+
                   if (values.reps !== undefined) {
                     setItem.reps = Math.max(0, values.reps);
                     setItem.actualReps = values.reps;
@@ -295,7 +284,13 @@ export const useWorkoutStore = create<WorkoutState>()(
                   if (values.completed !== undefined) {
                     setItem.status = values.completed ? "completed" : "pending";
                     if (values.completed) {
-                      setItem.completedAt = new Date().toISOString();
+                      setItem.completedAt = new Date();
+                      // עדכון סטטיסטיקות
+                      const newVolume =
+                        (setItem.actualWeight || 0) * (setItem.actualReps || 0);
+                      const oldVolume =
+                        previousValues.weight * previousValues.reps;
+                      state.currentWorkoutStats.volume += newVolume - oldVolume;
                     }
                   }
                 }
@@ -304,7 +299,7 @@ export const useWorkoutStore = create<WorkoutState>()(
           );
         },
 
-        // ✅ סימון סט כמושלם/לא מושלם
+        // ✅ סימון סט כמושלם/לא מושלם משופר
         toggleSetCompleted: (exerciseId: string, setId: string) => {
           const state = get();
           let shouldStartRest = false;
@@ -321,9 +316,9 @@ export const useWorkoutStore = create<WorkoutState>()(
                 setItem.status = wasCompleted ? "pending" : "completed";
 
                 if (!wasCompleted) {
-                  setItem.completedAt = new Date().toISOString();
-                  setItem.actualReps = setItem.reps;
-                  setItem.actualWeight = setItem.weight;
+                  setItem.completedAt = new Date();
+                  setItem.actualReps = setItem.actualReps || setItem.reps;
+                  setItem.actualWeight = setItem.actualWeight || setItem.weight;
                   draft.currentWorkoutStats.completedSets++;
                   shouldStartRest = true;
 
@@ -339,8 +334,17 @@ export const useWorkoutStore = create<WorkoutState>()(
                 }
 
                 // חישוב קלוריות
-                draft.currentWorkoutStats.calories =
-                  draft.currentWorkoutStats.completedSets * CALORIES_PER_SET;
+                if (exercise && draft.currentWorkoutStats.startTime) {
+                  const duration = Math.round(
+                    (Date.now() -
+                      draft.currentWorkoutStats.startTime.getTime()) /
+                      60000
+                  );
+                  draft.currentWorkoutStats.calories = calculateCalories(
+                    exercise,
+                    duration
+                  );
+                }
               }
             })
           );
@@ -354,7 +358,7 @@ export const useWorkoutStore = create<WorkoutState>()(
           get().checkForPersonalRecords();
         },
 
-        // ➕ הוספת תרגיל לאימון הפעיל
+        // ➕ הוספת תרגיל לאימון הפעיל משופרת
         addExercise: (exercise: Exercise) => {
           set(
             produce((state: WorkoutState) => {
@@ -362,7 +366,17 @@ export const useWorkoutStore = create<WorkoutState>()(
                 const newExercise: WorkoutExercise = {
                   id: `${exercise.id}_${generateId()}`,
                   name: exercise.name,
-                  exercise: exercise,
+                  exercise: {
+                    id: exercise.id,
+                    name: exercise.name,
+                    category: exercise.category,
+                    primaryMuscle: exercise.targetMuscleGroups?.[0],
+                    secondaryMuscles: exercise.targetMuscleGroups?.slice(1),
+                    equipment: Array.isArray(exercise.equipment)
+                      ? exercise.equipment.join(", ")
+                      : exercise.equipment?.[0],
+                    difficulty: exercise.difficulty,
+                  },
                   sets: Array.from(
                     { length: DEFAULT_SETS_PER_EXERCISE },
                     (_, i) => ({
@@ -373,14 +387,10 @@ export const useWorkoutStore = create<WorkoutState>()(
                     })
                   ),
                   order: state.activeWorkout.exercises.length,
-                  muscleGroup: exercise.category,
-                  targetMuscles: exercise.targetMuscleGroups,
-                  equipment: exercise.equipment,
+                  notes: "",
                 };
 
                 state.activeWorkout.exercises.push(newExercise);
-                state.activeWorkout.totalExercises =
-                  state.activeWorkout.exercises.length;
                 state.currentWorkoutStats.totalSets +=
                   DEFAULT_SETS_PER_EXERCISE;
               }
@@ -388,7 +398,7 @@ export const useWorkoutStore = create<WorkoutState>()(
           );
         },
 
-        // ➖ הסרת תרגיל מהאימון
+        // ➖ הסרת תרגיל מהאימון משופרת
         removeExercise: (exerciseId: string) => {
           set(
             produce((state: WorkoutState) => {
@@ -413,8 +423,6 @@ export const useWorkoutStore = create<WorkoutState>()(
 
                   // הסרת התרגיל
                   state.activeWorkout.exercises.splice(exerciseIndex, 1);
-                  state.activeWorkout.totalExercises =
-                    state.activeWorkout.exercises.length;
 
                   // עדכון אינדקס אם צריך
                   if (
@@ -439,12 +447,27 @@ export const useWorkoutStore = create<WorkoutState>()(
           );
         },
 
-        // 🔄 שינוי סדר תרגילים
+        // 🔄 שינוי סדר תרגילים משופר
         reorderExercises: (fromIndex: number, toIndex: number) => {
           set(
             produce((state: WorkoutState) => {
-              if (state.activeWorkout) {
+              if (
+                state.activeWorkout &&
+                state.activeWorkout.exercises.length > 1
+              ) {
                 const exercises = state.activeWorkout.exercises;
+
+                // בדיקת תקינות אינדקסים
+                if (
+                  fromIndex < 0 ||
+                  fromIndex >= exercises.length ||
+                  toIndex < 0 ||
+                  toIndex >= exercises.length ||
+                  fromIndex === toIndex
+                ) {
+                  return;
+                }
+
                 const [removed] = exercises.splice(fromIndex, 1);
                 exercises.splice(toIndex, 0, removed);
 
@@ -452,23 +475,44 @@ export const useWorkoutStore = create<WorkoutState>()(
                 exercises.forEach((ex, idx) => {
                   ex.order = idx;
                 });
+
+                // עדכון אינדקס נוכחי אם צריך
+                if (state.currentExerciseIndex === fromIndex) {
+                  state.currentExerciseIndex = toIndex;
+                } else if (
+                  fromIndex < state.currentExerciseIndex &&
+                  toIndex >= state.currentExerciseIndex
+                ) {
+                  state.currentExerciseIndex--;
+                } else if (
+                  fromIndex > state.currentExerciseIndex &&
+                  toIndex <= state.currentExerciseIndex
+                ) {
+                  state.currentExerciseIndex++;
+                }
               }
             })
           );
         },
 
-        // ⏭️ מעבר לתרגיל הבא
+        // ⏭️ מעבר לתרגיל הבא משופר
         goToNextExercise: () => {
           const state = get();
           if (!state.activeWorkout) return false;
 
           const nextIndex = state.currentExerciseIndex + 1;
           if (nextIndex < state.activeWorkout.exercises.length) {
+            // נקה טיימר מנוחה אם קיים
+            if (state.restTimer) {
+              clearInterval(state.restTimer);
+            }
+
             set({
               currentExerciseIndex: nextIndex,
               currentSetIndex: 0,
               isResting: false,
               restTimeLeft: 0,
+              restTimer: null,
             });
             return true;
           }
@@ -482,11 +526,17 @@ export const useWorkoutStore = create<WorkoutState>()(
 
           const prevIndex = state.currentExerciseIndex - 1;
           if (prevIndex >= 0) {
+            // נקה טיימר מנוחה אם קיים
+            if (state.restTimer) {
+              clearInterval(state.restTimer);
+            }
+
             set({
               currentExerciseIndex: prevIndex,
               currentSetIndex: 0,
               isResting: false,
               restTimeLeft: 0,
+              restTimer: null,
             });
           }
         },
@@ -497,11 +547,17 @@ export const useWorkoutStore = create<WorkoutState>()(
           if (!state.activeWorkout) return;
 
           if (index >= 0 && index < state.activeWorkout.exercises.length) {
+            // נקה טיימר מנוחה אם קיים
+            if (state.restTimer) {
+              clearInterval(state.restTimer);
+            }
+
             set({
               currentExerciseIndex: index,
               currentSetIndex: 0,
               isResting: false,
               restTimeLeft: 0,
+              restTimer: null,
             });
           }
         },
@@ -547,7 +603,7 @@ export const useWorkoutStore = create<WorkoutState>()(
           }
         },
 
-        // ⏱️ התחלת מנוחה
+        // ⏱️ התחלת מנוחה משופרת
         startRest: (duration?: number) => {
           const state = get();
           const restDuration = duration || DEFAULT_REST_TIME;
@@ -574,10 +630,15 @@ export const useWorkoutStore = create<WorkoutState>()(
                 restTimeLeft: 0,
                 restTimer: null,
               });
+
+              // השמע צליל או רטט כשהמנוחה נגמרת
+              if (typeof window !== "undefined" && "vibrate" in navigator) {
+                navigator.vibrate(200);
+              }
             }
           }, 1000);
 
-          set({ restTimer: timer });
+          set({ restTimer: timer as any });
         },
 
         // ⏭️ דילוג על המנוחה
@@ -610,29 +671,15 @@ export const useWorkoutStore = create<WorkoutState>()(
 
         // ⏸️ השהיית אימון
         pauseWorkout: () => {
-          set(
-            produce((state: WorkoutState) => {
-              if (state.activeWorkout && !state.activeWorkout.pausedAt) {
-                state.activeWorkout.pausedAt = new Date().toISOString();
-                state.isPaused = true;
-              }
-            })
-          );
+          set({ isPaused: true });
         },
 
         // ▶️ המשך אימון
         resumeWorkout: () => {
-          set(
-            produce((state: WorkoutState) => {
-              if (state.activeWorkout && state.activeWorkout.pausedAt) {
-                state.activeWorkout.pausedAt = undefined;
-                state.isPaused = false;
-              }
-            })
-          );
+          set({ isPaused: false });
         },
 
-        // 🏁 סיום אימון
+        // 🏁 סיום אימון משופר
         finishWorkout: async () => {
           const state = get();
           if (!state.activeWorkout) {
@@ -646,17 +693,21 @@ export const useWorkoutStore = create<WorkoutState>()(
               )
             : 0;
 
+          const completedExercisesCount = state.activeWorkout.exercises.filter(
+            (ex) => ex.sets.some((s) => s.status === "completed")
+          ).length;
+
           const finishedWorkout: Workout = {
             ...state.activeWorkout,
+            endTime: new Date().toISOString(),
             completedAt: new Date().toISOString(),
             duration,
-            calories: state.currentWorkoutStats.calories,
+            status: "completed",
             totalVolume: state.currentWorkoutStats.volume,
-            completedExercises: state.activeWorkout.exercises.filter((ex) =>
-              ex.sets.some((s) => s.status === "completed")
-            ).length,
             totalSets: state.currentWorkoutStats.totalSets,
-            completedSets: state.currentWorkoutStats.completedSets,
+            caloriesBurned: state.currentWorkoutStats.calories,
+            rating: 0, // יתווסף לאחר מכן על ידי המשתמש
+            notes: "",
           };
 
           // נקה טיימר אם קיים
@@ -669,7 +720,7 @@ export const useWorkoutStore = create<WorkoutState>()(
             const userId = useUserStore.getState().user?.id || "guest";
             await saveWorkoutToHistory(userId, finishedWorkout);
             console.log(
-              `✅ Workout finished: ${finishedWorkout.name}, Duration: ${duration}min`
+              `✅ Workout finished: ${finishedWorkout.planName}, Duration: ${duration}min`
             );
 
             // הוסף להיסטוריה
@@ -678,6 +729,12 @@ export const useWorkoutStore = create<WorkoutState>()(
                 draft.workouts.unshift(finishedWorkout);
               })
             );
+
+            // בדוק שיאים אישיים סופיים
+            const records = get().checkForPersonalRecords();
+            if (records.length > 0) {
+              console.log(`🏆 New personal records: ${records.length}`);
+            }
           } catch (error) {
             console.error("Failed to save workout:", error);
             throw error;
@@ -704,12 +761,11 @@ export const useWorkoutStore = create<WorkoutState>()(
           get().resetWorkout();
         },
 
-        // 💾 שמירת התקדמות
+        // 💾 שמירת התקדמות משופרת
         saveWorkoutProgress: () => {
           const state = get();
           if (state.activeWorkout) {
             try {
-              // שמירה זמנית ל-AsyncStorage
               const progressData = {
                 workout: state.activeWorkout,
                 currentExerciseIndex: state.currentExerciseIndex,
@@ -717,8 +773,14 @@ export const useWorkoutStore = create<WorkoutState>()(
                 stats: state.currentWorkoutStats,
                 timestamp: Date.now(),
               };
-              // TODO: לממש שמירה ל-AsyncStorage
-              console.log("💾 Workout progress saved", progressData);
+
+              // שמירה ל-AsyncStorage
+              const key = `workout_progress_${state.activeWorkout.id}`;
+              AsyncStorage.setItem(key, JSON.stringify(progressData))
+                .then(() => console.log("💾 Workout progress saved"))
+                .catch((error) =>
+                  console.error("Failed to save progress:", error)
+                );
             } catch (error) {
               console.error("Failed to save workout progress:", error);
             }
@@ -737,7 +799,10 @@ export const useWorkoutStore = create<WorkoutState>()(
 
             const history = await getWorkoutHistory(userId);
             set({
-              workouts: history,
+              workouts: history.sort(
+                (a, b) =>
+                  new Date(b.date).getTime() - new Date(a.date).getTime()
+              ),
               isLoadingWorkouts: false,
             });
           } catch (error) {
@@ -781,27 +846,103 @@ export const useWorkoutStore = create<WorkoutState>()(
                 state.workouts[workoutIndex] = {
                   ...state.workouts[workoutIndex],
                   ...updates,
-                  updatedAt: new Date().toISOString(),
                 };
               }
             })
           );
         },
 
-        // 🏆 בדיקת שיאים אישיים
+        // 🏆 בדיקת שיאים אישיים משופרת
         checkForPersonalRecords: () => {
           const state = get();
           if (!state.activeWorkout) return [];
 
           const newRecords: PersonalRecord[] = [];
+          const currentDate = new Date();
 
-          // TODO: לממש בדיקת שיאים אישיים
-          // השווה את הביצועים הנוכחיים להיסטוריה
+          state.activeWorkout.exercises.forEach((exercise) => {
+            const completedSets = exercise.sets.filter(
+              (s) => s.status === "completed"
+            );
+
+            completedSets.forEach((set) => {
+              const weight = set.actualWeight || 0;
+              const reps = set.actualReps || 0;
+
+              // בדוק שיא משקל (1RM)
+              const existing1RMRecord = state.personalRecords.find(
+                (pr) =>
+                  pr.exerciseId === exercise.exercise.id && pr.type === "1RM"
+              );
+
+              if (!existing1RMRecord || weight > existing1RMRecord.value) {
+                newRecords.push({
+                  exerciseId: exercise.exercise.id,
+                  exerciseName: exercise.name,
+                  type: "1RM",
+                  value: weight,
+                  previousValue: existing1RMRecord?.value,
+                  achievedAt: currentDate,
+                });
+              }
+
+              // בדוק שיא חזרות
+              const existingRepsRecord = state.personalRecords.find(
+                (pr) =>
+                  pr.exerciseId === exercise.exercise.id && pr.type === "reps"
+              );
+
+              if (!existingRepsRecord || reps > existingRepsRecord.value) {
+                newRecords.push({
+                  exerciseId: exercise.exercise.id,
+                  exerciseName: exercise.name,
+                  type: "reps",
+                  value: reps,
+                  previousValue: existingRepsRecord?.value,
+                  achievedAt: currentDate,
+                });
+              }
+
+              // בדוק שיא נפח (Volume = Weight × Reps)
+              const volume = weight * reps;
+              const existingVolumeRecord = state.personalRecords.find(
+                (pr) =>
+                  pr.exerciseId === exercise.exercise.id && pr.type === "volume"
+              );
+
+              if (
+                !existingVolumeRecord ||
+                volume > existingVolumeRecord.value
+              ) {
+                newRecords.push({
+                  exerciseId: exercise.exercise.id,
+                  exerciseName: exercise.name,
+                  type: "volume",
+                  value: volume,
+                  previousValue: existingVolumeRecord?.value,
+                  achievedAt: currentDate,
+                });
+              }
+            });
+          });
 
           if (newRecords.length > 0) {
             set(
               produce((draft: WorkoutState) => {
-                draft.personalRecords.push(...newRecords);
+                // עדכן או הוסף שיאים חדשים
+                newRecords.forEach((newRecord) => {
+                  const existingIndex = draft.personalRecords.findIndex(
+                    (pr) =>
+                      pr.exerciseId === newRecord.exerciseId &&
+                      pr.type === newRecord.type
+                  );
+
+                  if (existingIndex >= 0) {
+                    draft.personalRecords[existingIndex] = newRecord;
+                  } else {
+                    draft.personalRecords.push(newRecord);
+                  }
+                });
               })
             );
           }
@@ -879,7 +1020,7 @@ export const useWorkoutStore = create<WorkoutState>()(
         storage: createJSONStorage(() => AsyncStorage),
         partialize: (state) => ({
           // שמור רק את ההיסטוריה והשיאים
-          workouts: state.workouts,
+          workouts: state.workouts.slice(0, 50), // שמור רק 50 אימונים אחרונים
           personalRecords: state.personalRecords,
         }),
       }
