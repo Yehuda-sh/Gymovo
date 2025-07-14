@@ -5,7 +5,7 @@ import { theme } from "../../theme";
 
 type SpacingSize = keyof typeof theme.spacing;
 
-interface SpacerProps {
+export interface SpacerProps {
   size?: SpacingSize;
   horizontal?: boolean;
 }
