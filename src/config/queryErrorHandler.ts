@@ -1,7 +1,7 @@
 // src/config/queryErrorHandler.ts
 // טיפול מרכזי בשגיאות React Query
 
-import { showToast } from "../../utils/toast";
+import { showToast } from "../utils/toast";
 import { QueryCache, MutationCache } from "@tanstack/react-query";
 
 /**

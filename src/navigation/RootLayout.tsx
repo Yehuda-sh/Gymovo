@@ -12,8 +12,8 @@ import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { DialogProvider } from "../components/common/Dialog";
 
 // 🎯 רכיבים וקונפיגורציה של הניווט
-import { SplashScreen } from "./components/SplashScreen";
-import { queryClientConfig } from "./config/queryClient";
+import { SplashScreen } from "../screens/splash/SplashScreen";
+import { queryClientConfig } from "../config/queryClient";
 import { useNavigationSetup } from "./hooks/useNavigationSetup";
 import { AppStack } from "./stacks/AppStack";
 import { AuthStack } from "./stacks/AuthStack";
