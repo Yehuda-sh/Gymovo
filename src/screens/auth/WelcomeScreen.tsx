@@ -25,8 +25,9 @@ import {
   DevPanel,
   useWelcomeAnimations,
 } from "./welcome";
-import ActionButtons from "./welcome/components/ActionButtons";
-import SocialLoginButtons from "./welcome/components/SocialLoginButtons";
+// תיקון: ייבוא כ-named exports במקום default
+import { ActionButtons } from "./welcome/components/ActionButtons";
+import { SocialLoginButtons } from "./welcome/components/SocialLoginButtons";
 import { welcomeStyles } from "./welcome/styles/welcomeStyles";
 import { WelcomeScreenProps } from "./welcome/types";
 
@@ -133,7 +134,8 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
       try {
         await loginAsDemoUser(demoUser);
-      } catch (error) {
+      } catch (err) {
+        // תיקון: שינוי שם המשתנה מ-error ל-err
         Alert.alert("שגיאה", "לא ניתן להתחבר כמשתמש דמו");
       } finally {
         setLoading(false);
@@ -153,7 +155,8 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
           try {
             await clearAllData();
             Alert.alert("✅", "כל הנתונים אופסו בהצלחה");
-          } catch (error) {
+          } catch (err) {
+            // תיקון: שינוי שם המשתנה מ-error ל-err
             Alert.alert("שגיאה", "לא ניתן לאפס נתונים");
           }
         },
@@ -215,13 +218,14 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   }, []);
 
   // המרת demoUsers לפורמט המתאים ל-DevPanel
-  const demoUsersForPanel: DemoUserForPanel[] = demoUsers.map((user) => ({
+  const demoUsersForPanel: DemoUserForPanel[] = demoUsers.map((user: any) => ({
     id: user.id,
     name: user.name,
     email: user.email,
-    avatar: user.avatar,
-    level: user.demographics?.experienceLevel,
-    goal: user.demographics?.primaryGoal,
+    avatar: user.avatarUrl,
+    // תיקון: בדיקה אם demographics קיים
+    level: user.demographics?.experienceLevel || user.level,
+    goal: user.demographics?.primaryGoal || user.goal,
   }));
 
   return (
@@ -250,7 +254,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
           buttonsSlide={buttonsSlide}
           onLogin={handleLogin}
           onSignup={handleSignup}
-          loading={loading}
+          fadeAnim={fadeAnim}
         />
 
         {/* כפתורי רשתות חברתיות */}
@@ -262,7 +266,7 @@ const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
         />
 
         {/* כפתור אורח */}
-        <GuestButton onGuestLogin={handleGuestLogin} loading={loading} />
+        <GuestButton onGuestLogin={handleGuestLogin} />
       </View>
 
       {/* 🔒 Dev Modal */}
