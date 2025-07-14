@@ -125,7 +125,7 @@ export const useNetworkStatus = (options: UseNetworkStatusOptions = {}) => {
         } else if (!isNowConnected && wasConnected) {
           // התנתקנו
           if (showToasts) {
-            Toast.show("אין חיבור לאינטרנט");
+            Toast.error("אין חיבור לאינטרנט");
           }
           onDisconnect?.();
         }

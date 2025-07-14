@@ -91,7 +91,9 @@ export const useWorkoutHistory = ({
 
       // סינון לפי רמת קושי
       if (filters.difficulty) {
-        workouts = workouts.filter((w) => w.difficulty === filters.difficulty);
+        workouts = workouts.filter((w) =>
+          w.exercises.some((e) => e.exercise.difficulty === filters.difficulty)
+        );
       }
 
       // סינון לפי משך אימון
@@ -109,7 +111,9 @@ export const useWorkoutHistory = ({
       // סינון לפי קבוצות שרירים
       if (filters.targetMuscles && filters.targetMuscles.length > 0) {
         workouts = workouts.filter((w) =>
-          w.targetMuscles?.some((m) => filters.targetMuscles?.includes(m))
+          w.exercises.some((e) =>
+            filters.targetMuscles?.includes(e.exercise.primaryMuscle || "")
+          )
         );
       }
     }
@@ -249,7 +253,7 @@ function calculateWorkoutVolume(workout: Workout): number {
 
   workout.exercises?.forEach((exercise) => {
     exercise.sets.forEach((set) => {
-      if (set.status === "completed" || set.completed) {
+      if (set.status === "completed" || set.completedAt) {
         totalVolume += (set.weight || 0) * (set.reps || 0);
       }
     });
