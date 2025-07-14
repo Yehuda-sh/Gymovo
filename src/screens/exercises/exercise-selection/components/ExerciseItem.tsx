@@ -6,8 +6,8 @@ import * as Haptics from "expo-haptics";
 import React, { useRef, useEffect } from "react";
 import { Animated, TouchableOpacity, View, Text } from "react-native";
 import { Exercise } from "../../../../types/exercise";
-import { designSystem } from "../../../../theme/designSystem";
-import { getDifficultyColor, getDifficultyText } from "../utils/constants";
+import { theme } from "../../../../theme";
+import { colors } from "../../../../theme/colors";
 import { styles } from "../styles/exerciseSelectionStyles";
 
 interface ExerciseItemProps {
@@ -28,11 +28,12 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    // אנימציית כניסה - fade in + slide מימין
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 400,
-        delay: index * 100,
+        delay: index * 100, // השהייה פרוגרסיבית לכל כרטיס
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
@@ -41,11 +42,13 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [index, fadeAnim, slideAnim]);
 
   const handlePress = () => {
+    // משוב הפטי
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    // אנימציית לחיצה
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 0.98,
@@ -58,6 +61,32 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
     ]).start();
 
     onToggle();
+  };
+
+  const getDifficultyColor = (difficulty?: string): string => {
+    switch (difficulty) {
+      case "beginner":
+        return colors.success;
+      case "intermediate":
+        return colors.warning;
+      case "advanced":
+        return colors.error;
+      default:
+        return colors.primary;
+    }
+  };
+
+  const getDifficultyText = (difficulty?: string): string => {
+    switch (difficulty) {
+      case "beginner":
+        return "מתחיל";
+      case "intermediate":
+        return "בינוני";
+      case "advanced":
+        return "מתקדם";
+      default:
+        return "";
+    }
   };
 
   const exerciseDifficultyColor = getDifficultyColor(exercise.difficulty);
@@ -80,11 +109,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
           <Ionicons
             name="barbell-outline"
             size={24}
-            color={
-              isSelected
-                ? designSystem.colors.primary.main
-                : designSystem.colors.neutral.text.tertiary
-            }
+            color={isSelected ? colors.primary : colors.textSecondary}
           />
         </View>
 
@@ -116,14 +141,14 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
             )}
 
             {/* Equipment tag */}
-            {exercise.equipment && (
+            {exercise.equipment && exercise.equipment.length > 0 && (
               <View style={styles.tag}>
                 <Ionicons
                   name="barbell"
                   size={12}
-                  color={designSystem.colors.neutral.text.tertiary}
+                  color={colors.textSecondary}
                 />
-                <Text style={styles.tagText}>{exercise.equipment}</Text>
+                <Text style={styles.tagText}>{exercise.equipment[0]}</Text>
               </View>
             )}
 
@@ -174,7 +199,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
               <Ionicons
                 name="checkmark-circle"
                 size={28}
-                color={designSystem.colors.primary.main}
+                color={colors.primary}
               />
             </Animated.View>
           ) : (
