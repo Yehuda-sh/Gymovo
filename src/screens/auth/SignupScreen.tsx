@@ -10,8 +10,10 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { supabase } from "../../lib/supabase";
-import { useUserStore } from "../../stores/userStore";
+import { useUserStore, UserState } from "../../stores/userStore";
+import { RootStackParamList } from "../../types/navigation";
 
 import {
   HeaderSection,
@@ -22,13 +24,16 @@ import {
 import { useSignupAnimations } from "./signup/components/useSignupAnimations";
 import SignupErrorModal from "./signup/components/SignupErrorModal";
 
+// Type safety for navigation
+type SignupScreenProps = NativeStackScreenProps<RootStackParamList, "Signup">;
+
 const colors = {
   background: "#1a1a2e",
   surface: "#16213e",
   gradientDark: "#0f3460",
 };
 
-const SignupScreen = ({ navigation }: { navigation: any }) => {
+const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,6 +42,11 @@ const SignupScreen = ({ navigation }: { navigation: any }) => {
   const [loading, setLoading] = useState(false);
   const [errorModal, setErrorModal] = useState<string | null>(null);
   const totalSteps = 3;
+
+  // Store references
+  const setUser = useUserStore((state: UserState) => state.setUser);
+  const setToken = useUserStore((state: UserState) => state.setToken);
+  const setStatus = useUserStore((state: UserState) => state.setStatus);
 
   // אנימציות
   const animations = useSignupAnimations();
@@ -117,37 +127,40 @@ const SignupScreen = ({ navigation }: { navigation: any }) => {
         console.log("נוצר session, מעדכן את ה-store...");
 
         // עדכן את ה-store עם פרטי המשתמש
-        const userStore = useUserStore.getState();
-        userStore.setUser({
+        setUser({
           id: authData.user.id,
           email: authData.user.email!,
           name: profile.name || email.split("@")[0],
           age: profile.age || ageNumber,
           isGuest: false,
           createdAt: authData.user.created_at,
+          // שדות אופציונליים מהטיפוס User
+          avatarUrl: profile.avatar_url,
+          phoneNumber: profile.phone_number,
+          preferredLanguage: "he",
+          // אם יש שדה stats
+          stats: {
+            totalWorkouts: 0,
+            totalTime: 0,
+            totalVolume: 0,
+            favoriteExercises: [],
+          },
         });
-        userStore.setToken(authData.session.access_token);
-        userStore.setStatus("authenticated");
+
+        setToken(authData.session.access_token);
+        setStatus("authenticated");
 
         console.log("Store עודכן בהצלחה!");
 
         // המתן קצת כדי לתת ל-store להתעדכן
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        // הניווט יקרה אוטומטית בגלל שינוי ה-status ל-authenticated
-        // אבל אם רוצים להיות בטוחים:
-        setTimeout(() => {
-          const currentStatus = useUserStore.getState().status;
-          console.log("Current status after update:", currentStatus);
-
-          if (currentStatus !== "authenticated") {
-            // אם מסיבה כלשהי לא עבר אוטומטית
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Main" }],
-            });
-          }
-        }, 500);
+        // ניווט ישיר לשאלון
+        console.log("מנווט לשאלון...");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Quiz" }],
+        });
       } else {
         // אם אין session, כנראה צריך אימות אימייל
         console.log("נדרש אימות אימייל");
@@ -281,22 +294,5 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
 });
-
-// Helper function לעדכון userStore
-const updateUserStore = (userData: any, token: string) => {
-  const store = useUserStore.getState();
-
-  store.setUser({
-    id: userData.id,
-    email: userData.email,
-    name: userData.user_metadata?.name || userData.email.split("@")[0],
-    age: userData.user_metadata?.age || 25,
-    isGuest: false,
-    createdAt: userData.created_at,
-  });
-
-  store.setToken(token);
-  store.setStatus("authenticated");
-};
 
 export default SignupScreen;
