@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
   Animated,
-  Platform,
+  StyleSheet,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -79,7 +79,7 @@ const ActiveWorkoutScreen = () => {
   const [workoutStartTime] = useState(new Date().toISOString());
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused] = useState(false);
 
   // אנימציות
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -100,7 +100,7 @@ const ActiveWorkoutScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, []); // הסרתי את התלויות כי הן לא צריכות להשתנות
 
   // טיימר לאימון
   useEffect(() => {
@@ -294,7 +294,12 @@ const ActiveWorkoutScreen = () => {
           color={workoutColors.subtext}
         />
         <Text style={activeWorkoutStyles.emptyText}>אין אימון פעיל</Text>
-        <Text style={activeWorkoutStyles.emptySubtext}>
+        <Text
+          style={[
+            activeWorkoutStyles.emptyText,
+            { fontSize: 16, marginTop: 8 },
+          ]}
+        >
           התחל אימון חדש כדי להתחיל להתאמן
         </Text>
         <Button
@@ -325,10 +330,7 @@ const ActiveWorkoutScreen = () => {
           },
         ]}
       >
-        <TouchableOpacity
-          onPress={handleFinishWorkout}
-          style={activeWorkoutStyles.headerButton}
-        >
+        <TouchableOpacity onPress={handleFinishWorkout} style={{ padding: 8 }}>
           <Ionicons name="close" size={28} color={workoutColors.text} />
         </TouchableOpacity>
 
@@ -352,7 +354,7 @@ const ActiveWorkoutScreen = () => {
 
         <TouchableOpacity
           onPress={() => setShowRestTimer(true)}
-          style={activeWorkoutStyles.headerButton}
+          style={{ padding: 8 }}
         >
           <Ionicons name="timer-outline" size={28} color={workoutColors.text} />
         </TouchableOpacity>
@@ -386,10 +388,10 @@ const ActiveWorkoutScreen = () => {
           onPress={handlePrevExercise}
           variant="outline"
           disabled={currentExerciseIndex === 0}
-          style={[
-            activeWorkoutStyles.navButton,
-            { opacity: currentExerciseIndex === 0 ? 0.5 : 1 },
-          ]}
+          style={{
+            ...activeWorkoutStyles.navButton,
+            opacity: currentExerciseIndex === 0 ? 0.5 : 1,
+          }}
         />
 
         <View style={activeWorkoutStyles.exerciseCounterContainer}>
@@ -413,17 +415,6 @@ const ActiveWorkoutScreen = () => {
           onPress={handleNextExercise}
           variant="primary"
           style={activeWorkoutStyles.navButton}
-          icon={
-            <Ionicons
-              name={
-                currentExerciseIndex === activeWorkout.exercises.length - 1
-                  ? "checkmark-circle"
-                  : "arrow-forward"
-              }
-              size={20}
-              color="#fff"
-            />
-          }
         />
       </View>
 
@@ -437,8 +428,5 @@ const ActiveWorkoutScreen = () => {
     </View>
   );
 };
-
-// StyleSheet import נחוץ
-import { StyleSheet } from "react-native";
 
 export default ActiveWorkoutScreen;
