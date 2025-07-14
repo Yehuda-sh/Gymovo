@@ -1,203 +1,218 @@
 // src/components/cards/workout-card/WorkoutCardSkeleton.tsx
-// רכיב אנימציית טעינה עבור WorkoutCard - אפקט שלד מתקדם
+// רכיב Skeleton לטעינת WorkoutCard עם אנימציות
 
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, StyleSheet, View, ViewStyle } from "react-native";
+import { BASE_STYLES, ANIMATION_CONFIG } from "./config";
 
 /**
- * 💀 רכיב Skeleton Loading עם אנימציה מדורגת
- * מציג אפקט טעינה אלגנטי בזמן שהנתונים נטענים
+ * 💀 רכיב Skeleton לטעינת כרטיס אימון
+ * מציג placeholder אנימטיבי בזמן טעינת נתונים
  */
 interface WorkoutCardSkeletonProps {
+  /** האם להציג בפורמט מקוצר */
+  compact?: boolean;
   /** אינדקס לאנימציה מדורגת */
   index?: number;
+  /** וריאנט העיצוב */
+  variant?: "default" | "gradient" | "minimal";
+  /** סגנון מותאם אישית */
+  style?: ViewStyle;
 }
 
-export const WorkoutCardSkeleton: React.FC<WorkoutCardSkeletonProps> = ({
-  index = 0,
-}) => {
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+export const WorkoutCardSkeleton = React.memo<WorkoutCardSkeletonProps>(
+  ({ compact = false, index = 0, variant = "default", style }) => {
+    const pulseAnim = useRef(new Animated.Value(0.3)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    // אנימציה מדורגת
-    Animated.sequence([
-      Animated.delay(index * 100),
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 1000,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 0,
-              duration: 1000,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
-      ]),
-    ]).start();
-  }, [pulseAnim, slideAnim, index]);
+    useEffect(() => {
+      // אנימציית כניסה
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: ANIMATION_CONFIG.entrance.duration,
+        delay: index * ANIMATION_CONFIG.entrance.delayIncrement,
+        useNativeDriver: true,
+      }).start();
 
-  const skeletonOpacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
+      // אנימציית פעימה
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.6,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.3,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseAnimation.start();
 
-  return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      {/* כותרת Skeleton */}
-      <View style={styles.header}>
-        <Animated.View
-          style={[
-            styles.title,
-            {
-              opacity: skeletonOpacity,
-            },
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.badge,
-            {
-              opacity: skeletonOpacity,
-            },
-          ]}
-        />
-      </View>
+      return () => {
+        pulseAnimation.stop();
+      };
+    }, [pulseAnim, fadeAnim, index]);
 
-      {/* תאריך Skeleton */}
+    // רכיב שלד בודד
+    const SkeletonItem = ({
+      width,
+      height = 12,
+      borderRadius = 4,
+      marginBottom = 0,
+    }: {
+      width: number | `${number}%`;
+      height?: number;
+      borderRadius?: number;
+      marginBottom?: number;
+    }) => (
       <Animated.View
         style={[
-          styles.date,
+          styles.skeletonItem,
           {
-            opacity: skeletonOpacity,
+            width,
+            height,
+            borderRadius,
+            marginBottom,
+            opacity: pulseAnim,
           },
         ]}
       />
+    );
 
-      {/* סטטיסטיקות Skeleton */}
-      <View style={styles.stats}>
-        {[1, 2, 3].map((item) => (
-          <Animated.View
-            key={item}
-            style={[
-              styles.stat,
-              {
-                opacity: skeletonOpacity,
-              },
-            ]}
-          />
-        ))}
-      </View>
+    // בחירת סגנון לפי וריאנט
+    const containerStyle =
+      variant === "gradient"
+        ? [styles.gradientContainer, compact && styles.compactContainer]
+        : [styles.container, compact && styles.compactContainer];
 
-      {/* הערות Skeleton */}
-      <Animated.View
-        style={[
-          styles.notes,
-          {
-            opacity: skeletonOpacity,
-          },
-        ]}
-      />
+    return (
+      <Animated.View style={[containerStyle, { opacity: fadeAnim }, style]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.titleSection}>
+            <SkeletonItem width="60%" height={20} />
+            {!compact && (
+              <SkeletonItem width={60} height={16} borderRadius={8} />
+            )}
+          </View>
+          <View style={styles.metaSection}>
+            <SkeletonItem width={50} height={12} marginBottom={4} />
+            {!compact && <SkeletonItem width={80} height={16} />}
+          </View>
+        </View>
 
-      {/* שרירים Skeleton */}
-      <View style={styles.muscles}>
-        {[1, 2, 3].map((item) => (
-          <Animated.View
-            key={item}
-            style={[
-              styles.muscleTag,
-              {
-                opacity: skeletonOpacity,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    </Animated.View>
-  );
-};
+        {/* Date */}
+        <View style={styles.dateRow}>
+          <SkeletonItem width="30%" height={14} />
+        </View>
+
+        {/* Stats */}
+        <View style={[styles.stats, compact && styles.compactStats]}>
+          <SkeletonItem width={50} height={12} />
+          <SkeletonItem width={40} height={12} />
+          <SkeletonItem width={45} height={12} />
+          {!compact && <SkeletonItem width={55} height={12} />}
+        </View>
+
+        {/* Additional elements for non-compact view */}
+        {!compact && (
+          <>
+            {/* Intensity bar */}
+            <View style={styles.intensitySection}>
+              <SkeletonItem width="100%" height={4} marginBottom={4} />
+              <View style={styles.intensityLabels}>
+                <SkeletonItem width={60} height={10} />
+                <SkeletonItem width={30} height={10} />
+              </View>
+            </View>
+
+            {/* Notes */}
+            {variant !== "minimal" && (
+              <View style={styles.notesSection}>
+                <SkeletonItem width="80%" height={16} marginBottom={4} />
+                <SkeletonItem width="60%" height={16} />
+              </View>
+            )}
+
+            {/* Muscle tags */}
+            <View style={styles.muscles}>
+              <SkeletonItem width={50} height={20} borderRadius={10} />
+              <SkeletonItem width={45} height={20} borderRadius={10} />
+              <SkeletonItem width={55} height={20} borderRadius={10} />
+            </View>
+          </>
+        )}
+      </Animated.View>
+    );
+  }
+);
+
+// הוספת displayName לצורכי דיבוג
+WorkoutCardSkeleton.displayName = "WorkoutCardSkeleton";
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#1e1e1e",
-    borderRadius: 16,
-    padding: 16,
+    ...BASE_STYLES.card,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#333333",
+  },
+  gradientContainer: {
+    ...BASE_STYLES.gradientCard,
+    marginBottom: 12,
+    backgroundColor: "#1e1e1e",
+  },
+  compactContainer: {
+    ...BASE_STYLES.compactCard,
+  },
+  skeletonItem: {
+    backgroundColor: "#3a3a3c",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
-  title: {
-    height: 20,
-    borderRadius: 4,
-    width: "60%",
-    backgroundColor: "#444444",
+  titleSection: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  badge: {
-    height: 16,
-    borderRadius: 8,
-    width: 50,
-    backgroundColor: "#444444",
+  metaSection: {
+    alignItems: "flex-end",
   },
-  date: {
-    height: 14,
-    borderRadius: 4,
+  dateRow: {
+    alignItems: "flex-end",
     marginBottom: 12,
-    width: "30%",
-    alignSelf: "flex-end",
-    backgroundColor: "#444444",
   },
   stats: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginBottom: 12,
+    gap: 16,
+  },
+  compactStats: {
+    marginBottom: 0,
     gap: 12,
   },
-  stat: {
-    height: 12,
-    borderRadius: 4,
-    width: 60,
-    backgroundColor: "#444444",
-  },
-  notes: {
-    height: 32,
-    borderRadius: 4,
+  intensitySection: {
     marginBottom: 12,
-    width: "80%",
-    alignSelf: "flex-end",
-    backgroundColor: "#444444",
+  },
+  intensityLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  notesSection: {
+    marginBottom: 12,
+    alignItems: "flex-end",
   },
   muscles: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 6,
-  },
-  muscleTag: {
-    height: 20,
-    borderRadius: 10,
-    width: 50,
-    backgroundColor: "#444444",
+    flexWrap: "wrap",
   },
 });

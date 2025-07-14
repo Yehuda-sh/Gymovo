@@ -1,7 +1,8 @@
-// src/components/cards/workout-card/index.tsx
+// src/components/cards/workout-card/WorkoutCard.tsx
 // WorkoutCard מרכזי ממוקד שמשתמש במודולים נפרדים
 
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
@@ -9,6 +10,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from "react-native";
 import { colors } from "../../../theme/colors";
 import { Workout } from "../../../types/workout";
@@ -16,9 +18,29 @@ import { DifficultyBadge } from "./DifficultyBadge";
 import { IntensityIndicator } from "./IntensityIndicator";
 import { RatingStars } from "./RatingStars";
 import { TargetMuscles } from "./TargetMuscles";
-import { formatTimeAgo } from "./utils";
+import {
+  formatTimeAgo,
+  getIntensityGradient,
+  calculateWorkoutIntensity,
+} from "./utils";
 import { WorkoutCardSkeleton } from "./WorkoutCardSkeleton";
 import { WorkoutStats } from "./WorkoutStats";
+import { BASE_STYLES, ANIMATION_CONFIG, DATE_FORMATS } from "./config";
+
+/**
+ * Extended workout type for display purposes
+ * כולל שדות נוספים שיכולים להגיע ממקורות שונים
+ */
+interface ExtendedWorkout extends Workout {
+  name?: string;
+  completedAt?: string;
+  rating?: number;
+  difficulty?: string;
+  targetMuscles?: string[];
+  completedExercises?: number;
+  totalExercises?: number;
+  isCompleted?: boolean;
+}
 
 /**
  * 🎯 רכיב WorkoutCard מתקדם וממוקד
@@ -26,102 +48,126 @@ import { WorkoutStats } from "./WorkoutStats";
  */
 interface WorkoutCardProps {
   /** נתוני האימון */
-  workout: Workout;
+  workout: ExtendedWorkout;
   /** פונקציה שתתרחש בלחיצה */
   onPress: () => void;
   /** פונקציה שתתרחש בלחיצה ארוכה */
-  onLongPress: () => void;
+  onLongPress?: () => void;
   /** אינדקס לאנימציה מדורגת */
   index?: number;
   /** האם להציג אינדיקטור אינטנסיביות */
   showIntensity?: boolean;
   /** האם להציג בפורמט מקוצר */
   compact?: boolean;
+  /** וריאנט העיצוב */
+  variant?: "default" | "gradient" | "minimal";
+  /** האם להציג פס התקדמות */
+  showProgress?: boolean;
+  /** סגנון מותאם אישית */
+  style?: ViewStyle;
 }
 
-export const WorkoutCard: React.FC<WorkoutCardProps> = ({
-  workout,
-  onPress,
-  onLongPress,
-  index = 0,
-  showIntensity = true,
-  compact = false,
-}) => {
-  const animatedValue = useRef(new Animated.Value(0)).current;
-  const scaleValue = useRef(new Animated.Value(1)).current;
+export const WorkoutCard = React.memo<WorkoutCardProps>(
+  ({
+    workout,
+    onPress,
+    onLongPress,
+    index = 0,
+    showIntensity = true,
+    compact = false,
+    variant = "default",
+    showProgress = false,
+    style,
+  }) => {
+    const animatedValue = useRef(new Animated.Value(0)).current;
+    const scaleValue = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    Animated.timing(animatedValue, {
-      toValue: 1,
-      duration: 300,
-      delay: index * 50,
-      useNativeDriver: true,
-    }).start();
-  }, [animatedValue, index]);
+    // אנימציית כניסה
+    useEffect(() => {
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: ANIMATION_CONFIG.entrance.duration,
+        delay: index * ANIMATION_CONFIG.entrance.delayIncrement,
+        useNativeDriver: true,
+      }).start();
+    }, [animatedValue, index]);
 
-  const handlePressIn = () => {
-    Animated.spring(scaleValue, {
-      toValue: 0.98,
-      useNativeDriver: true,
-    }).start();
-  };
+    const handlePressIn = () => {
+      Animated.spring(scaleValue, {
+        toValue: ANIMATION_CONFIG.press.scaleIn,
+        tension: ANIMATION_CONFIG.press.tension,
+        friction: ANIMATION_CONFIG.press.friction,
+        useNativeDriver: true,
+      }).start();
+    };
 
-  const handlePressOut = () => {
-    Animated.spring(scaleValue, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  };
+    const handlePressOut = () => {
+      Animated.spring(scaleValue, {
+        toValue: ANIMATION_CONFIG.press.scaleOut,
+        tension: ANIMATION_CONFIG.press.tension,
+        friction: ANIMATION_CONFIG.press.friction,
+        useNativeDriver: true,
+      }).start();
+    };
 
-  // עיצוב תאריך
-  const workoutDate = new Date(
-    workout.completedAt || workout.date || 0
-  ).toLocaleDateString("he-IL", {
-    day: "2-digit",
-    month: "short",
-    year: compact ? undefined : "numeric",
-  });
+    // עיצוב תאריך
+    const workoutDate = new Date(
+      workout.completedAt || workout.date || 0
+    ).toLocaleDateString("he-IL", {
+      ...DATE_FORMATS.absolute[compact ? "short" : "long"],
+      year: compact ? undefined : "numeric",
+    });
 
-  // זמן שעבר
-  const timeAgo = formatTimeAgo(workout.completedAt || workout.date || 0);
+    // זמן שעבר
+    const timeAgo = formatTimeAgo(workout.completedAt || workout.date || 0);
 
-  return (
-    <Animated.View
-      style={[
-        styles.cardContainer,
-        {
-          opacity: animatedValue,
-          transform: [
-            {
-              translateY: animatedValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            },
-            { scale: scaleValue },
-          ],
-        },
-      ]}
-    >
-      <TouchableOpacity
-        style={[styles.card, compact && styles.compactCard]}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={0.9}
-      >
+    // חישוב אינטנסיביות לגרדיאנט
+    const intensity = React.useMemo(
+      () => calculateWorkoutIntensity(workout),
+      [workout]
+    );
+    const gradientColors = getIntensityGradient(intensity);
+
+    // רכיב הכרטיס הפנימי
+    const CardContent = () => (
+      <>
+        {/* פס התקדמות */}
+        {showProgress && workout.completedExercises !== undefined && (
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${
+                    (workout.completedExercises /
+                      (workout.totalExercises || 1)) *
+                    100
+                  }%`,
+                  backgroundColor: colors.success,
+                },
+              ]}
+            />
+          </View>
+        )}
+
         {/* כותרת */}
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleContainer}>
             <Text style={styles.cardTitle} numberOfLines={1}>
-              {workout.name}
+              {workout.name || workout.planName || "אימון"}
             </Text>
-            <DifficultyBadge difficulty={workout.difficulty} />
+            <DifficultyBadge
+              difficulty={workout.difficulty}
+              size={compact ? "small" : "medium"}
+            />
           </View>
           <View style={styles.cardMeta}>
             <Text style={styles.timeAgo}>{timeAgo}</Text>
-            <RatingStars rating={workout.rating} />
+            <RatingStars
+              rating={workout.rating}
+              size={compact ? "small" : "medium"}
+              showNumericRating={!compact}
+            />
           </View>
         </View>
 
@@ -129,10 +175,15 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
         <Text style={styles.cardDate}>{workoutDate}</Text>
 
         {/* סטטיסטיקות */}
-        <WorkoutStats workout={workout} compact={compact} />
+        <WorkoutStats workout={workout} size={compact ? "small" : "medium"} />
 
         {/* אינדיקטור אינטנסיביות */}
-        {showIntensity && !compact && <IntensityIndicator workout={workout} />}
+        {showIntensity && !compact && (
+          <IntensityIndicator
+            workout={workout}
+            useGradient={variant === "gradient"}
+          />
+        )}
 
         {/* תצוגת הערות */}
         {workout.notes && !compact && (
@@ -142,21 +193,89 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
         )}
 
         {/* שרירי מטרה */}
-        {!compact && <TargetMuscles muscles={workout.targetMuscles} />}
+        {!compact && (
+          <TargetMuscles
+            muscles={workout.targetMuscles}
+            size={compact ? "small" : "medium"}
+          />
+        )}
 
         {/* חץ ניווט */}
-        <View style={styles.cardArrow}>
-          <Ionicons name="chevron-forward" size={20} color="#8e8e93" />
-        </View>
+        {variant !== "minimal" && (
+          <View style={styles.cardArrow}>
+            <Ionicons name="chevron-forward" size={20} color="#8e8e93" />
+          </View>
+        )}
 
         {/* תווית השלמה */}
-        <View style={styles.completionBadge}>
-          <Ionicons name="checkmark" size={12} color="white" />
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
+        {workout.isCompleted && (
+          <View style={styles.completionBadge}>
+            <Ionicons name="checkmark" size={12} color="white" />
+          </View>
+        )}
+      </>
+    );
+
+    // בחירת סגנון לפי וריאנט
+    const cardStyle =
+      variant === "gradient"
+        ? [BASE_STYLES.gradientCard, compact && BASE_STYLES.compactCard]
+        : [styles.card, compact && styles.compactCard];
+
+    return (
+      <Animated.View
+        style={[
+          styles.cardContainer,
+          {
+            opacity: animatedValue,
+            transform: [
+              {
+                translateY: animatedValue.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+              { scale: scaleValue },
+            ],
+          },
+          style,
+        ]}
+      >
+        <TouchableOpacity
+          onPress={onPress}
+          onLongPress={onLongPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+          accessible={true}
+          accessibilityLabel={`כרטיס אימון: ${
+            workout.name || workout.planName || "אימון"
+          }`}
+          accessibilityHint="הקש כדי לראות פרטים נוספים"
+          accessibilityRole="button"
+        >
+          {variant === "gradient" ? (
+            <LinearGradient
+              colors={[...gradientColors]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={cardStyle}
+            >
+              <CardContent />
+            </LinearGradient>
+          ) : (
+            <View style={cardStyle}>
+              <CardContent />
+            </View>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+);
+
+// הוספת displayName לצורכי דיבוג
+WorkoutCard.displayName = "WorkoutCard";
 
 // ייצוא רכיב ה-Skeleton
 export { WorkoutCardSkeleton };
@@ -167,21 +286,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   card: {
-    backgroundColor: "#1e1e1e",
-    borderRadius: 16,
-    padding: 16,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#333333",
-    position: "relative",
-    shadowColor: "rgba(0, 0, 0, 0.3)",
+    ...BASE_STYLES.card,
   },
   compactCard: {
-    padding: 12,
-    borderRadius: 12,
+    ...BASE_STYLES.compactCard,
+  },
+
+  // Progress Bar
+  progressBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "rgba(0, 200, 81, 0.2)",
+    borderTopLeftRadius: BASE_STYLES.card.borderRadius,
+    borderTopRightRadius: BASE_STYLES.card.borderRadius,
+  },
+  progressFill: {
+    height: "100%",
+    borderTopLeftRadius: BASE_STYLES.card.borderRadius,
+    borderTopRightRadius: BASE_STYLES.card.borderRadius,
   },
 
   // Header Styles
@@ -190,6 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 8,
+    marginTop: 8, // מקום לפס התקדמות
   },
   cardTitleContainer: {
     flex: 1,

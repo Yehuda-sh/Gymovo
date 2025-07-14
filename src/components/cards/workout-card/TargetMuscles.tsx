@@ -2,8 +2,8 @@
 // רכיב תצוגת שרירי מטרה עם צבעים דינמיים ותגיות
 
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { getMuscleColor } from "./utils";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { MUSCLE_COLORS, SIZE_CONFIG } from "./config";
 
 /**
  * 💪 רכיב תצוגת שרירי מטרה
@@ -14,59 +14,105 @@ interface TargetMusclesProps {
   muscles?: string[];
   /** מספר מקסימלי של שרירים להצגה */
   maxVisible?: number;
-  /** האם להציג בפורמט מקוצר */
-  compact?: boolean;
+  /** גודל התצוגה */
+  size?: "small" | "medium" | "large";
+  /** האם להציג את כל השרירים או לקצר */
+  showAll?: boolean;
+  /** סגנון מותאם אישית */
+  style?: ViewStyle;
 }
 
-export const TargetMuscles: React.FC<TargetMusclesProps> = ({
-  muscles,
-  maxVisible = 4,
-  compact = false,
-}) => {
-  if (!muscles || muscles.length === 0) return null;
+export const TargetMuscles = React.memo<TargetMusclesProps>(
+  ({ muscles, maxVisible = 4, size = "medium", showAll = false, style }) => {
+    if (!muscles || muscles.length === 0) return null;
 
-  // שרירים להצגה
-  const visibleMuscles = muscles.slice(0, maxVisible);
-  const hiddenCount = muscles.length - maxVisible;
+    // קבלת סגנונות לפי גודל
+    const sizeStyles = SIZE_CONFIG[size];
 
-  return (
-    <View style={[styles.container, compact && styles.compactContainer]}>
-      {/* תגיות שרירים */}
-      {visibleMuscles.map((muscle, index) => (
-        <View
-          key={index}
-          style={[
-            styles.muscleTag,
-            compact && styles.compactMuscleTag,
-            {
-              backgroundColor: getMuscleColor(muscle) + "15",
-              borderColor: getMuscleColor(muscle) + "30",
-            },
-          ]}
-        >
-          <Text
+    // שרירים להצגה
+    const visibleMuscles = showAll ? muscles : muscles.slice(0, maxVisible);
+    const hiddenCount = showAll ? 0 : muscles.length - maxVisible;
+
+    // פונקציה לקבלת צבע השריר
+    const getMuscleColor = (muscle: string): string => {
+      const normalizedMuscle = muscle.toLowerCase().replace(/\s+/g, "_");
+      return MUSCLE_COLORS[normalizedMuscle] || MUSCLE_COLORS.default;
+    };
+
+    return (
+      <View
+        style={[
+          styles.container,
+          size === "small" && styles.compactContainer,
+          style,
+        ]}
+        accessible={true}
+        accessibilityLabel={`שרירי מטרה: ${muscles.join(", ")}`}
+        accessibilityRole="text"
+      >
+        {/* תגיות שרירים */}
+        {visibleMuscles.map((muscle, index) => {
+          const muscleColor = getMuscleColor(muscle);
+
+          return (
+            <View
+              key={`${muscle}-${index}`}
+              style={[
+                styles.muscleTag,
+                {
+                  backgroundColor: `${muscleColor}15`,
+                  borderColor: `${muscleColor}30`,
+                  paddingHorizontal: sizeStyles.paddingHorizontal,
+                  paddingVertical: sizeStyles.paddingVertical,
+                  borderRadius: sizeStyles.borderRadius / 2,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.muscleText,
+                  {
+                    color: muscleColor,
+                    fontSize: sizeStyles.fontSize,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {muscle}
+              </Text>
+            </View>
+          );
+        })}
+
+        {/* אינדיקטור לשרירים נוספים */}
+        {hiddenCount > 0 && (
+          <View
             style={[
-              styles.muscleText,
-              compact && styles.compactMuscleText,
-              { color: getMuscleColor(muscle) },
+              styles.moreMuscles,
+              {
+                paddingHorizontal: sizeStyles.paddingHorizontal,
+                paddingVertical: sizeStyles.paddingVertical,
+                borderRadius: sizeStyles.borderRadius / 2,
+              },
             ]}
           >
-            {muscle}
-          </Text>
-        </View>
-      ))}
+            <Text
+              style={[
+                styles.moreMusclesText,
+                { fontSize: sizeStyles.fontSize },
+              ]}
+            >
+              +{hiddenCount}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+);
 
-      {/* אינדיקטור לשרירים נוספים */}
-      {hiddenCount > 0 && (
-        <View style={[styles.moreMuscles, { backgroundColor: "#2c2c2e" }]}>
-          <Text style={[styles.moreMusclesText, { color: "#8e8e93" }]}>
-            +{hiddenCount}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-};
+// הוספת displayName לצורכי דיבוג
+TargetMuscles.displayName = "TargetMuscles";
 
 const styles = StyleSheet.create({
   container: {
@@ -75,41 +121,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     flexWrap: "wrap",
     justifyContent: "flex-end",
+    gap: 6,
   },
   compactContainer: {
     marginBottom: 4,
+    gap: 4,
   },
   muscleTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginLeft: 6,
-    marginBottom: 4,
     borderWidth: 1,
-  },
-  compactMuscleTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 4,
+    maxWidth: 100,
   },
   muscleText: {
-    fontSize: 10,
     fontWeight: "500",
-  },
-  compactMuscleText: {
-    fontSize: 9,
-    fontWeight: "400",
+    textAlign: "center",
   },
   moreMuscles: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginLeft: 6,
-    marginBottom: 4,
+    backgroundColor: "#2c2c2e",
+    borderWidth: 1,
+    borderColor: "#3c3c3e",
   },
   moreMusclesText: {
-    fontSize: 10,
     fontWeight: "500",
+    color: "#8e8e93",
   },
 });

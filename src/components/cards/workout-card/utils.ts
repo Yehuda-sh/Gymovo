@@ -1,92 +1,50 @@
 // src/components/cards/workout-card/utils.ts
-// פונקציות עזר עבור WorkoutCard - מערכת צבעים ועיבוד נתונים
+// פונקציות עזר משותפות לרכיבי WorkoutCard
 
-import { colors } from "../../../theme/colors";
-
-/**
- * 🎨 פונקציית עזר לצבע שריר
- * מחזירה צבע ייחודי לכל קבוצת שרירים
- */
-export const getMuscleColor = (muscle: string): string => {
-  const muscleColors: { [key: string]: string } = {
-    chest: "#ff6b35",
-    back: "#007aff",
-    legs: "#fbbf24",
-    shoulders: "#8b5cf6",
-    arms: "#00ff88",
-    core: "#f59e0b",
-    biceps: "#00ff88",
-    triceps: "#00ff88",
-    quadriceps: "#fbbf24",
-    hamstrings: "#fbbf24",
-    calves: "#fbbf24",
-    abs: "#f59e0b",
-  };
-  return muscleColors[muscle.toLowerCase()] || colors.primary;
-};
+import {
+  INTENSITY_CONFIG,
+  IntensityLevel,
+  MUSCLE_COLORS,
+  DATE_FORMATS,
+} from "./config";
 
 /**
- * 📊 פונקציית עזר לחישוב נפח אימון
- * מחשבה את הנפח הכולל של האימון (משקל × חזרות)
+ * 📊 פונקציית חישוב נפח אימון
+ * מחשבת את סך הנפח (משקל x חזרות x סטים)
  */
 export const calculateWorkoutVolume = (exercises: any[]): number => {
-  return exercises.reduce((total: number, exercise: any) => {
+  if (!exercises || exercises.length === 0) return 0;
+
+  return exercises.reduce((total, exercise) => {
+    if (!exercise.sets) return total;
+
     const exerciseVolume = exercise.sets.reduce(
       (setTotal: number, set: any) => {
-        return setTotal + (set.weight || 0) * (set.reps || 0);
+        const weight = set.weight || 0;
+        const reps = set.reps || 0;
+        return setTotal + weight * reps;
       },
       0
     );
+
     return total + exerciseVolume;
   }, 0);
 };
 
 /**
- * 📈 פונקציית עזר לחישוב סה"כ סטים
- * מחשבת את מספר הסטים הכולל באימון
+ * 💪 פונקציית חישוב סך הסטים
+ * מחזירה את מספר הסטים הכולל באימון
  */
 export const calculateTotalSets = (exercises: any[]): number => {
-  return exercises.reduce((total: number, exercise: any) => {
-    return total + exercise.sets.length;
-  }, 0);
-};
-
-/**
- * 🔢 פונקציית עזר לעיצוב נפח
- * מעצבת את הנפח בצורה קריאה (1000+ -> 1k)
- */
-export const formatVolume = (kg: number): string => {
-  if (kg > 1000) return `${(kg / 1000).toFixed(1)}k`;
-  return Math.round(kg).toString();
-};
-
-/**
- * ⏰ פונקציית עזר לחישוב זמן שעבר
- * מחזירה מחרוזת תיאור זמן באופן ידידותי
- */
-export const formatTimeAgo = (date: Date | number | string): string => {
-  const targetDate = new Date(date);
-  const now = new Date();
-  const diffInHours = Math.floor(
-    (now.getTime() - targetDate.getTime()) / (1000 * 60 * 60)
+  if (!exercises || exercises.length === 0) return 0;
+  return exercises.reduce(
+    (total, exercise) => total + (exercise.sets?.length || 0),
+    0
   );
-
-  if (diffInHours < 1) return "עכשיו";
-  if (diffInHours < 24) return `לפני ${diffInHours} שעות`;
-  if (diffInHours < 24 * 7) {
-    const days = Math.floor(diffInHours / 24);
-    return `לפני ${days} ימים`;
-  }
-  if (diffInHours < 24 * 30) {
-    const weeks = Math.floor(diffInHours / (24 * 7));
-    return `לפני ${weeks} שבועות`;
-  }
-  const months = Math.floor(diffInHours / (24 * 30));
-  return `לפני ${months} חודשים`;
 };
 
 /**
- * 🎯 פונקציית עזר לחישוב אינטנסיביות אימון
+ * 🔥 פונקציית חישוב אינטנסיביות אימון
  * מחשבת את רמת האינטנסיביות על בסיס נפח, זמן וסטים (0-100)
  */
 export const calculateWorkoutIntensity = (workout: any): number => {
@@ -103,14 +61,27 @@ export const calculateWorkoutIntensity = (workout: any): number => {
 };
 
 /**
+ * 🎨 פונקציית עזר לרמת אינטנסיביות
+ * מחזירה את רמת האינטנסיביות בהתאם לאחוז
+ */
+export const getIntensityLevel = (intensity: number): IntensityLevel => {
+  for (const [level, threshold] of Object.entries(
+    INTENSITY_CONFIG.thresholds
+  )) {
+    if (intensity >= threshold.min && intensity < threshold.max) {
+      return level as IntensityLevel;
+    }
+  }
+  return IntensityLevel.LOW;
+};
+
+/**
  * 🎨 פונקציית עזר לצבע אינטנסיביות
  * מחזירה צבע בהתאם לרמת האינטנסיביות
  */
 export const getIntensityColor = (intensity: number): string => {
-  if (intensity >= 80) return colors.error;
-  if (intensity >= 60) return colors.warning;
-  if (intensity >= 40) return colors.success;
-  return "#8e8e93";
+  const level = getIntensityLevel(intensity);
+  return INTENSITY_CONFIG.colors[level];
 };
 
 /**
@@ -118,8 +89,87 @@ export const getIntensityColor = (intensity: number): string => {
  * מחזירה תיאור טקסטואלי לרמת האינטנסיביות
  */
 export const getIntensityLabel = (intensity: number): string => {
-  if (intensity >= 80) return "גבוהה";
-  if (intensity >= 60) return "בינונית";
-  if (intensity >= 40) return "נמוכה";
-  return "קלה";
+  const level = getIntensityLevel(intensity);
+  return INTENSITY_CONFIG.labels[level];
+};
+
+/**
+ * 🎯 פונקציית עזר לגרדיאנט אינטנסיביות
+ * מחזירה צבעי גרדיאנט לרמת האינטנסיביות
+ */
+export const getIntensityGradient = (
+  intensity: number
+): readonly [string, string] => {
+  const level = getIntensityLevel(intensity);
+  return INTENSITY_CONFIG.gradients[level] as [string, string];
+};
+
+/**
+ * 🎨 פונקציית עזר לצבע שריר
+ * מחזירה צבע בהתאם לשם השריר
+ */
+export const getMuscleColor = (muscle: string): string => {
+  const normalizedMuscle = muscle.toLowerCase().replace(/\s+/g, "_");
+  return MUSCLE_COLORS[normalizedMuscle] || MUSCLE_COLORS.default;
+};
+
+/**
+ * ⏱️ פונקציית עיצוב זמן שעבר
+ * מחזירה תיאור טקסטואלי של זמן שעבר
+ */
+export const formatTimeAgo = (date: string | Date | number): string => {
+  if (!date) return "";
+
+  const now = new Date();
+  const then = new Date(date);
+  const diffMs = now.getTime() - then.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return DATE_FORMATS.relative.today;
+  if (diffDays === 1) return DATE_FORMATS.relative.yesterday;
+  if (diffDays < 7) return DATE_FORMATS.relative.daysAgo(diffDays);
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return DATE_FORMATS.relative.weeksAgo(weeks);
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return DATE_FORMATS.relative.monthsAgo(months);
+  }
+
+  return then.toLocaleDateString("he-IL", DATE_FORMATS.absolute.short);
+};
+
+/**
+ * 🏋️ פונקציית עיצוב נפח
+ * מחזירה תיאור מעוצב של נפח האימון
+ */
+export const formatVolume = (volume: number): string => {
+  if (volume >= 1000) {
+    return `${(volume / 1000).toFixed(1)}k ק"ג`;
+  }
+  return `${volume} ק"ג`;
+};
+
+/**
+ * 🎯 פונקציית חישוב ציון אימון
+ * מחשבת ציון כולל לאימון (0-100)
+ */
+export const calculateWorkoutScore = (workout: any): number => {
+  const intensity = calculateWorkoutIntensity(workout);
+  const completionRate = workout.completedSets
+    ? (workout.completedSets / workout.plannedSets) * 100
+    : 100;
+  const ratingScore = (workout.rating || 3) * 20;
+
+  return Math.round(intensity * 0.3 + completionRate * 0.4 + ratingScore * 0.3);
+};
+
+/**
+ * 📊 פונקציית חישוב התקדמות
+ * מחזירה אחוז ההתקדמות באימון
+ */
+export const calculateProgress = (completed: number, total: number): number => {
+  if (!total || total === 0) return 0;
+  return Math.round((completed / total) * 100);
 };
