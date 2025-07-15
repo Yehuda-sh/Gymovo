@@ -1,11 +1,14 @@
 // src/screens/home/components/HomeHeader.tsx
-// כותרת אולטרה קומפקטית
+// כותרת אולטרה קומפקטית עם מערכת עיצוב מאוחדת
 
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { User } from "../../../types/user";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
+
+const { colors, spacing, typography, borderRadius } = unifiedDesignSystem;
 
 interface HomeHeaderProps {
   user: User | null;
@@ -28,12 +31,12 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ user }) => {
     <View style={styles.container}>
       <View style={styles.avatarContainer}>
         <LinearGradient
-          colors={["rgba(102, 126, 234, 0.3)", "rgba(118, 75, 162, 0.3)"]}
+          colors={[colors.primary, colors.secondary]}
           style={styles.avatar}
         >
           <Ionicons
             name={user?.isGuest ? "person-outline" : "person"}
-            size={18}
+            size={24}
             color="#fff"
           />
         </LinearGradient>
@@ -49,24 +52,25 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
   },
   avatarContainer: {
-    marginLeft: 10,
+    marginLeft: spacing.sm,
   },
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.5)",
+    borderColor: colors.borderActive,
+    backgroundColor: colors.surfaceLight,
   },
   greeting: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#fff",
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text,
     flex: 1,
   },
 });

@@ -67,6 +67,12 @@ export interface Workout {
   isQuickWorkout?: boolean;
   completedAt?: string; // ISO datetime string
   rating?: number; // 1-5 כוכבים
+
+  // שדות נוספים שנדרשים
+  name?: string;
+  totalWeight?: number;
+  completedExercises?: number;
+  totalExercises?: number;
 }
 
 // Personal Record

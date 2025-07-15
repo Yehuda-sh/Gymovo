@@ -12,7 +12,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useGuestUser } from "../../../../stores/userStore";
+import { useUserStore } from "../../../../stores/userStore";
+import { useMemo } from "react";
 
 interface GuestProfileBannerProps {
   onPress: () => void;
@@ -23,7 +24,18 @@ const GuestProfileBanner: React.FC<GuestProfileBannerProps> = ({
   onPress,
   animation,
 }) => {
-  const { daysUntilExpiry } = useGuestUser();
+  const getGuestExpiryDate = useUserStore((state) => state.getGuestExpiryDate);
+
+  // חישוב ימים לתפוגה
+  const daysUntilExpiry = useMemo(() => {
+    const expiryDate = getGuestExpiryDate();
+    if (!expiryDate) return 0;
+
+    const today = new Date();
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  }, [getGuestExpiryDate]);
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

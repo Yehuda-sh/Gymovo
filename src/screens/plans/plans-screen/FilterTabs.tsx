@@ -1,5 +1,5 @@
 // src/screens/plans/plans-screen/FilterTabs.tsx
-// רכיב פילטרים מתקדם עם אנימציות וגרדיאנטים
+// טאבים לסינון תוכניות
 
 import React, { useRef } from "react";
 import {
@@ -8,12 +8,12 @@ import {
   Text,
   StyleSheet,
   Animated,
-  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { designSystem } from "../../../theme/designSystem";
+import { colors } from "../../../theme/colors";
 import { FilterTabsProps, filtersList, createPressAnimation } from "./utils";
 
 // רכיב לטאב בודד
@@ -57,7 +57,7 @@ const FilterTab: React.FC<{
             <Ionicons
               name={filter.icon as any}
               size={16}
-              color={designSystem.colors.neutral.text.secondary}
+              color={colors.textSecondary}
             />
             <Text style={styles.filterTabText}>{filter.label}</Text>
           </>
@@ -102,9 +102,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
-    backgroundColor: designSystem.colors.background.elevated,
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: designSystem.colors.neutral.border,
+    borderColor: colors.border,
     gap: 8,
     minWidth: 100,
     justifyContent: "center",
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   filterTabText: {
     fontSize: 14,
     fontWeight: "600",
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
   },
   filterTabTextActive: {
     color: "#fff",

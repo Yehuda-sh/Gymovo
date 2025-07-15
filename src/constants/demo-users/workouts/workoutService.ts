@@ -2,15 +2,26 @@
 // 🎯 שירות היסטוריית אימונים למשתמשי דמו
 
 import { Workout } from "../../../types/workout";
+import { DemoWorkoutData } from "./types";
 import { aviWorkouts } from "./aviWorkouts";
 import { mayaWorkouts } from "./mayaWorkouts";
 import { yoniWorkouts } from "./yoniWorkouts";
 
 /**
+ * 🔄 ממיר DemoWorkoutData ל-Workout
+ */
+function convertDemoWorkoutToWorkout(demoWorkout: DemoWorkoutData): Workout {
+  return {
+    ...demoWorkout,
+    date: demoWorkout.date.toISOString().split("T")[0], // ממיר Date ל-string
+  };
+}
+
+/**
  * 🏋️ מאפה מבוסס מפתח למציאת היסטוריית אימונים לפי משתמש
  * מבטיח ביצועים מהירים וארגון נקי
  */
-const workoutHistoriesByUserId: { [key: string]: Workout[] } = {
+const workoutHistoriesByUserId: { [key: string]: DemoWorkoutData[] } = {
   "demo-user-avi": aviWorkouts,
   "demo-user-maya": mayaWorkouts,
   "demo-user-yoni": yoniWorkouts,
@@ -34,13 +45,13 @@ export function getDemoWorkoutHistory(userId: string): Workout[] {
     return [];
   }
 
-  const workouts = workoutHistoriesByUserId[userId];
+  const demoWorkouts = workoutHistoriesByUserId[userId];
 
-  if (!workouts && __DEV__) {
+  if (!demoWorkouts && __DEV__) {
     console.log(`🏋️ No demo workout history found for user: ${userId}`);
   }
 
-  return workouts || [];
+  return (demoWorkouts || []).map(convertDemoWorkoutToWorkout);
 }
 
 /**
@@ -54,7 +65,9 @@ export function getAvailableWorkoutUserIds(): string[] {
  * 🏋️ מחזיר את כל האימונים מכל המשתמשים כמערך מאוחד
  */
 export function getAllDemoWorkouts(): Workout[] {
-  return Object.values(workoutHistoriesByUserId).flat();
+  return Object.values(workoutHistoriesByUserId)
+    .flat()
+    .map(convertDemoWorkoutToWorkout);
 }
 
 /**

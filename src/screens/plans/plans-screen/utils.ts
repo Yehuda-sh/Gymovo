@@ -7,50 +7,7 @@ import { colors } from "../../../theme/colors";
 import { Plan } from "../../../types/plan";
 import { Animated, Dimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
-// הגדרת designSystem מקומית עד ליצירת הקובץ המלא
-const designSystem = {
-  colors: {
-    primary: {
-      main: colors.primary,
-      dark: colors.primaryDark,
-    },
-    secondary: {
-      main: colors.secondary,
-    },
-    semantic: {
-      success: colors.success,
-      error: colors.error,
-      warning: colors.warning,
-    },
-    neutral: {
-      text: {
-        primary: colors.text,
-        secondary: colors.textSecondary,
-        tertiary: colors.textMuted,
-      },
-    },
-  },
-  gradients: {
-    primary: {
-      colors: [colors.primary, colors.primaryDark],
-    },
-  },
-  animations: {
-    easings: {
-      spring: {
-        tension: 40,
-        friction: 7,
-        useNativeDriver: true,
-      },
-      bounce: {
-        tension: 50,
-        friction: 5,
-        useNativeDriver: true,
-      },
-    },
-  },
-};
+import { designSystem } from "../../../theme/designSystem";
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -88,6 +45,8 @@ export interface FilterTabsProps {
     mine: number;
     recommended: number;
   };
+  selected?: FilterType;
+  onSelect?: (filter: FilterType) => void;
 }
 
 // פרמטרים לרכיב EmptyState
@@ -96,6 +55,7 @@ export interface EmptyStateProps {
   actionText?: string;
   onAction?: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
+  onCreatePlan?: () => void;
 }
 
 // קבועים משופרים
@@ -199,12 +159,16 @@ export const createEntranceAnimation = (
     }),
     Animated.spring(slideAnim, {
       toValue: 0,
-      ...designSystem.animations.easings.spring,
+      tension: 40,
+      friction: 7,
+      useNativeDriver: true,
     }),
     Animated.spring(headerScale, {
       toValue: 1,
       delay: 200,
-      ...designSystem.animations.easings.bounce,
+      tension: 50,
+      friction: 5,
+      useNativeDriver: true,
     }),
   ]);
 };
@@ -284,7 +248,7 @@ export const getPlanStatusText = (plan: Plan): string => {
 export const getPlanStatusColor = (plan: Plan): string => {
   if (plan.isActive) return designSystem.colors.secondary.main;
   // הסרתי את isCompleted כי לא קיים ב-Plan
-  return designSystem.colors.neutral.text.tertiary;
+  return colors.textMuted;
 };
 
 // פונקציה לחישוב משך זמן כולל של תוכנית

@@ -4,7 +4,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { colors } from "../../../../theme/colors";
-import { GuestProfileIconProps } from "../types";
+interface GuestProfileIconProps {
+  iconName?: keyof typeof Ionicons.glyphMap;
+  iconSize?: number;
+  iconColor?: string;
+}
 
 const GuestProfileIcon: React.FC<GuestProfileIconProps> = ({
   iconName = "person-circle-outline",

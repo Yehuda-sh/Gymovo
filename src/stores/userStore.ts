@@ -62,6 +62,22 @@ export interface UserState {
 const GUEST_DATA_EXPIRY_DAYS = 30; // נתוני אורח נשמרים ל-30 יום
 const USER_STORAGE_KEY = "gymovo_user_";
 
+// קבוע ברירת מחדל לסטטיסטיקות משתמש
+export const DEFAULT_USER_STATS: UserStats = {
+  totalWorkouts: 0,
+  totalTime: 0,
+  totalVolume: 0,
+  favoriteExercises: [],
+  workoutsCount: 0,
+  streakDays: 0,
+  longestStreak: 0,
+  weeklyAverage: 0,
+  achievementsUnlocked: 0,
+  personalRecordsCount: 0,
+  plansCompleted: 0,
+  challengesCompleted: 0,
+};
+
 // 🔧 פונקציות עזר
 const createGuestUserData = (): User => {
   const now = new Date();
@@ -76,12 +92,7 @@ const createGuestUserData = (): User => {
     guestCreatedAt: now.toISOString(),
     guestDataExpiry: expiryDate.toISOString(),
     createdAt: now.toISOString(),
-    stats: {
-      totalWorkouts: 0,
-      totalTime: 0,
-      totalVolume: 0,
-      favoriteExercises: [],
-    },
+    stats: { ...DEFAULT_USER_STATS },
   };
 };
 
@@ -205,12 +216,7 @@ export const useUserStore = create<UserState>()(
                 name: email.split("@")[0],
                 isGuest: false,
                 createdAt: new Date().toISOString(),
-                stats: {
-                  totalWorkouts: 0,
-                  totalTime: 0,
-                  totalVolume: 0,
-                  favoriteExercises: [],
-                },
+                stats: { ...DEFAULT_USER_STATS },
               };
 
               // שמור את המשתמש
@@ -282,12 +288,7 @@ export const useUserStore = create<UserState>()(
               age,
               isGuest: false,
               createdAt: new Date().toISOString(),
-              stats: {
-                totalWorkouts: 0,
-                totalTime: 0,
-                totalVolume: 0,
-                favoriteExercises: [],
-              },
+              stats: { ...DEFAULT_USER_STATS },
             };
 
             // שמור את המשתמש
@@ -374,12 +375,9 @@ export const useUserStore = create<UserState>()(
             // הגדר את המשתמש הדמו
             const demoUserWithStats: User = {
               ...demoUser,
-              stats: demoUser.stats || {
-                totalWorkouts: 0,
-                totalTime: 0,
-                totalVolume: 0,
-                favoriteExercises: [],
-              },
+              stats: demoUser.stats
+                ? { ...DEFAULT_USER_STATS, ...demoUser.stats }
+                : { ...DEFAULT_USER_STATS },
             };
 
             // שמור את המשתמש
@@ -488,12 +486,7 @@ export const useUserStore = create<UserState>()(
             produce((state: UserState) => {
               if (state.user) {
                 if (!state.user.stats) {
-                  state.user.stats = {
-                    totalWorkouts: 0,
-                    totalTime: 0,
-                    totalVolume: 0,
-                    favoriteExercises: [],
-                  };
+                  state.user.stats = { ...DEFAULT_USER_STATS };
                 }
                 Object.assign(state.user.stats, updates);
 

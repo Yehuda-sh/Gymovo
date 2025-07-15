@@ -7,7 +7,8 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
 
-import { Workout, WorkoutSortBy } from "../../../../types/workout";
+import { Workout } from "../../../../types/workout";
+import { WorkoutSortBy } from "../../../../hooks/useWorkoutHistory";
 import { RootStackParamList } from "../../../../types/navigation";
 import { useWorkoutStore } from "../../../../stores/workoutStore";
 import {
@@ -77,7 +78,7 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
     // ✅ תיקון: המרת תאריכים ל-Date objects
     const weeklyWorkouts = workouts.filter((w) => {
       if (!w.date) return false;
-      const workoutDate = w.date instanceof Date ? w.date : new Date(w.date);
+      const workoutDate = new Date(w.date);
       return workoutDate >= weekAgo;
     });
 
@@ -125,8 +126,7 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
       if (filters.dateRange !== "all") {
         filtered = filtered.filter((w) => {
           if (!w.date) return false;
-          const workoutDate =
-            w.date instanceof Date ? w.date : new Date(w.date);
+          const workoutDate = new Date(w.date);
           return workoutDate >= startDate;
         });
       }
@@ -162,9 +162,13 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "date-desc":
-          return (b.date?.getTime() || 0) - (a.date?.getTime() || 0);
+          return (
+            new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+          );
         case "date-asc":
-          return (a.date?.getTime() || 0) - (b.date?.getTime() || 0);
+          return (
+            new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
+          );
         case "duration-desc":
           return (b.duration || 0) - (a.duration || 0);
         case "duration-asc":
@@ -225,7 +229,10 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
     (workout: Workout) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // נווט למסך סיכום אימון
-      navigation.navigate("WorkoutSummary", { workoutData: workout });
+      navigation.navigate("WorkoutSummary", {
+        workout: workout,
+        workoutData: workout,
+      });
     },
     [navigation]
   );
@@ -239,10 +246,19 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
           text: "שתף",
           onPress: async () => {
             try {
+              // חישוב משקל כולל
+              const totalWeight = workout.exercises.reduce(
+                (total, ex) =>
+                  total +
+                  ex.sets.reduce(
+                    (setTotal, set) => setTotal + (set.weight || 0),
+                    0
+                  ),
+                0
+              );
+
               await Share.share({
-                message: `סיימתי אימון ב-Gymovo! 💪\n${
-                  workout.duration
-                } דקות\n${workout.totalWeight || 0}ק"ג`,
+                message: `סיימתי אימון ב-Gymovo! 💪\n${workout.duration} דקות\n${totalWeight}ק"ג`,
               });
             } catch (error) {
               console.error(error);
@@ -276,7 +292,7 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
   );
 
   const handleStartWorkout = useCallback(() => {
-    navigation.navigate("StartWorkout");
+    navigation.navigate("StartWorkout" as any);
   }, [navigation]);
 
   const handleSortPress = useCallback(() => {
@@ -312,10 +328,8 @@ export const useWorkoutData = (): UseWorkoutDataReturn => {
       "rating-asc": "דירוג ↑",
       "volume-desc": "נפח ↓",
       "volume-asc": "נפח ↑",
-      "reps-desc": "חזרות ↓",
-      "reps-asc": "חזרות ↑",
     };
-    return labels[sort];
+    return labels[sort] || "תאריך ↓";
   }, []);
 
   const removeFilter = useCallback((key: keyof WorkoutHistoryFilters) => {

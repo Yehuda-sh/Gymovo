@@ -57,7 +57,7 @@ interface UseExerciseSelectionReturn {
 export const useExerciseSelection = (): UseExerciseSelectionReturn => {
   const navigation = useNavigation<NavigationProp>();
   const { startCustomWorkout } = useWorkoutStore();
-  const { data: exercises, isLoading, isError } = useExercises();
+  const { exercises, isLoading, isError } = useExercises();
 
   // State
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
@@ -81,7 +81,7 @@ export const useExerciseSelection = (): UseExerciseSelectionReturn => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, searchAnim]);
 
   // סינון תרגילים
   const filteredExercises = useMemo(() => {
@@ -92,7 +92,7 @@ export const useExerciseSelection = (): UseExerciseSelectionReturn => {
     // סינון לפי קטגוריה
     if (selectedCategory !== "all") {
       filtered = filtered.filter(
-        (exercise) =>
+        (exercise: Exercise) =>
           exercise.category?.includes(selectedCategory) ||
           exercise.targetMuscleGroups?.includes(selectedCategory)
       );
@@ -102,11 +102,11 @@ export const useExerciseSelection = (): UseExerciseSelectionReturn => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(
-        (exercise) =>
+        (exercise: Exercise) =>
           exercise.name.toLowerCase().includes(query) ||
           exercise.description?.toLowerCase().includes(query) ||
           exercise.category?.toLowerCase().includes(query) ||
-          exercise.targetMuscleGroups?.some((muscle) =>
+          exercise.targetMuscleGroups?.some((muscle: string) =>
             muscle.toLowerCase().includes(query)
           )
       );
@@ -143,17 +143,47 @@ export const useExerciseSelection = (): UseExerciseSelectionReturn => {
       return;
     }
 
-    const workoutExercises = selectedExercises.map((exercise) => ({
-      exerciseId: exercise.id,
-      sets: [],
+    const workoutExercises = selectedExercises.map((exercise, index) => ({
+      id: `${exercise.id}_${Date.now()}_${index}`,
+      name: exercise.name,
+      exercise: {
+        id: exercise.id,
+        name: exercise.name,
+        category: exercise.category,
+        primaryMuscle: exercise.targetMuscleGroups?.[0],
+        secondaryMuscles: exercise.targetMuscleGroups?.slice(1),
+        equipment: exercise.equipment?.join(", "),
+        difficulty: exercise.difficulty,
+      },
+      sets: Array.from({ length: 3 }, (_, i) => ({
+        id: `${exercise.id}_set_${i}_${Date.now()}`,
+        reps: 10,
+        weight: 0,
+        status: "pending" as const,
+      })),
+      order: index,
+      notes: "",
     }));
 
-    startCustomWorkout({
-      name: "אימון מותאם אישית",
-      exercises: workoutExercises,
-    } as any);
-
-    navigation.navigate("ActiveWorkout");
+    navigation.navigate("ActiveWorkout", {
+      workout: {
+        id: `custom-${Date.now()}`,
+        planId: "custom",
+        planName: "אימון מותאם אישית",
+        dayId: "custom",
+        dayName: "אימון מותאם אישית",
+        exercises: workoutExercises,
+        date: new Date().toISOString().split("T")[0],
+        startTime: new Date().toISOString(),
+        duration: 0,
+        status: "active" as const,
+        notes: "",
+        mood: "good",
+        energyLevel: 5,
+        totalVolume: 0,
+        totalSets: workoutExercises.length * 3,
+      },
+    });
   }, [selectedExercises, startCustomWorkout, navigation]);
 
   // פונקציית רינדור לתרגיל בודד

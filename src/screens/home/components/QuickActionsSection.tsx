@@ -1,18 +1,35 @@
-// src/screens/home/components/QuickActionsSection.tsx
-// פעולות מהירות בגובה מאוזן
+// src/screens/home/components/QuickActionsSection.tsx - רכיב פעולות מהירות עם מערכת עיצוב מאוחדת
 
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  Pressable,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import { RootStackParamList } from "../../../types/navigation";
-import { DashboardData } from "../types";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
+
+const { colors, spacing, typography, borderRadius, shadows } =
+  unifiedDesignSystem;
+const { width } = Dimensions.get("window");
+const isSmallDevice = width < 375;
 
 interface QuickActionsSectionProps {
-  dashboardData: DashboardData | null;
+  dashboardData?: {
+    activePlans?: number;
+    weeklyStats?: {
+      completedWorkouts?: number;
+    };
+  };
 }
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -28,7 +45,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       title: "התחל אימון",
       subtitle: "בחר תוכנית",
       icon: "play-circle",
-      color: "#00D4AA",
+      gradient: [colors.workoutActive, "#00b248"] as [string, string],
       onPress: () => navigation.navigate("Main", { screen: "StartWorkout" }),
     },
     {
@@ -36,15 +53,15 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       title: "תוכניות שלי",
       subtitle: `${dashboardData?.activePlans || 0} פעילות`,
       icon: "list",
-      color: "#667eea",
+      gradient: [colors.primary, colors.secondary] as [string, string],
       onPress: () => navigation.navigate("Main", { screen: "Plans" }),
     },
     {
       id: "history",
       title: "היסטוריה",
-      subtitle: `${dashboardData?.weeklyStats.completedWorkouts || 0} השבוע`,
+      subtitle: `${dashboardData?.weeklyStats?.completedWorkouts || 0} השבוע`,
       icon: "barbell-outline",
-      color: "#F59E0B",
+      gradient: [colors.warning, "#F57C00"] as [string, string],
       onPress: () => navigation.navigate("Main", { screen: "Workouts" }),
     },
     {
@@ -52,7 +69,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       title: "פרופיל",
       subtitle: "הגדרות",
       icon: "person-outline",
-      color: "#EC4899",
+      gradient: [colors.accent, "#E91E63"] as [string, string],
       onPress: () => navigation.navigate("Main", { screen: "Profile" }),
     },
   ];
@@ -64,80 +81,89 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
 
   return (
     <View style={styles.container}>
-      {actions.map((action) => (
-        <TouchableOpacity
-          key={action.id}
-          style={styles.actionCard}
-          onPress={() => handlePress(action)}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={[`${action.color}20`, `${action.color}10`]}
-            style={styles.cardGradient}
+      <View style={styles.grid}>
+        {actions.map((action) => (
+          <Pressable
+            key={action.id}
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && { transform: [{ scale: 0.96 }] },
+            ]}
+            onPress={() => handlePress(action)}
+            accessibilityLabel={action.title}
           >
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: `${action.color}30` },
-              ]}
+            <LinearGradient
+              colors={
+                action.gradient.length === 2
+                  ? action.gradient
+                  : [colors.primary, colors.secondary]
+              }
+              style={styles.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <Ionicons
-                name={action.icon as any}
-                size={24}
-                color={action.color}
-              />
-            </View>
-            <Text style={styles.title}>{action.title}</Text>
-            <Text style={styles.subtitle}>{action.subtitle}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      ))}
+              <View style={styles.iconContainer}>
+                <Ionicons name={action.icon as any} size={28} color="#ffffff" />
+              </View>
+              <View style={styles.textContainer}>
+                <Text style={styles.title}>{action.title}</Text>
+                <Text style={styles.subtitle}>{action.subtitle}</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    width: "100%",
+  },
+  grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    height: 250,
+    gap: spacing.md,
   },
-  actionCard: {
-    width: "48.5%",
-    height: 115,
-    marginBottom: 10,
-    borderRadius: 14,
+  actionButton: {
+    width: (width - spacing.lg * 3) / 2,
+    height: 120,
+    borderRadius: borderRadius.lg,
     overflow: "hidden",
+    ...shadows.lg, // צל עמוק יותר
+    borderWidth: 1.5,
+    borderColor: "#fff", // מסגרת לבנה דקה
   },
-  cardGradient: {
+  gradient: {
     flex: 1,
-    padding: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 14,
+    padding: spacing.lg,
+    justifyContent: "space-between",
   },
   iconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
+    alignSelf: "flex-end",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
-    marginBottom: 6,
+    alignItems: "center",
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
   },
   title: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 2,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: "#ffffff",
+    marginBottom: spacing.xs,
+    textAlign: "right",
   },
   subtitle: {
-    fontSize: 10,
-    color: "rgba(255, 255, 255, 0.7)",
-    textAlign: "center",
+    fontSize: typography.fontSize.sm,
+    color: "rgba(255, 255, 255, 0.8)",
+    textAlign: "right",
   },
 });
 

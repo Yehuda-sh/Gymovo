@@ -40,27 +40,27 @@ const ProfileScreen: React.FC = () => {
 
   // Handlers
   const handleSettingsPress = () => {
-    Toast.show("הגדרות - בקרוב", "info");
+    Toast.info("הגדרות - בקרוב");
   };
 
   const handleEditPress = () => {
-    Toast.show("עריכת פרופיל - בקרוב", "info");
+    Toast.info("עריכת פרופיל - בקרוב");
   };
 
   const handleStatsPress = () => {
-    Toast.show("סטטיסטיקות מפורטות - בקרוב", "info");
+    Toast.info("סטטיסטיקות מפורטות - בקרוב");
   };
 
   const handleMyPlansPress = () => {
-    Toast.show("התוכניות שלי - בקרוב", "info");
+    Toast.info("התוכניות שלי - בקרוב");
   };
 
   const handleHistoryPress = () => {
-    Toast.show("היסטוריית אימונים - בקרוב", "info");
+    Toast.info("היסטוריית אימונים - בקרוב");
   };
 
   const handleGuidesPress = () => {
-    Toast.show("מדריכי אימון - בקרוב", "info");
+    Toast.info("מדריכי אימון - בקרוב");
   };
 
   if (!user) {

@@ -1,14 +1,24 @@
 // src/screens/home/components/QuickStartFAB.tsx
-// כפתור צף לאימון מהיר
+// כפתור צף לאימון מהיר עם מערכת עיצוב מאוחדת
 
 import React, { useEffect, useRef } from "react";
-import { TouchableOpacity, StyleSheet, Animated, Platform } from "react-native";
+import {
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Platform,
+  Pressable,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../types/navigation";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
+
+const { colors, spacing, borderRadius, shadows, animation } =
+  unifiedDesignSystem;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -21,8 +31,8 @@ const QuickStartFAB: React.FC = () => {
     // אנימציית כניסה
     Animated.spring(scaleAnim, {
       toValue: 1,
-      tension: 20,
-      friction: 7,
+      tension: animation.spring.tension,
+      friction: animation.spring.friction,
       useNativeDriver: true,
     }).start();
 
@@ -31,12 +41,12 @@ const QuickStartFAB: React.FC = () => {
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.1,
-          duration: 1000,
+          duration: animation.duration.normal,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: animation.duration.normal,
           useNativeDriver: true,
         }),
       ])
@@ -57,11 +67,21 @@ const QuickStartFAB: React.FC = () => {
         },
       ]}
     >
-      <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
-        <LinearGradient colors={["#00D4AA", "#00B894"]} style={styles.button}>
+      <Pressable
+        onPress={handlePress}
+        accessibilityLabel="התחל אימון מהיר"
+        style={({ pressed }) => [
+          styles.button,
+          pressed && { transform: [{ scale: 0.93 }] },
+        ]}
+      >
+        <LinearGradient
+          colors={[colors.workoutActive, colors.workoutCompleted]}
+          style={styles.buttonInner}
+        >
           <Ionicons name="flash" size={28} color="#fff" />
         </LinearGradient>
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 };
@@ -69,25 +89,40 @@ const QuickStartFAB: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 90,
-    left: 20,
+    bottom: spacing.lg,
+    left: spacing.lg,
     zIndex: 999,
     ...Platform.select({
       ios: {
-        shadowColor: "#00D4AA",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
+        shadowColor: colors.workoutActive,
+        shadowOffset: shadows.glow.shadowOffset,
+        shadowOpacity: shadows.glow.shadowOpacity,
+        shadowRadius: 18, // צל חזק יותר
       },
       android: {
-        elevation: 8,
+        elevation: 12, // צל חזק יותר
       },
     }),
   },
   button: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff", // מסגרת לבנה דקה
+    shadowColor: colors.workoutActive,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 18, // glow ירוק עדין
+    elevation: 16,
+  },
+  buttonInner: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
   },

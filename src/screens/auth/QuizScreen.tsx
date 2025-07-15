@@ -1,9 +1,11 @@
 // src/screens/auth/QuizScreen.tsx - שאלון מותאם אישית
 
 import React, { useCallback } from "react";
-import { View, StatusBar, BackHandler, Alert } from "react-native";
+import { View, StatusBar, BackHandler, Alert, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { colors } from "../../theme/colors";
+
+// ייבוא מהקובץ המרכזי
 import {
   LoadingScreen,
   QuizHeader,
@@ -12,10 +14,9 @@ import {
   QuizNavigation,
   useQuizAnimations,
   useQuizLogic,
-  QuizScreenProps,
-  quizStyles,
+  type QuizScreenProps,
+  QUIZ_QUESTIONS,
 } from "./quiz";
-import { QUIZ_QUESTIONS } from "./quiz/data";
 
 const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
   const { signupData } = route.params || {};
@@ -43,7 +44,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
     signupData,
   });
 
-  // טיפול בכפתור חזרה של המכשיר (אופציונלי)
+  // טיפול בכפתור חזרה של המכשיר
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -92,11 +93,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
 
   // מסך טעינה
   if (state.isLoading) {
-    return <LoadingScreen />;
+    return <LoadingScreen text="יוצר תוכנית מותאמת אישית..." />;
   }
 
   return (
-    <View style={quizStyles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       {/* Header */}
@@ -131,5 +132,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ navigation, route }) => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+});
 
 export default QuizScreen;

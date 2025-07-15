@@ -15,46 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { colors } from "../../../theme/colors";
 import { SearchBarProps } from "./utils";
-
-// הגדרת designSystem מקומית
-const designSystem = {
-  colors: {
-    background: {
-      elevated: colors.surface,
-    },
-    neutral: {
-      text: {
-        primary: colors.text,
-        tertiary: colors.textMuted,
-      },
-      border: colors.border,
-    },
-    primary: {
-      main: colors.primary,
-    },
-  },
-  shadows: {
-    sm: Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  animations: {
-    easings: {
-      bounce: {
-        tension: 50,
-        friction: 5,
-      },
-    },
-  },
-};
+import { designSystem } from "../../../theme/designSystem";
 
 // רכיב חיפוש עם אנימציית כניסה וכפתור ניקוי
 const SearchBar: React.FC<SearchBarProps> = memo(
@@ -68,7 +29,8 @@ const SearchBar: React.FC<SearchBarProps> = memo(
     useEffect(() => {
       Animated.spring(scaleAnim, {
         toValue: 1,
-        ...designSystem.animations.easings.bounce,
+        tension: 50,
+        friction: 5,
         useNativeDriver: true,
       }).start();
     }, [scaleAnim]);
@@ -185,7 +147,11 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     gap: 12,
     borderWidth: 1.5,
-    ...designSystem.shadows.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,

@@ -5,6 +5,35 @@ export interface UserStats {
   totalTime: number; // בדקות
   totalVolume: number; // בק"ג
   favoriteExercises: string[];
+
+  // שדות נוספים שנדרשים
+  workoutsCount: number;
+  streakDays: number;
+  longestStreak: number;
+  weeklyAverage: number;
+  achievementsUnlocked: number;
+  personalRecordsCount: number;
+  plansCompleted: number;
+  challengesCompleted: number;
+
+  // שדות נוספים לנתוני דמו
+  totalDuration?: number;
+  totalWeightLifted?: number;
+  totalCaloriesBurned?: number;
+  totalSets?: number;
+  totalReps?: number;
+  monthlyWorkouts?: number;
+  yearlyWorkouts?: number;
+  lastWorkoutDate?: string;
+  strengthGain?: number;
+  muscleGain?: number;
+  fatLoss?: number;
+  enduranceImprovement?: number;
+  averageWorkoutRating?: number;
+  totalWorkoutRatings?: number;
+  goalsAchieved?: number;
+  goalsInProgress?: number;
+  muscleGroupDistribution?: Record<string, number>;
 }
 
 export interface User {
@@ -24,6 +53,10 @@ export interface User {
   avatarUrl?: string;
   phoneNumber?: string;
   preferredLanguage?: string;
+
+  // שדות נוספים שנדרשים
+  experience?: "beginner" | "intermediate" | "advanced";
+  goals?: string[];
 }
 
 // טיפוסים נוספים קשורים למשתמש

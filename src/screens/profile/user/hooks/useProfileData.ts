@@ -8,12 +8,13 @@ import { Alert } from "react-native";
 import { Toast } from "../../../../components/common/Toast";
 import { clearAllData } from "../../../../data/storage/utilities";
 import { savePlan } from "../../../../data/storage/plans";
-import { generatePlan, QuizAnswers } from "../../../../services/planGenerator";
+import {
+  generatePlanFromQuiz,
+  QuizAnswers,
+} from "../../../../services/planGenerator";
 import {
   QuizProgress,
   clearQuizProgress,
-  saveQuizProgress,
-  markQuizCompleted,
   devMarkQuizCompleted,
   devClearQuizOverride,
 } from "../../../../services/quizProgressService";
@@ -103,7 +104,7 @@ export const useProfileData = (): ProfileDataHook & {
               await clearAllData();
               logout();
               navigation.navigate("Welcome");
-              Toast.show("החשבון נמחק בהצלחה", "success");
+              Toast.success("החשבון נמחק בהצלחה");
             }
           },
         },
@@ -132,13 +133,13 @@ export const useProfileData = (): ProfileDataHook & {
       // ואז נקה את השאלון הרגיל (אם זה לא משתמש דמו)
       await clearQuizProgress(userState.id);
 
-      Toast.show("התקדמות השאלון נמחקה", "success");
+      Toast.success("התקדמות השאלון נמחקה");
 
       // רענון להצגת השינויים
       triggerRefresh();
     } catch (error) {
       console.error("Failed to clear quiz:", error);
-      Toast.show("שגיאה בניקוי השאלון", "error");
+      Toast.error("שגיאה בניקוי השאלון");
     }
   }, [userState, triggerRefresh]);
 
@@ -178,12 +179,12 @@ export const useProfileData = (): ProfileDataHook & {
 
   const handleCreatePartialQuiz = useCallback(async () => {
     if (!userState?.id) {
-      Toast.show("משתמש לא מחובר", "error");
+      Toast.error("משתמש לא מחובר");
       return;
     }
 
     try {
-      Toast.show("יוצר שאלון חדש ומפעיל אלגוריתם...", "info");
+      Toast.info("יוצר שאלון חדש ומפעיל אלגוריתם...");
 
       // שלב 1: יצירת תשובות אקראיות
       const randomAnswers = generateRandomQuizAnswers();
@@ -192,12 +193,12 @@ export const useProfileData = (): ProfileDataHook & {
       const success = await devMarkQuizCompleted(userState.id, randomAnswers);
 
       if (!success) {
-        Toast.show("שגיאה בשמירת השאלון", "error");
+        Toast.error("שגיאה בשמירת השאלון");
         return;
       }
 
       // שלב 3: הפעלת האלגוריתם לבניית תוכנית
-      const newPlan = await generatePlan(randomAnswers, userState.id);
+      const newPlan = generatePlanFromQuiz(randomAnswers, userState.id);
 
       // שלב 4: שמירת התוכנית החדשה
       await savePlan(userState.id, newPlan);
@@ -219,22 +220,21 @@ export const useProfileData = (): ProfileDataHook & {
         advanced: "מתקדם",
       };
 
-      Toast.show(
+      Toast.success(
         `נוצרה תוכנית חדשה!\n` +
           `מטרה: ${goalNames[randomAnswers.goal]}\n` +
           `רמה: ${experienceNames[randomAnswers.experience]}\n` +
-          `ימי אימון: ${randomAnswers.workoutDays}`,
-        "success"
+          `ימי אימון: ${randomAnswers.workoutDays}`
       );
     } catch (error) {
       console.error("Error creating quiz and plan:", error);
-      Toast.show("שגיאה ביצירת השאלון והתוכנית", "error");
+      Toast.error("שגיאה ביצירת השאלון והתוכנית");
     }
   }, [userState, triggerRefresh]);
 
   const handleClearAllData = useCallback(async () => {
     await clearAllData();
-    Toast.show("כל הנתונים נמחקו", "success");
+    Toast.success("כל הנתונים נמחקו");
   }, []);
 
   return {

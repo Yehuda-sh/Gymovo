@@ -1,65 +1,67 @@
 // src/screens/home/styles/homeStyles.ts
-// סטיילים למסך הבית
+// סטיילים למסך הבית עם מערכת עיצוב מאוחדת
 
 import { StyleSheet } from "react-native";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
 
-import { theme } from "../../../theme";
+const { colors, spacing, typography, borderRadius, shadows } =
+  unifiedDesignSystem;
 
 export const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: theme.spacing.lg,
+    padding: spacing.lg,
   },
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   statsContainer: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   quickActionsContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   quickActionsScroll: {
-    paddingRight: theme.spacing.md,
-    gap: theme.spacing.md,
+    paddingRight: spacing.md,
+    gap: spacing.md,
   },
   recommendedPlanContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   workoutsContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   workoutCard: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   workoutHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   workoutDetails: {
     flexDirection: "row",
-    gap: theme.spacing.md,
+    gap: spacing.md,
     justifyContent: "center",
   },
   workoutDetailItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: theme.spacing.xxl,
+    paddingVertical: spacing.xxl,
   },
   tabBarSpacing: {
     height: 100,

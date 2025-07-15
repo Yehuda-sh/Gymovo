@@ -1,43 +1,73 @@
-// src/screens/auth/ConvertGuestScreen.tsx - מסך להמרת משתמש אורח
+// src/screens/auth/ConvertGuestScreen.tsx
+// מסך המרת אורח מעוצב כמו SignupScreen
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
+  StatusBar,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Keyboard,
+  StyleSheet,
+  ScrollView,
+  Animated,
+  Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
-import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { useUserStore, useIsGuest } from "../../stores/userStore";
 import { useWorkoutStore } from "../../stores/workoutStore";
 import { RootStackParamList } from "../../types/navigation";
 import { Toast } from "../../components/common/Toast";
-import { colors } from "../../theme/colors";
+import * as Haptics from "expo-haptics";
+
+// ייבוא קומפוננטות מ-signup (הקיימות)
+import { ActionButtons, ProgressBar, useSignupAnimations } from "./signup";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// Regular expressions for validation
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN_LENGTH = 6;
+// צבעים זהים ל-SignupScreen
+const colors = {
+  background: "#1a1a2e",
+  surface: "#16213e",
+  gradientDark: "#0f3460",
+  primary: "#FF6B35",
+  text: "#FFFFFF",
+  textSecondary: "#94A3B8",
+  textMuted: "#64748B",
+  inputBackground: "rgba(255, 255, 255, 0.1)",
+  inputBorder: "rgba(255, 255, 255, 0.2)",
+  inputBorderFocused: "#FF6B35",
+  placeholder: "#64748B",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+};
 
-export const ConvertGuestScreen: React.FC = () => {
+const ConvertGuestScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const insets = useSafeAreaInsets();
+
   const convertGuestToUser = useUserStore((state) => state.convertGuestToUser);
   const getGuestExpiryDate = useUserStore((state) => state.getGuestExpiryDate);
   const isGuest = useIsGuest();
   const workoutCount = useWorkoutStore((state) => state.workouts.length);
+
+  // State
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [currentStep] = useState(1);
+  const totalSteps = 2;
 
   // חישוב ימים לתפוגה
   const daysUntilExpiry = useMemo(() => {
@@ -50,54 +80,44 @@ export const ConvertGuestScreen: React.FC = () => {
     return Math.max(0, diffDays);
   }, [getGuestExpiryDate]);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-    name?: string;
-  }>({});
+  // Animations
+  const animations = useSignupAnimations();
 
-  // Validation
+  // הפעלת אנימציות כניסה כשהמסך נטען
+  useEffect(() => {
+    // איפוס הערכים לוודא שהם מתחילים נכון
+    animations.fadeAnim.setValue(1);
+    animations.slideAnim.setValue(0);
+    animations.headerScale.setValue(1);
+    animations.formSlide.setValue(0);
+    animations.progressAnim.setValue(currentStep / totalSteps);
+
+    // הפעלת אנימציות
+    setTimeout(() => {
+      animations.startEntryAnimations();
+    }, 100);
+  }, []);
+
+  // ולידציה
   const validateForm = useCallback(() => {
-    const newErrors: typeof errors = {};
+    if (!name.trim()) return "שם הוא שדה חובה";
+    if (name.trim().length < 2) return "השם חייב להכיל לפחות 2 תווים";
+    if (!email.trim()) return "אימייל הוא שדה חובה";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return "כתובת אימייל לא תקינה";
+    if (!password) return "סיסמה היא שדה חובה";
+    if (password.length < 6) return "הסיסמה חייבת להכיל לפחות 6 תווים";
+    if (!confirmPassword) return "אישור סיסמה הוא שדה חובה";
+    if (password !== confirmPassword) return "הסיסמאות לא תואמות";
 
-    if (!email) {
-      newErrors.email = "אימייל הוא שדה חובה";
-    } else if (!EMAIL_REGEX.test(email)) {
-      newErrors.email = "כתובת אימייל לא תקינה";
-    }
-
-    if (!password) {
-      newErrors.password = "סיסמה היא שדה חובה";
-    } else if (password.length < PASSWORD_MIN_LENGTH) {
-      newErrors.password = `הסיסמה חייבת להכיל לפחות ${PASSWORD_MIN_LENGTH} תווים`;
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "אישור סיסמה הוא שדה חובה";
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "הסיסמאות לא תואמות";
-    }
-
-    if (!name) {
-      newErrors.name = "שם הוא שדה חובה";
-    } else if (name.length < 2) {
-      newErrors.name = "השם חייב להכיל לפחות 2 תווים";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return null;
   }, [email, password, confirmPassword, name]);
 
-  // Handle conversion
+  // טיפול בהמרה
   const handleConvert = useCallback(async () => {
-    if (!validateForm()) {
+    const error = validateForm();
+    if (error) {
+      Alert.alert("שגיאה", error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
@@ -107,7 +127,6 @@ export const ConvertGuestScreen: React.FC = () => {
       return;
     }
 
-    Keyboard.dismiss();
     setLoading(true);
 
     try {
@@ -123,13 +142,12 @@ export const ConvertGuestScreen: React.FC = () => {
       // ניווט למסך הבית
       navigation.reset({
         index: 0,
-        routes: [{ name: "Home" as keyof RootStackParamList }],
+        routes: [{ name: "Main" }],
       });
     } catch (error: any) {
       console.error("Conversion error:", error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-
-      Toast.error(
+      Alert.alert(
         "שגיאה",
         error.message || "לא הצלחנו ליצור את החשבון. נסה שוב"
       );
@@ -146,395 +164,436 @@ export const ConvertGuestScreen: React.FC = () => {
     navigation,
   ]);
 
-  // Urgency indicator
+  // ניווט חזרה
+  const handleBack = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  // צבע התראה לפי ימים שנותרו
   const urgencyColor = useMemo(() => {
     if (daysUntilExpiry <= 3) return colors.error;
     if (daysUntilExpiry <= 7) return colors.warning;
     return colors.primary;
   }, [daysUntilExpiry]);
 
+  // אם לא אורח - הראה הודעה
   if (!isGuest) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient
+          colors={[colors.background, colors.surface, colors.gradientDark]}
+          style={StyleSheet.absoluteFillObject}
+        />
         <View style={styles.centeredContainer}>
           <Ionicons name="checkmark-circle" size={64} color={colors.success} />
           <Text style={styles.successTitle}>אתה כבר רשום!</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <Text style={styles.successSubtitle}>החשבון שלך כבר פעיל במערכת</Text>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Text style={styles.backButtonText}>חזור</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[colors.background, colors.surface, colors.gradientDark]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backIcon}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
+        <View style={[styles.content, { paddingTop: insets.top }]}>
+          {/* Progress Bar */}
+          <ProgressBar
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            progressAnim={animations.progressAnim}
+          />
 
+          {/* Header */}
+          <Animated.View
+            style={[
+              styles.headerContainer,
+              {
+                opacity: animations.fadeAnim,
+                transform: [
+                  { scale: animations.headerScale },
+                  {
+                    translateY: animations.slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             <View style={styles.titleContainer}>
               <Text style={styles.title}>המר חשבון אורח</Text>
               <Text style={styles.subtitle}>
                 שמור את כל הנתונים שלך לצמיתות
               </Text>
             </View>
-          </View>
 
-          {/* Urgency Banner */}
-          <LinearGradient
-            colors={[urgencyColor, `${urgencyColor}DD`]}
-            style={styles.urgencyBanner}
-          >
-            <Ionicons
-              name={daysUntilExpiry <= 3 ? "warning" : "time-outline"}
-              size={24}
-              color="white"
-            />
-            <View style={styles.urgencyTextContainer}>
-              <Text style={styles.urgencyTitle}>
-                נותרו {daysUntilExpiry} ימים
-              </Text>
-              <Text style={styles.urgencySubtitle}>
-                {workoutCount} אימונים יימחקו אם לא תירשם
-              </Text>
+            {/* אזהרת תפוגה */}
+            {daysUntilExpiry > 0 && (
+              <View
+                style={[styles.urgencyBanner, { borderColor: urgencyColor }]}
+              >
+                <Ionicons
+                  name={daysUntilExpiry <= 3 ? "warning" : "time-outline"}
+                  size={20}
+                  color={urgencyColor}
+                />
+                <Text style={[styles.urgencyText, { color: urgencyColor }]}>
+                  נותרו {daysUntilExpiry} ימים לתפוגת החשבון
+                </Text>
+              </View>
+            )}
+
+            {/* סטטיסטיקות */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="fitness-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.statText}>
+                  {workoutCount} אימונים נשמרו
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="shield-checkmark"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.statText}>גיבוי מאובטח</Text>
+              </View>
             </View>
-          </LinearGradient>
+          </Animated.View>
 
           {/* Form */}
-          <View style={styles.form}>
-            {/* Name Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>שם מלא</Text>
-              <View
-                style={[styles.inputWrapper, errors.name && styles.inputError]}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="הכנס את שמך"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                  editable={!loading}
-                />
-              </View>
-              {errors.name && (
-                <Text style={styles.errorText}>{errors.name}</Text>
-              )}
-            </View>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>אימייל</Text>
-              <View
-                style={[styles.inputWrapper, errors.email && styles.inputError]}
-              >
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="your@email.com"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  returnKeyType="next"
-                  editable={!loading}
-                />
-              </View>
-              {errors.email && (
-                <Text style={styles.errorText}>{errors.email}</Text>
-              )}
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>סיסמה</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  errors.password && styles.inputError,
-                ]}
-              >
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="לפחות 6 תווים"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  returnKeyType="next"
-                  editable={!loading}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
+          <ScrollView
+            style={styles.formContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.formContent}>
+              {/* שם מלא */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>שם מלא</Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    focusedField === "name" && styles.inputWrapperFocused,
+                  ]}
                 >
                   <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    name="person-outline"
                     size={20}
                     color={colors.textSecondary}
                   />
-                </TouchableOpacity>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="הכנס את שמך המלא"
+                    placeholderTextColor={colors.placeholder}
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    onFocus={() => setFocusedField("name")}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                </View>
               </View>
-              {errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              )}
-            </View>
 
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>אישור סיסמה</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  errors.confirmPassword && styles.inputError,
-                ]}
-              >
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="הכנס שוב את הסיסמה"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                  onSubmitEditing={handleConvert}
-                  editable={!loading}
-                />
+              {/* אימייל */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>כתובת אימייל</Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    focusedField === "email" && styles.inputWrapperFocused,
+                  ]}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="הכנס כתובת אימייל"
+                    placeholderTextColor={colors.placeholder}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                </View>
               </View>
-              {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-              )}
-            </View>
-          </View>
 
-          {/* Benefits */}
-          <View style={styles.benefitsContainer}>
-            <Text style={styles.benefitsTitle}>מה תקבל:</Text>
-            <View style={styles.benefitItem}>
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={colors.success}
-              />
-              <Text style={styles.benefitText}>
-                שמירת כל {workoutCount} האימונים שלך
-              </Text>
-            </View>
-            <View style={styles.benefitItem}>
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={colors.success}
-              />
-              <Text style={styles.benefitText}>גיבוי אוטומטי בענן</Text>
-            </View>
-            <View style={styles.benefitItem}>
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={colors.success}
-              />
-              <Text style={styles.benefitText}>גישה מכל מכשיר</Text>
-            </View>
-          </View>
+              {/* סיסמה */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>סיסמה</Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    focusedField === "password" && styles.inputWrapperFocused,
+                  ]}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="בחר סיסמה חזקה"
+                    placeholderTextColor={colors.placeholder}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    onFocus={() => setFocusedField("password")}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-          {/* Convert Button */}
-          <TouchableOpacity
-            style={[styles.convertButton, loading && styles.disabledButton]}
-            onPress={handleConvert}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              style={styles.buttonGradient}
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>צור חשבון ושמור נתונים</Text>
-                  <Ionicons name="arrow-forward" size={20} color="white" />
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </ScrollView>
+              {/* אישור סיסמה */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>אישור סיסמה</Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    focusedField === "confirmPassword" &&
+                      styles.inputWrapperFocused,
+                  ]}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="הכנס שוב את הסיסמה"
+                    placeholderTextColor={colors.placeholder}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    onFocus={() => setFocusedField("confirmPassword")}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                </View>
+              </View>
+
+              {/* יתרונות המרה */}
+              <View style={styles.benefitsContainer}>
+                <Text style={styles.benefitsTitle}>מה תקבל:</Text>
+                <View style={styles.benefitItem}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={colors.success}
+                  />
+                  <Text style={styles.benefitText}>שמירת כל האימונים שלך</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={colors.success}
+                  />
+                  <Text style={styles.benefitText}>גיבוי אוטומטי בענן</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={colors.success}
+                  />
+                  <Text style={styles.benefitText}>גישה מכל מכשיר</Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Action Buttons */}
+          <ActionButtons
+            onNext={handleConvert}
+            onBack={handleBack}
+            isLoading={loading}
+          />
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
   },
   centeredContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 24,
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: colors.text,
     marginTop: 16,
+    marginBottom: 8,
+  },
+  successSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: "center",
     marginBottom: 32,
   },
   backButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 12,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
   },
   backButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
   },
-  header: {
-    flexDirection: "row",
+  headerContainer: {
     alignItems: "center",
-    padding: 20,
-    paddingBottom: 10,
-  },
-  backIcon: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
+    paddingVertical: 20,
+    marginBottom: 20,
   },
   titleContainer: {
-    flex: 1,
+    alignItems: "center",
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: colors.text,
-    marginBottom: 4,
+    textAlign: "center",
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 22,
   },
   urgencyBanner: {
     flexDirection: "row",
     alignItems: "center",
-    margin: 20,
-    marginTop: 10,
-    padding: 16,
+    justifyContent: "center",
+    gap: 8,
     borderRadius: 12,
-    gap: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    width: "100%",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
-  urgencyTextContainer: {
+  urgencyText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 24,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  statText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  formContainer: {
     flex: 1,
   },
-  urgencyTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "white",
-    marginBottom: 2,
-  },
-  urgencySubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-  },
-  form: {
-    padding: 20,
-    paddingTop: 0,
+  formContent: {
+    paddingBottom: 20,
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 14,
+    fontWeight: "600",
     color: colors.text,
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
+    backgroundColor: colors.inputBackground,
     borderRadius: 12,
-    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: colors.inputBorder,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  inputError: {
-    borderColor: colors.error,
+  inputWrapperFocused: {
+    borderColor: colors.inputBorderFocused,
+    backgroundColor: "rgba(255, 107, 53, 0.1)",
   },
   input: {
     flex: 1,
     paddingVertical: 16,
-    paddingHorizontal: 12,
     fontSize: 16,
     color: colors.text,
   },
-  eyeButton: {
-    padding: 8,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 14,
-    marginTop: 4,
-    marginLeft: 4,
-  },
   benefitsContainer: {
-    padding: 20,
-    paddingTop: 0,
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.2)",
   },
   benefitsTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: colors.text,
     marginBottom: 12,
@@ -543,33 +602,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   benefitText: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  convertButton: {
-    margin: 20,
-    marginTop: 10,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  buttonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    gap: 8,
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });
 
+export { ConvertGuestScreen };
 export default ConvertGuestScreen;

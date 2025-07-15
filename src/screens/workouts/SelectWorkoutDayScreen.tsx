@@ -41,9 +41,12 @@ const SelectWorkoutDayScreen = () => {
     // ✅ Fixed: Create workout object with proper typing
     const workout: Workout = {
       id: `workout_${Date.now()}`,
-      name: `${plan.name} - ${day.name}`,
-      date: new Date(),
-      userId: user?.id || "guest",
+      planId: plan.id,
+      planName: plan.name,
+      dayId: day.id,
+      dayName: day.name,
+      date: new Date().toISOString(),
+      startTime: new Date().toISOString(),
       exercises: day.exercises.map((planEx, index) => ({
         id: `${planEx.id}_${index}`,
         name: planEx.name,
@@ -51,6 +54,7 @@ const SelectWorkoutDayScreen = () => {
           id: planEx.id,
           name: planEx.name,
           category: planEx.muscleGroup || "כללי",
+          primaryMuscle: planEx.muscleGroup,
         },
         sets: Array.from({ length: planEx.sets }, (_, i) => ({
           id: `${planEx.id}_set_${i}`,
@@ -61,15 +65,11 @@ const SelectWorkoutDayScreen = () => {
         notes: planEx.notes,
       })),
       duration: day.estimatedDuration || 45,
-      // ✅ Fixed: Type casting for difficulty
-      difficulty:
-        (plan.difficulty as "beginner" | "intermediate" | "advanced") ||
-        "intermediate",
-      targetMuscles: day.targetMuscleGroups,
+      status: "active" as const,
     };
 
     startWorkout(workout, plan);
-    navigation.navigate("ActiveWorkout");
+    navigation.navigate("ActiveWorkout" as any);
   };
 
   if (isLoading) {

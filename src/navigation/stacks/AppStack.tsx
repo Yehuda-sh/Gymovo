@@ -16,7 +16,10 @@ import SelectWorkoutDayScreen from "../../screens/workouts/SelectWorkoutDayScree
 import ExercisesPickerScreen from "../../screens/workouts/ExercisesPickerScreen";
 import CreateOrEditPlanScreen from "../../screens/plans/CreateOrEditPlanScreen";
 import EditWorkoutDayScreen from "../../screens/plans/EditWorkoutDayScreen";
-import QuizScreen from "../../screens/auth/QuizScreen"; // הוספנו!
+import QuizScreen from "../../screens/auth/QuizScreen";
+
+// 🔥 הוספנו את המסך החסר!
+import { ConvertGuestScreen } from "../../screens/auth/ConvertGuestScreen";
 
 // ייבוא הגדרות ורכיבים
 import { appStackOptions, modalOptions } from "../config/navigationStyles";
@@ -40,7 +43,20 @@ export const AppStack: React.FC = () => {
         options={{ headerShown: false }}
       />
 
-      {/* === מסך שאלון === */}
+      {/* === מסכי Auth נוספים === */}
+
+      {/* 🔥 המסך החסר - הוספנו! */}
+      <Stack.Screen
+        name="ConvertGuest"
+        component={ConvertGuestScreen}
+        options={{
+          title: "המר חשבון אורח",
+          headerBackTitle: "חזור",
+          presentation: "modal", // הצגה כמודל
+        }}
+      />
+
+      {/* מסך שאלון */}
       <Stack.Screen
         name="Quiz"
         component={QuizScreen}

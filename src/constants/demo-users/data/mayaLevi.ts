@@ -18,51 +18,43 @@ export const mayaLevi: DemoUserData = {
   createdAt: "2024-09-15T00:00:00Z",
   joinedAt: "2024-09-15T00:00:00Z",
   stats: {
+    totalWorkouts: 78,
+    totalTime: 5460, // 78 אימונים * 70 דקות ממוצע
+    totalVolume: 120000,
+    favoriteExercises: [],
     // מדדי ביצוע בסיסיים - מאמנת אינטנסיבית
     workoutsCount: 78,
-    totalDuration: 3510, // 78 אימונים * 45 דקות ממוצע
-    totalWeightLifted: 95000,
-    totalCaloriesBurned: 23400,
+    totalDuration: 5460,
+    totalWeightLifted: 120000,
+    totalCaloriesBurned: 21000,
     totalSets: 1248,
-    totalReps: 15600,
-
-    // רצפים והתמדה מעולים
-    streakDays: 23,
-    longestStreak: 30,
-    weeklyAverage: 6,
-    monthlyWorkouts: 24,
+    totalReps: 12480,
+    streakDays: 20,
+    longestStreak: 22,
+    weeklyAverage: 5,
+    monthlyWorkouts: 20,
     yearlyWorkouts: 78,
     lastWorkoutDate: new Date(
-      Date.now() - 1 * 24 * 60 * 60 * 1000
+      Date.now() - 2 * 24 * 60 * 60 * 1000
     ).toISOString(),
-
-    // הישגים מתקדמים
-    achievementsUnlocked: 15,
+    achievementsUnlocked: 12,
     personalRecordsCount: 5,
     plansCompleted: 3,
-    challengesCompleted: 4,
-
-    // התקדמות פיזית מרשימה
-    strengthGain: 8, // 8% עלייה במשקלים (דגש על סיבולת)
-    muscleGain: 1.5, // 1.5 ק"ג שרירים
-    fatLoss: 8.2, // 8.2 ק"ג שומן (מטרה עיקרית)
-    enduranceImprovement: 35, // 35% שיפור בסיבולת
-
-    // דירוגים גבוהים
-    averageWorkoutRating: 4.8,
-    totalWorkoutRatings: 75,
-
-    // יעדים מתקדמים
-    goalsAchieved: 4,
-    goalsInProgress: 2,
-
-    // התפלגות קבוצות שרירים - דגש על כל הגוף ופונקציונליות
+    challengesCompleted: 2,
+    strengthGain: 18,
+    muscleGain: 4.1,
+    fatLoss: 2.8,
+    enduranceImprovement: 10,
+    averageWorkoutRating: 4.7,
+    totalWorkoutRatings: 70,
+    goalsAchieved: 3,
+    goalsInProgress: 1,
     muscleGroupDistribution: {
-      "כל הגוף": 40,
-      רגליים: 25,
-      ליבה: 20,
-      חזה: 10,
-      גב: 5,
+      חזה: 20,
+      גב: 20,
+      רגליים: 30,
+      כתפיים: 15,
+      זרועות: 15,
     },
   },
 };

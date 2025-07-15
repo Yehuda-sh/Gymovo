@@ -345,7 +345,7 @@ const WorkoutSummaryScreen: React.FC<Props> = ({ route, navigation }) => {
           variant="primary"
           disabled={isSaving}
           style={styles.saveButton}
-          icon="save-outline"
+          iconName="save-outline"
         />
 
         <TouchableOpacity

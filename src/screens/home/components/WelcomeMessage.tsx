@@ -1,11 +1,15 @@
 // src/screens/home/components/WelcomeMessage.tsx
-// הודעת ברוכים הבאים דינמית
+// הודעת ברוכים הבאים דינמית עם מערכת עיצוב מאוחדת
 
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { DashboardData } from "../types";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
+
+const { colors, spacing, typography, borderRadius, shadows } =
+  unifiedDesignSystem;
 
 interface WelcomeMessageProps {
   dashboardData: DashboardData | null;
@@ -64,11 +68,11 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ dashboardData }) => {
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <LinearGradient
-        colors={["rgba(102, 126, 234, 0.1)", "rgba(118, 75, 162, 0.05)"]}
+        colors={[colors.surfaceLight, colors.surface]}
         style={styles.gradient}
       >
         <View style={styles.iconContainer}>
-          <Ionicons name="bulb-outline" size={16} color="#F59E0B" />
+          <Ionicons name="bulb-outline" size={16} color={colors.warning} />
         </View>
         <Text style={styles.message}>{message}</Text>
       </LinearGradient>
@@ -78,30 +82,31 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ dashboardData }) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   gradient: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.2)",
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   iconContainer: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(245, 158, 11, 0.2)",
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceLight,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 10,
+    marginLeft: spacing.sm,
   },
   message: {
     flex: 1,
-    fontSize: 13,
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "500",
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
     lineHeight: 18,
   },
 });

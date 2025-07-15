@@ -18,6 +18,10 @@ export const aviCohen: DemoUserData = {
   createdAt: "2024-10-01T00:00:00Z",
   joinedAt: "2024-10-01T00:00:00Z",
   stats: {
+    totalWorkouts: 45,
+    totalTime: 3375, // 45 אימונים * 75 דקות ממוצע
+    totalVolume: 85000,
+    favoriteExercises: [],
     // מדדי ביצוע בסיסיים
     workoutsCount: 45,
     totalDuration: 3375, // 45 אימונים * 75 דקות ממוצע

@@ -5,15 +5,15 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useEffect } from "react";
 import { View, Text, Animated, StyleSheet } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
-import { designSystem } from "../../../../theme/designSystem";
+import { colors } from "../../../../theme/colors";
 import { styles } from "../styles/exerciseSelectionStyles";
 
 interface LoadingStateProps {
   message?: string;
 }
 
-const LoadingState: React.FC<LoadingStateProps> = ({ 
-  message = "טוען תרגילים..." 
+const LoadingState: React.FC<LoadingStateProps> = ({
+  message = "טוען תרגילים...",
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -37,7 +37,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({
     rotateAnimation.start();
 
     return () => rotateAnimation.stop();
-  }, []);
+  }, [fadeAnim, rotateAnim]);
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -47,7 +47,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({
   return (
     <View style={styles.loadingContainer}>
       <LinearGradient
-        colors={designSystem.gradients.dark.colors}
+        colors={[colors.primary, colors.primaryDark || colors.primary]}
         style={StyleSheet.absoluteFillObject}
       />
       <Animated.View style={[loadingStyles.content, { opacity: fadeAnim }]}>
@@ -57,11 +57,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({
             { transform: [{ rotate: rotateInterpolate }] },
           ]}
         >
-          <Ionicons
-            name="barbell"
-            size={48}
-            color={designSystem.colors.primary.main}
-          />
+          <Ionicons name="barbell" size={48} color={colors.primary} />
         </Animated.View>
         <Text style={styles.loadingText}>{message}</Text>
       </Animated.View>
@@ -78,4 +74,4 @@ const loadingStyles = StyleSheet.create({
   },
 });
 
-export default LoadingState; 
+export default LoadingState;

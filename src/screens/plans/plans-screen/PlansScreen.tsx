@@ -44,30 +44,9 @@ import { loadQuizProgress } from "../../../services/quizProgressService";
 // Stores & Types
 import { useUserStore } from "../../../stores/userStore";
 import { useNavigation } from "@react-navigation/native";
-import { colors } from "../../../theme/colors"; // שינוי ל-colors במקום designSystem
+import { designSystem } from "../../../theme/designSystem";
 import { Plan } from "../../../types/plan";
-
-// הגדרת designSystem מקומית עד שיווצר הקובץ
-const designSystem = {
-  colors: {
-    primary: {
-      main: colors.primary,
-    },
-    background: {
-      primary: colors.background,
-    },
-    neutral: {
-      text: {
-        secondary: colors.textSecondary,
-      },
-    },
-  },
-  gradients: {
-    primary: {
-      colors: [colors.primary, colors.primaryDark],
-    },
-  },
-};
+import { colors } from "../../../theme/colors";
 
 // הרחבה זמנית של Plan עד לעדכון הטיפוס הראשי
 interface PlanWithAI extends Plan {
@@ -363,18 +342,18 @@ ${plan.description || ""}
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designSystem.colors.background.primary,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: designSystem.colors.background.primary,
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
   },
   header: {
     marginBottom: 16,

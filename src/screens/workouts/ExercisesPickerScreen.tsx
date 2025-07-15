@@ -201,9 +201,9 @@ const ExercisesPickerScreen = () => {
     setIsRefreshing(true);
     try {
       await refetch();
-      Toast.show("רשימת התרגילים עודכנה מ-wger", "success");
-    } catch (error) {
-      Toast.show("שגיאה בעדכון התרגילים", "error");
+      Toast.success("רשימת התרגילים עודכנה מ-wger");
+    } catch {
+      Toast.error("שגיאה בעדכון התרגילים");
     } finally {
       setIsRefreshing(false);
     }
@@ -261,7 +261,7 @@ const ExercisesPickerScreen = () => {
     updateDay(dayId || "", updatedDay);
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Toast.show(`נבחרו ${selectedExercises.length} תרגילים`, "success");
+    Toast.success(`נבחרו ${selectedExercises.length} תרגילים`);
     navigation.goBack();
   }, [selectedIds, allExercises, plan, dayId, updateDay, navigation]);
 
@@ -274,7 +274,7 @@ const ExercisesPickerScreen = () => {
         style: "destructive",
         onPress: () => {
           setSelectedIds(new Set());
-          Toast.show("הבחירה נוקתה", "info");
+          Toast.info("הבחירה נוקתה");
         },
       },
     ]);

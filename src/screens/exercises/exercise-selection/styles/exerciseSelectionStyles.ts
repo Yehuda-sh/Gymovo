@@ -1,11 +1,8 @@
 // src/screens/exercises/exercise-selection/styles/exerciseSelectionStyles.ts
 // סגנונות למסך בחירת תרגילים
 
-import { StyleSheet, Dimensions } from "react-native";
-import { designSystem } from "../../../../theme/designSystem";
-import { withOpacity } from "../utils/constants";
-
-const { width } = Dimensions.get("window");
+import { StyleSheet } from "react-native";
+import { colors } from "../../../../theme/colors";
 
 export const styles = StyleSheet.create({
   // Container & Layout
@@ -24,7 +21,7 @@ export const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: designSystem.colors.neutral.text.primary,
+    color: colors.text,
     marginTop: 16,
     fontWeight: "600",
   },
@@ -35,7 +32,7 @@ export const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: designSystem.colors.semantic.error,
+    color: colors.error,
     marginTop: 16,
     fontWeight: "600",
   },
@@ -53,27 +50,31 @@ export const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: designSystem.colors.background.elevated,
+    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
-    ...designSystem.shadows.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: designSystem.colors.neutral.text.primary,
+    color: colors.text,
     textAlign: "center",
     flex: 1,
   },
   clearButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: designSystem.borderRadius.button,
-    backgroundColor: withOpacity(designSystem.colors.semantic.error, 0.1),
+    borderRadius: 12,
+    backgroundColor: colors.error + "20",
   },
   clearButtonText: {
     fontSize: 14,
-    color: designSystem.colors.semantic.error,
+    color: colors.error,
     fontWeight: "600",
   },
 
@@ -81,13 +82,17 @@ export const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: designSystem.colors.background.card,
+    backgroundColor: colors.surface,
     borderRadius: 25,
     marginHorizontal: 20,
     marginBottom: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    ...designSystem.shadows.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchIcon: {
     marginLeft: 8,
@@ -95,7 +100,7 @@ export const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: designSystem.colors.neutral.text.primary,
+    color: colors.text,
     textAlign: "right",
     paddingVertical: 0,
   },
@@ -118,16 +123,20 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
-    backgroundColor: designSystem.colors.background.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: designSystem.colors.neutral.border,
+    borderColor: colors.border,
     gap: 8,
     marginRight: 12,
   },
   activeCategoryButton: {
     borderColor: "transparent",
     backgroundColor: "transparent",
-    ...designSystem.shadows.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   categoryGradient: {
     flexDirection: "row",
@@ -138,7 +147,7 @@ export const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 14,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
     fontWeight: "600",
   },
   activeCategoryText: {
@@ -153,7 +162,7 @@ export const styles = StyleSheet.create({
   },
   selectedCounterText: {
     fontSize: 14,
-    color: designSystem.colors.primary.main,
+    color: colors.primary,
     fontWeight: "600",
   },
 
@@ -169,24 +178,32 @@ export const styles = StyleSheet.create({
   // Exercise Card
   exerciseCard: {
     flexDirection: "row",
-    backgroundColor: designSystem.colors.background.card,
-    borderRadius: designSystem.borderRadius.card,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
     borderColor: "transparent",
-    ...designSystem.shadows.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   selectedExerciseCard: {
-    borderColor: designSystem.colors.primary.main,
-    backgroundColor: withOpacity(designSystem.colors.primary.main, 0.05),
-    ...designSystem.shadows.md,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + "10",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   exerciseIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: designSystem.colors.background.elevated,
+    backgroundColor: colors.background,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -198,13 +215,13 @@ export const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 16,
     fontWeight: "bold",
-    color: designSystem.colors.neutral.text.primary,
+    color: colors.text,
     marginBottom: 4,
     textAlign: "right",
   },
   exerciseDescription: {
     fontSize: 14,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
     lineHeight: 18,
     marginBottom: 8,
     textAlign: "right",
@@ -221,13 +238,13 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: designSystem.colors.background.secondary,
-    borderRadius: designSystem.borderRadius.sm,
+    backgroundColor: colors.background,
+    borderRadius: 8,
     gap: 4,
   },
   tagText: {
     fontSize: 11,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
     fontWeight: "500",
   },
   secondaryMuscles: {
@@ -235,12 +252,12 @@ export const styles = StyleSheet.create({
   },
   secondaryLabel: {
     fontSize: 11,
-    color: designSystem.colors.neutral.text.tertiary,
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   secondaryText: {
     fontSize: 12,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
   },
 
   // Selection
@@ -253,7 +270,7 @@ export const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: designSystem.colors.neutral.border,
+    borderColor: colors.border,
   },
 
   // Empty State
@@ -266,13 +283,13 @@ export const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: designSystem.colors.neutral.text.primary,
+    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
 
@@ -294,9 +311,13 @@ export const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   startButton: {
-    borderRadius: designSystem.borderRadius.button,
+    borderRadius: 12,
     overflow: "hidden",
-    ...designSystem.shadows.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   startButtonDisabled: {
     opacity: 0.5,

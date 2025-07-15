@@ -6,15 +6,7 @@ import { View, Text, StyleSheet, useColorScheme, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
 import { TagProps } from "./utils";
-
-// הגדרת designSystem מקומית
-const designSystem = {
-  colors: {
-    primary: {
-      main: colors.primary,
-    },
-  },
-};
+import { designSystem } from "../../../theme/designSystem";
 
 // פונקציית עזר ליצירת צבע עם שקיפות
 const withOpacity = (color: string, opacity: number): string => {

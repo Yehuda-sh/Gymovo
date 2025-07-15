@@ -12,6 +12,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { designSystem } from "../../../theme/designSystem";
+import { colors } from "../../../theme/colors";
 import { EmptyStateProps } from "./utils";
 
 // רכיב מצב ריק עם אנימציית כניסה מרשימה
@@ -24,7 +25,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreatePlan }) => {
       Animated.spring(scaleAnim, {
         toValue: 1,
         delay: 300,
-        ...designSystem.animations.easings.bounce,
+        ...designSystem.animation.easing.bounce,
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnim, {
@@ -49,7 +50,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreatePlan }) => {
         <MaterialCommunityIcons
           name="clipboard-text-outline"
           size={80}
-          color={designSystem.colors.neutral.text.tertiary}
+          color={colors.textMuted}
         />
       </View>
 
@@ -90,13 +91,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: designSystem.colors.neutral.text.primary,
+    color: colors.text,
     marginBottom: 8,
     textAlign: "center",
   },
   emptyText: {
     fontSize: 16,
-    color: designSystem.colors.neutral.text.secondary,
+    color: colors.textSecondary,
     textAlign: "center",
     marginBottom: 32,
     lineHeight: 24,

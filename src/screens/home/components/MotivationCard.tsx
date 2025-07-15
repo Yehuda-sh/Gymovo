@@ -1,5 +1,5 @@
 // src/screens/home/components/MotivationCard.tsx
-// כרטיס מוטיבציה בגובה מאוזן
+// כרטיס מוטיבציה בגובה מאוזן עם מערכת עיצוב מאוחדת
 
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
@@ -7,6 +7,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { DashboardData } from "../types";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
+
+const { colors, spacing, typography, borderRadius, shadows } =
+  unifiedDesignSystem;
 
 interface MotivationCardProps {
   dashboardData: DashboardData | null;
@@ -40,7 +44,7 @@ const MotivationCard: React.FC<MotivationCardProps> = ({ dashboardData }) => {
   return (
     <BlurView intensity={15} style={styles.container}>
       <LinearGradient
-        colors={["rgba(102, 126, 234, 0.15)", "rgba(118, 75, 162, 0.15)"]}
+        colors={[colors.surfaceLight, colors.surface]}
         style={styles.gradientContainer}
       >
         {/* Top Row */}
@@ -62,7 +66,7 @@ const MotivationCard: React.FC<MotivationCardProps> = ({ dashboardData }) => {
 
           <View style={styles.rightSection}>
             <View style={styles.statItem}>
-              <Ionicons name="flame" size={16} color="#F59E0B" />
+              <Ionicons name="flame" size={16} color={colors.warning} />
               <Text style={styles.statValue}>{streak}</Text>
             </View>
             <Text style={styles.statLabel}>ימים ברצף</Text>
@@ -85,8 +89,8 @@ const MotivationCard: React.FC<MotivationCardProps> = ({ dashboardData }) => {
             <LinearGradient
               colors={
                 progressPercent > 50
-                  ? ["#43e97b", "#38f9d7"]
-                  : ["#667eea", "#764ba2"]
+                  ? [colors.success, "#38f9d7"]
+                  : [colors.primary, colors.secondary]
               }
               style={styles.progressGradient}
               start={{ x: 0, y: 0 }}
@@ -105,16 +109,17 @@ const MotivationCard: React.FC<MotivationCardProps> = ({ dashboardData }) => {
 const styles = StyleSheet.create({
   container: {
     height: 100,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     overflow: "hidden",
   },
   gradientContainer: {
     flex: 1,
-    padding: 14,
-    borderRadius: 16,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.2)",
+    borderColor: colors.border,
     justifyContent: "space-between",
+    ...shadows.sm,
   },
   topRow: {
     flexDirection: "row",
@@ -133,60 +138,60 @@ const styles = StyleSheet.create({
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: spacing.xs,
   },
   progressText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text,
   },
   progressLabel: {
-    fontSize: 10,
-    color: "rgba(255, 255, 255, 0.7)",
-    marginTop: 2,
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   percentageContainer: {
     width: 50,
     height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(102, 126, 234, 0.2)",
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 2,
-    borderColor: "rgba(102, 126, 234, 0.4)",
+    borderColor: colors.borderActive,
     alignItems: "center",
     justifyContent: "center",
   },
   percentage: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#fff",
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.heavy,
+    color: colors.text,
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text,
   },
   statLabel: {
-    fontSize: 10,
-    color: "rgba(255, 255, 255, 0.7)",
-    marginTop: 2,
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   progressBarContainer: {
     height: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 3,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.xs,
     overflow: "hidden",
   },
   progressBar: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: borderRadius.xs,
   },
   progressGradient: {
     flex: 1,
   },
   motivationText: {
-    fontSize: 13,
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "600",
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.semibold,
     textAlign: "center",
   },
 });

@@ -1,4 +1,4 @@
-// src/components/common/Button.tsx - כפתור מותאם עם אנימציות וגרדיאנט
+// src/components/common/Button.tsx - כפתור מותאם עם מערכת עיצוב מאוחדת
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -14,7 +14,9 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { colors } from "../../theme/colors";
+import { unifiedDesignSystem } from "../../theme/unifiedDesignSystem";
+
+const { colors, button, typography, shadows } = unifiedDesignSystem;
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -53,51 +55,17 @@ const Button: React.FC<ButtonProps> = ({
     }
   };
 
-  const getButtonColors = (): [string, string] => {
-    switch (variant) {
-      case "primary":
-        return [colors.primary, colors.secondary];
-      case "secondary":
-        return [colors.secondary, colors.primary];
-      case "danger":
-        return ["#FF4B4B", "#C62828"];
-      case "success":
-        return ["#4CAF50", "#2E7D32"];
-      case "outline":
-        return ["transparent", "transparent"];
-      default:
-        return [colors.primary, colors.secondary];
-    }
+  const getButtonConfig = () => {
+    const sizeConfig = button.sizes[size];
+    const variantConfig = button.variants[variant];
+
+    return {
+      ...sizeConfig,
+      ...variantConfig,
+    };
   };
 
-  const getSizeStyles = () => {
-    switch (size) {
-      case "small":
-        return {
-          paddingVertical: 8,
-          paddingHorizontal: 16,
-          fontSize: 14,
-          iconSize: 18,
-        };
-      case "large":
-        return {
-          paddingVertical: 16,
-          paddingHorizontal: 32,
-          fontSize: 18,
-          iconSize: 24,
-        };
-      default:
-        return {
-          paddingVertical: 12,
-          paddingHorizontal: 24,
-          fontSize: 16,
-          iconSize: 20,
-        };
-    }
-  };
-
-  const sizeStyles = getSizeStyles();
-  const [startColor, endColor] = getButtonColors();
+  const buttonConfig = getButtonConfig();
   const isOutline = variant === "outline";
   const isDisabled = disabled || loading;
 
@@ -113,8 +81,8 @@ const Button: React.FC<ButtonProps> = ({
           {iconName && iconPosition === "left" && (
             <Ionicons
               name={iconName}
-              size={sizeStyles.iconSize}
-              color={isOutline ? colors.primary : "#fff"}
+              size={buttonConfig.iconSize}
+              color={buttonConfig.textColor}
               style={styles.iconLeft}
             />
           )}
@@ -122,10 +90,11 @@ const Button: React.FC<ButtonProps> = ({
             style={[
               styles.text,
               {
-                fontSize: sizeStyles.fontSize,
-                color: isOutline ? colors.primary : "#fff",
+                fontSize: buttonConfig.fontSize,
+                color: buttonConfig.textColor,
+                fontFamily: typography.fontFamily.primary,
+                fontWeight: typography.fontWeight.semibold,
               },
-              isOutline && styles.outlineText,
               isDisabled && styles.disabledText,
               textStyle,
             ]}
@@ -135,8 +104,8 @@ const Button: React.FC<ButtonProps> = ({
           {iconName && iconPosition === "right" && (
             <Ionicons
               name={iconName}
-              size={sizeStyles.iconSize}
-              color={isOutline ? colors.primary : "#fff"}
+              size={buttonConfig.iconSize}
+              color={buttonConfig.textColor}
               style={styles.iconRight}
             />
           )}
@@ -152,6 +121,9 @@ const Button: React.FC<ButtonProps> = ({
       disabled={isDisabled}
       style={[
         styles.container,
+        {
+          borderRadius: buttonConfig.borderRadius,
+        },
         fullWidth && styles.fullWidth,
         isDisabled && styles.disabled,
         style,
@@ -160,14 +132,18 @@ const Button: React.FC<ButtonProps> = ({
     >
       {gradient && !isOutline ? (
         <LinearGradient
-          colors={isDisabled ? ["#ccc", "#999"] : [startColor, endColor]}
+          colors={
+            isDisabled ? ["#ccc", "#999"] : (buttonConfig as any).gradient
+          }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[
             styles.gradient,
             {
-              paddingVertical: sizeStyles.paddingVertical,
-              paddingHorizontal: sizeStyles.paddingHorizontal,
+              paddingVertical: buttonConfig.paddingVertical,
+              paddingHorizontal: buttonConfig.paddingHorizontal,
+              borderRadius: buttonConfig.borderRadius,
+              ...buttonConfig.shadow,
             },
           ]}
         >
@@ -177,10 +153,15 @@ const Button: React.FC<ButtonProps> = ({
         <View
           style={[
             styles.button,
-            isOutline && styles.outlineButton,
             {
-              paddingVertical: sizeStyles.paddingVertical,
-              paddingHorizontal: sizeStyles.paddingHorizontal,
+              paddingVertical: buttonConfig.paddingVertical,
+              paddingHorizontal: buttonConfig.paddingHorizontal,
+              borderRadius: buttonConfig.borderRadius,
+              backgroundColor:
+                (buttonConfig as any).backgroundColor || "transparent",
+              borderColor: (buttonConfig as any).borderColor || "transparent",
+              borderWidth: (buttonConfig as any).borderWidth || 0,
+              ...buttonConfig.shadow,
             },
             isDisabled && styles.disabledButton,
           ]}
@@ -194,7 +175,6 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
     overflow: "hidden",
     alignSelf: "flex-start",
   },
@@ -203,20 +183,12 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   gradient: {
-    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   button: {
-    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.primary,
-  },
-  outlineButton: {
-    backgroundColor: "transparent",
-    borderWidth: 2,
-    borderColor: colors.primary,
   },
   contentContainer: {
     flexDirection: "row",
@@ -224,11 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: {
-    fontWeight: "600",
     letterSpacing: 0.5,
-  },
-  outlineText: {
-    color: colors.primary,
   },
   iconLeft: {
     marginRight: 8,

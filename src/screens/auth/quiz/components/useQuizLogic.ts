@@ -4,9 +4,9 @@ import { useState, useCallback } from "react";
 import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 import { QuizOption, QuizQuestion, QuizState } from "../types";
-import { generatePlan } from "../../../../services/planGenerator";
+import { generatePlanFromQuiz } from "../../../../services/planGenerator";
 import { savePlan } from "../../../../data/storage";
-import { UserState, useUserStore } from "../../../../stores/userStore";
+import { useUserStore } from "../../../../stores/userStore";
 
 // Interface לנתוני השאלון
 interface QuizLogicProps {
@@ -23,7 +23,7 @@ const useQuizLogic = ({
   userId,
   signupData,
 }: QuizLogicProps) => {
-  const user = useUserStore((state: UserState) => state.user);
+  const user = useUserStore((state) => state.user);
 
   const [state, setState] = useState<QuizState>({
     currentQuestionIndex: 0,
@@ -65,6 +65,60 @@ const useQuizLogic = ({
     [currentQuestion.multiSelect]
   );
 
+  // יצירת תוכנית מותאמת אישית
+  const handleGeneratePlan = useCallback(
+    async (finalAnswers: Record<string, any>) => {
+      try {
+        setState((prev) => ({ ...prev, isLoading: true }));
+
+        const actualUserId =
+          userId ||
+          user?.id ||
+          signupData?.email?.replace("@", "_").replace(".", "_");
+
+        // המרת התשובות לפורמט הנדרש
+        const quizAnswers = {
+          goal: finalAnswers.goal || "hypertrophy",
+          experience: finalAnswers.experience || "beginner",
+          equipment: Array.isArray(finalAnswers.equipment)
+            ? finalAnswers.equipment
+            : finalAnswers.whereToTrain?.includes("gym")
+            ? ["gym"]
+            : ["home"],
+          injuries: finalAnswers.injuries || [],
+          workoutDays: finalAnswers.days || 3,
+          timePerSession: 60,
+        };
+
+        const plan = await generatePlanFromQuiz(quizAnswers, actualUserId);
+
+        // שמירת תוכנית
+        if (actualUserId && plan) {
+          await savePlan(actualUserId, plan);
+          console.log("✅ Plan saved successfully");
+        }
+
+        onComplete();
+      } catch (error) {
+        console.error("❌ Plan generation failed:", error);
+        Alert.alert(
+          "שגיאה",
+          "לא ניתן ליצור תוכנית אישית כרגע. נסה שוב מאוחר יותר.",
+          [
+            {
+              text: "נסה שוב",
+              onPress: () => handleGeneratePlan(finalAnswers),
+            },
+            { text: "דלג", onPress: onComplete },
+          ]
+        );
+      } finally {
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+    },
+    [userId, user?.id, signupData?.email, onComplete]
+  );
+
   // טיפול במעבר לשאלה הבאה
   const handleNext = useCallback(async () => {
     if (state.selectedOptions.length === 0) {
@@ -95,55 +149,13 @@ const useQuizLogic = ({
         selectedOptions: [],
       }));
     }
-  }, [state.selectedOptions, state.answers, currentQuestion, isLastQuestion]);
-
-  // יצירת תוכנית מותאמת אישית
-  const handleGeneratePlan = async (finalAnswers: Record<string, any>) => {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true }));
-
-      const actualUserId =
-        userId ||
-        user?.id ||
-        signupData?.email?.replace("@", "_").replace(".", "_");
-
-      // המרת התשובות לפורמט הנדרש
-      const quizAnswers = {
-        goal: finalAnswers.goal || "hypertrophy",
-        experience: finalAnswers.experience || "beginner",
-        equipment: Array.isArray(finalAnswers.equipment)
-          ? finalAnswers.equipment
-          : finalAnswers.whereToTrain?.includes("gym")
-          ? ["gym"]
-          : ["home"],
-        injuries: finalAnswers.injuries || [],
-        workoutDays: finalAnswers.days || 3,
-        timePerSession: 60,
-      };
-
-      const plan = await generatePlan(quizAnswers, actualUserId);
-
-      // שמירת תוכנית
-      if (actualUserId && plan) {
-        await savePlan(actualUserId, plan);
-        console.log("✅ Plan saved successfully");
-      }
-
-      onComplete();
-    } catch (error) {
-      console.error("❌ Plan generation failed:", error);
-      Alert.alert(
-        "שגיאה",
-        "לא ניתן ליצור תוכנית אישית כרגע. נסה שוב מאוחר יותר.",
-        [
-          { text: "נסה שוב", onPress: () => handleGeneratePlan(finalAnswers) },
-          { text: "דלג", onPress: onComplete },
-        ]
-      );
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
+  }, [
+    state.selectedOptions,
+    state.answers,
+    currentQuestion,
+    isLastQuestion,
+    handleGeneratePlan,
+  ]);
 
   // טיפול בחזרה
   const handleBack = useCallback(() => {

@@ -2,7 +2,7 @@
 // רכיב ניהול מצב השאלון - גרסה קומפקטית
 
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,6 @@ import {
   QuizProgress,
 } from "../../../../services/quizProgressService";
 import { Toast } from "../../../../components/common/Toast";
-import { useState } from "react";
 
 // צבעים לעיצוב החדש
 const quizColors = {
@@ -45,10 +44,10 @@ const QuizStatusCard: React.FC<QuizStatusCardProps> = ({
 }) => {
   const [quizProgress, setQuizProgress] = useState<QuizProgress | null>(null);
   const [loading, setLoading] = useState(true);
-  const scaleAnim = React.useRef(new Animated.Value(0.95)).current;
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const loadProgress = React.useCallback(async () => {
+  const loadProgress = useCallback(async () => {
     try {
       setLoading(true);
       const progress = await loadQuizProgress(userId);
@@ -61,7 +60,7 @@ const QuizStatusCard: React.FC<QuizStatusCardProps> = ({
     }
   }, [userId]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadProgress();
 
     // אנימציות כניסה
@@ -78,14 +77,10 @@ const QuizStatusCard: React.FC<QuizStatusCardProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [userId, refreshTrigger, loadProgress]);
+  }, [userId, refreshTrigger, loadProgress, scaleAnim, fadeAnim]);
 
   const handleViewPlans = () => {
-    Toast.show("תוכניות אימון - בקרוב", "info");
-  };
-
-  const handleRetakeQuiz = () => {
-    onStartNewQuiz();
+    Toast.info("תוכניות אימון - בקרוב");
   };
 
   if (loading) {

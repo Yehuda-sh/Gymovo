@@ -1,5 +1,5 @@
 // src/screens/home/components/RecentWorkoutsSection.tsx
-// קטע אימונים אחרונים עם גרדיאנט
+// קטע אימונים אחרונים עם מערכת עיצוב מאוחדת
 
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -10,6 +10,10 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootStackParamList } from "../../../types/navigation";
 import { DashboardData } from "../types";
+import { unifiedDesignSystem } from "../../../theme/unifiedDesignSystem";
+
+const { colors, spacing, typography, borderRadius, shadows } =
+  unifiedDesignSystem;
 
 interface RecentWorkoutsSectionProps {
   dashboardData: DashboardData | null;
@@ -26,10 +30,10 @@ const RecentWorkoutsSection: React.FC<RecentWorkoutsSectionProps> = ({
     return (
       <View style={styles.emptyContainer}>
         <LinearGradient
-          colors={["rgba(102, 126, 234, 0.1)", "rgba(118, 75, 162, 0.1)"]}
+          colors={[colors.surfaceLight, colors.surface]}
           style={styles.emptyGradient}
         >
-          <Ionicons name="barbell-outline" size={32} color="#667eea" />
+          <Ionicons name="barbell-outline" size={32} color={colors.primary} />
           <Text style={styles.emptyText}>עדיין אין אימונים</Text>
           <Text style={styles.emptySubtext}>התחל אימון ראשון!</Text>
         </LinearGradient>
@@ -70,26 +74,32 @@ const RecentWorkoutsSection: React.FC<RecentWorkoutsSectionProps> = ({
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["rgba(102, 126, 234, 0.15)", "rgba(118, 75, 162, 0.1)"]}
+            colors={[colors.surfaceLight, colors.surface]}
             style={styles.cardGradient}
           >
             <View style={styles.cardContent}>
               <View style={styles.cardLeft}>
-                <Text style={styles.workoutName}>{workout.name}</Text>
+                <Text style={styles.workoutName}>
+                  {workout.planName} - {workout.dayName}
+                </Text>
                 <Text style={styles.workoutDate}>
                   {new Date(workout.date || "").toLocaleDateString("he-IL")}
                 </Text>
               </View>
               <View style={styles.cardRight}>
                 <View style={styles.statItem}>
-                  <Ionicons name="time-outline" size={14} color="#667eea" />
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={colors.primary}
+                  />
                   <Text style={styles.statText}>
                     {workout.duration || 0} דק&apos;
                   </Text>
                 </View>
                 {workout.rating && (
                   <View style={styles.statItem}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Ionicons name="star" size={14} color={colors.warning} />
                     <Text style={styles.statText}>{workout.rating}</Text>
                   </View>
                 )}
@@ -104,34 +114,35 @@ const RecentWorkoutsSection: React.FC<RecentWorkoutsSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   title: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#fff",
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text,
   },
   viewAllText: {
-    fontSize: 14,
-    color: "#667eea",
-    fontWeight: "500",
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
   },
   workoutCard: {
-    marginBottom: 10,
-    borderRadius: 12,
+    marginBottom: spacing.sm,
+    borderRadius: borderRadius.md,
     overflow: "hidden",
   },
   cardGradient: {
-    padding: 14,
-    borderRadius: 12,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.2)",
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   cardContent: {
     flexDirection: "row",
@@ -142,49 +153,51 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   workoutName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#fff",
-    marginBottom: 4,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   workoutDate: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
   },
   cardRight: {
     flexDirection: "row",
-    gap: 12,
+    gap: spacing.sm,
   },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: spacing.xs,
   },
   statText: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: typography.fontSize.md,
+    color: colors.textSecondary,
+    opacity: 0.92,
   },
   emptyContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
   },
   emptyGradient: {
-    padding: 24,
-    borderRadius: 12,
+    padding: spacing.xxl,
+    borderRadius: borderRadius.md,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.2)",
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
-    marginTop: 12,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text,
+    marginTop: spacing.sm,
   },
   emptySubtext: {
-    fontSize: 13,
-    color: "rgba(255, 255, 255, 0.6)",
-    marginTop: 4,
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
 });
 

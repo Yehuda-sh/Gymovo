@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { View } from "react-native";
 
-import { CardLayout, Typography } from "../../../components/ui";
+import { Typography } from "../../../components/ui";
+import { CardLayout } from "../../../components/layouts";
 import { theme } from "../../../theme";
 import { StatItem } from "../types";
 

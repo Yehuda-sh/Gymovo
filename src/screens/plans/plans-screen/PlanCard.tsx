@@ -16,63 +16,10 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../theme/colors";
+import { designSystem } from "../../../theme/designSystem";
 import { Plan } from "../../../types/plan";
 import { getDifficultyGradient, getAnimationDelay } from "./utils";
 import Tag from "./Tag";
-
-// הגדרת designSystem מקומית
-const designSystem = {
-  colors: {
-    primary: {
-      main: colors.primary,
-      dark: colors.primaryDark,
-    },
-    secondary: {
-      main: colors.secondary,
-    },
-    background: {
-      elevated: colors.surface,
-    },
-    neutral: {
-      text: {
-        primary: colors.text,
-        secondary: colors.textSecondary,
-        tertiary: colors.textMuted,
-      },
-      border: colors.border,
-    },
-    semantic: {
-      error: colors.error,
-    },
-  },
-  shadows: {
-    lg: Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  animations: {
-    easings: {
-      spring: {
-        tension: 40,
-        friction: 7,
-        useNativeDriver: true,
-      },
-      bounce: {
-        tension: 50,
-        friction: 5,
-        useNativeDriver: true,
-      },
-    },
-  },
-};
 
 export interface PlanCardProps {
   plan: Plan & { isAiGenerated?: boolean };
@@ -103,12 +50,16 @@ const PlanCard: React.FC<PlanCardProps> = memo(
         Animated.spring(slideAnim, {
           toValue: 0,
           delay: getAnimationDelay(index),
-          ...designSystem.animations.easings.spring,
+          tension: 40,
+          friction: 7,
+          useNativeDriver: true,
         }),
         Animated.spring(scaleAnim, {
           toValue: 1,
           delay: getAnimationDelay(index),
-          ...designSystem.animations.easings.bounce,
+          tension: 50,
+          friction: 5,
+          useNativeDriver: true,
         }),
       ]).start();
     }, [index, fadeAnim, slideAnim, scaleAnim]);
@@ -300,7 +251,7 @@ const PlanCard: React.FC<PlanCardProps> = memo(
                 {plan.tags.length > 3 && (
                   <Tag
                     text={`+${plan.tags.length - 3}`}
-                    color={designSystem.colors.neutral.text.tertiary}
+                    color={colors.textMuted}
                   />
                 )}
               </ScrollView>
@@ -463,7 +414,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 8,
     borderRadius: 20,
-    ...designSystem.shadows.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
   card: {
     borderRadius: 20,
@@ -559,7 +514,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: designSystem.colors.neutral.border,
+    borderColor: colors.border,
   },
   statItem: {
     flexDirection: "row",
@@ -613,11 +568,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: designSystem.colors.background.elevated,
+    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: designSystem.colors.neutral.border,
+    borderColor: colors.border,
   },
 });
 

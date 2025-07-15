@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
-import { designSystem } from "../../../../theme/designSystem";
+import { colors } from "../../../../theme/colors";
 import { styles } from "../styles/exerciseSelectionStyles";
 
 interface ErrorStateProps {
@@ -54,7 +54,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, shakeAnim]);
 
   const handleRetry = () => {
     if (onRetry) {
@@ -65,7 +65,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
   return (
     <View style={styles.errorContainer}>
       <LinearGradient
-        colors={designSystem.gradients.dark.colors}
+        colors={[colors.primary, colors.primaryDark || colors.primary]}
         style={StyleSheet.absoluteFillObject}
       />
       <Animated.View
@@ -78,11 +78,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
         ]}
       >
         <View style={errorStyles.iconContainer}>
-          <Ionicons
-            name="alert-circle"
-            size={48}
-            color={designSystem.colors.semantic.error}
-          />
+          <Ionicons name="alert-circle" size={48} color={colors.error} />
         </View>
         <Text style={styles.errorText}>{message}</Text>
 
@@ -91,11 +87,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
             style={errorStyles.retryButton}
             onPress={handleRetry}
           >
-            <Ionicons
-              name="refresh"
-              size={16}
-              color={designSystem.colors.primary.main}
-            />
+            <Ionicons name="refresh" size={16} color={colors.primary} />
             <Text style={errorStyles.retryText}>נסה שנית</Text>
           </TouchableOpacity>
         )}
@@ -117,13 +109,13 @@ const errorStyles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: designSystem.colors.background.card,
-    borderRadius: designSystem.borderRadius.button,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
     gap: 8,
   },
   retryText: {
     fontSize: 14,
-    color: designSystem.colors.primary.main,
+    color: colors.primary,
     fontWeight: "600",
   },
 });

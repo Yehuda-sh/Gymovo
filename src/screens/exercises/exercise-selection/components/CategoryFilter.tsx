@@ -26,12 +26,19 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
       duration: 600,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [fadeAnim]);
+
+  // יצירת אנימציות לכל קטגוריה
+  const categoryAnimations = useRef(
+    muscleGroups.map(() => ({
+      scale: new Animated.Value(1),
+      rotate: new Animated.Value(0),
+    }))
+  ).current;
 
   const renderCategory = (group: MuscleGroup, index: number) => {
     const isSelected = selectedCategory === group.id;
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const rotateAnim = useRef(new Animated.Value(0)).current;
+    const { scale: scaleAnim, rotate: rotateAnim } = categoryAnimations[index];
 
     const handlePress = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -80,7 +87,7 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
         >
           {isSelected ? (
             <LinearGradient
-              colors={group.gradient as string[]}
+              colors={[...group.gradient]}
               style={styles.categoryGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
